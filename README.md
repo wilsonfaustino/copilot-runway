@@ -152,6 +152,31 @@ Since Homebrew 6.0.0, Homebrew loads code from a third-party tap only after you 
 A fully qualified install trusts this one cask and nothing else in the tap
 ([Tap Trust](https://docs.brew.sh/Tap-Trust)).
 
+### With an AI agent
+
+Paste this prompt into an AI coding agent such as Claude Code, OpenCode, Pi or Codex. The agent
+installs the app and tells you what to do by hand.
+
+```text
+Install Copilot Runway, a macOS menu bar app, on this Mac. Do these steps in order.
+
+1. Run `sw_vers -productVersion`. If the version is lower than 14, stop and tell me.
+2. Run `brew --version`. If Homebrew is missing, stop and point me to https://brew.sh.
+   Do not install Homebrew without asking me.
+3. Run `gh --version`. If gh is missing, run `brew install gh`. Run `gh auth status`.
+   If I am not logged in, ask me to run `gh auth login` myself, because it is interactive.
+   Never print, copy or ask for my token.
+4. Run `brew install --cask wilsonfaustino/tap/copilot-runway`.
+5. Tell me about the first launch. The app is ad-hoc signed and not notarized, so macOS
+   blocks it once. I must open it from /Applications, click Done, then open System Settings >
+   Privacy & Security and click Open Anyway. Do not remove the quarantine attribute (xattr)
+   unless I explicitly ask, because that turns off a macOS security check.
+6. After I confirm I did this, run `pgrep -x CopilotRunway` to check that the app runs.
+   Ask me to read the menu bar title. It should show the percent left and the days left,
+   for example `62% · 9d`. If it shows `gh missing` or `gh login`, fix gh as in step 3.
+7. Tell me that the app is local only and calls only the GitHub API.
+```
+
 ### First launch
 
 Releases are ad-hoc signed and not notarized by Apple. Homebrew sets the quarantine
