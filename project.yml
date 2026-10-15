@@ -28,7 +28,9 @@ targets:
   Core:
     type: framework
     platform: macOS
-    sources: [Core]
+    sources:
+      - path: Core
+        excludes: ["README.md"]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.wilsonfaustino.CopilotRunway.Core
@@ -36,7 +38,10 @@ targets:
   CoreTests:
     type: bundle.unit-test
     platform: macOS
-    sources: [CoreTests]
+    sources:
+      # Tests read fixtures from the source folder by path, so they stay out of the bundle.
+      - path: CoreTests
+        excludes: ["Fixtures/**"]
     dependencies:
       - target: Core
     settings:
