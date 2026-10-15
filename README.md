@@ -378,6 +378,10 @@ configuration, ad-hoc signs `Core.framework` and the app, verifies the signature
 - Add an app icon.
 - Publish the Homebrew tap.
 
+## Author
+
+Wilson Faustino ([@wilsonfaustino](https://github.com/wilsonfaustino))
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
