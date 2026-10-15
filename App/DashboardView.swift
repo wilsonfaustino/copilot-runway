@@ -23,6 +23,7 @@ struct DashboardView: View {
       VStack(alignment: .leading, spacing: 24) {
         header
         if let usage = usageStore.usage {
+          outcomesSection(usage: usage)
           dailyBurnSection(usage: usage)
           HStack(alignment: .top, spacing: 24) {
             shareChart(title: "By source", entries: usageStore.sourceCredits.map { ($0.source.displayName, $0.credits) })
@@ -70,6 +71,34 @@ struct DashboardView: View {
         summaryCopied = true
       }
       .disabled(usageStore.usage == nil)
+    }
+  }
+
+  private func outcomesSection(usage: CopilotUsage) -> some View {
+    VStack(alignment: .leading, spacing: 4) {
+      Text("Credits per outcome")
+        .font(.headline)
+      if usageStore.organization == nil {
+        Text("Set a GitHub organization in Settings to see credits per outcome.")
+          .foregroundStyle(.secondary)
+      } else {
+        if let outcomes = usageStore.outcomes {
+          Text(outcomes.creditsPerOutcome(creditsUsed: usage.creditsUsed).map { "\(credits($0)) credits" } ?? "No PRs yet")
+            .font(.largeTitle.bold())
+          Text(
+            "\(GitHubOutcomes.countText(outcomes.prsOpened)) PRs opened + \(GitHubOutcomes.countText(outcomes.prsReviewed)) PRs reviewed "
+              + "this cycle. \(GitHubOutcomes.countText(outcomes.commits)) commits, not counted as outcomes."
+          )
+          .foregroundStyle(.secondary)
+        } else if usageStore.outcomesError == nil {
+          Text("Loading outcomes from GitHub.")
+            .foregroundStyle(.secondary)
+        }
+        if let outcomesError = usageStore.outcomesError {
+          Text(outcomesError)
+            .foregroundStyle(.orange)
+        }
+      }
     }
   }
 

@@ -6,6 +6,7 @@ import Observation
 @Observable
 final class UsageStore {
   static let refreshInterval: Duration = .seconds(5 * 60)
+  static let organizationKey = "githubOrganization"
 
   private(set) var title = MenuBarTitle.placeholder
   private(set) var errorMessage: String?
@@ -17,8 +18,13 @@ final class UsageStore {
   private(set) var sourceCredits: [SourceCredits] = []
   private(set) var dailyCredits: [DailyCredits] = []
   private(set) var sessionsWarning: String?
+  private(set) var organization = UserDefaults.standard.string(forKey: organizationKey)
+    .flatMap(GitHubOutcomesClient.normalizedOrganization)
+  private(set) var outcomes: GitHubOutcomes?
+  private(set) var outcomesError: String?
 
   @ObservationIgnored private var pollingTask: Task<Void, Never>?
+  @ObservationIgnored private var lastOutcomesFetch: OutcomesFetch?
 
   init() {
     pollingTask = Task { [weak self] in
@@ -53,6 +59,7 @@ final class UsageStore {
     }
     // The cycle start comes from the API, so session credits wait for at least one good response.
     guard let usage else { return }
+    Task { await refreshOutcomesIfDue() }
     let cycleStart = Runway.cycleStart(resetDate: usage.resetDate)
     let sessionCredits = await Task.detached(priority: .utility) {
       Self.loadSessionCredits(since: cycleStart, now: .now)
@@ -65,7 +72,46 @@ final class UsageStore {
   }
 
   func summaryText() -> String? {
-    usage.map { QuotaSummary.text(usage: $0, now: .now, modelCredits: modelCredits, categoryCredits: categoryCredits) }
+    usage.map {
+      QuotaSummary.text(usage: $0, now: .now, modelCredits: modelCredits, categoryCredits: categoryCredits, outcomes: outcomes)
+    }
+  }
+
+  func setOrganization(_ text: String) {
+    let newOrganization = GitHubOutcomesClient.normalizedOrganization(text)
+    guard newOrganization != organization else { return }
+    UserDefaults.standard.set(newOrganization, forKey: Self.organizationKey)
+    organization = newOrganization
+    outcomes = nil
+    outcomesError = nil
+    lastOutcomesFetch = nil
+    Task { await refreshOutcomesIfDue() }
+  }
+
+  // Runs on launch, on an organization change, and at most every 30 minutes, because the search
+  // rate limit is low. The cycle start comes from the usage API, so it waits for a good response.
+  private func refreshOutcomesIfDue() async {
+    guard let organization, let usage else { return }
+    let cycleStart = Runway.cycleStart(resetDate: usage.resetDate)
+    guard OutcomesFetch.isDue(lastFetch: lastOutcomesFetch, organization: organization, cycleStart: cycleStart, now: .now) else {
+      return
+    }
+    let fetch = OutcomesFetch(organization: organization, cycleStart: cycleStart, startDate: .now)
+    lastOutcomesFetch = fetch
+    let result = await Task.detached(priority: .utility) {
+      Result { () throws(GitHubOutcomesError) in
+        try GitHubOutcomesClient.fetchOutcomes(organization: organization, since: cycleStart)
+      }
+    }.value
+    // The organization changed or a newer fetch started, so this result is stale.
+    guard lastOutcomesFetch == fetch else { return }
+    switch result {
+    case .success(let newOutcomes):
+      outcomes = newOutcomes
+      outcomesError = nil
+    case .failure(let outcomesFailure):
+      outcomesError = outcomesFailure.message
+    }
   }
 
   struct SessionCredits: Sendable {

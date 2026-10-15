@@ -124,13 +124,14 @@ Messages from models without a price add 0, as in `Credits.byCategory`.
 ## Quota summary (`QuotaSummary`)
 
 "Copy summary" puts this plain text on the clipboard. It holds only numbers, dates, model ids and
-category names: no login, org, token, file path, prompt or command. At most 12 lines.
+category names: no login, org, token, file path, prompt or command. At most 13 lines.
 
 ```
 GitHub Copilot AI credits, cycle 2026-10-01 to 2026-10-31 (UTC)
 Used: 6,000 of 12,000 credits (50% remaining)
 Average daily burn: 600 credits/day
 Projected run-out: 2026-10-21, before the reset on 2026-11-01
+Outcomes: 10 PRs opened, 20 PRs reviewed, 45 commits; 200 credits per outcome (PRs opened plus reviewed)
 Top models (share of 1,300 credits in local sessions):
 - gpt-6.1-sol: 900 credits (69%)
 - gpt-6-luna: 300 credits (23%)
@@ -147,6 +148,64 @@ Top categories (same local sessions):
   local session total. Models without a price are left out.
 - When the run-out falls on or after the reset, the line says "after the reset on <date>".
   Unlimited plans have no limit and no run-out line. Sections with no local credits are left out.
+- The outcomes line holds only the three counts and credits per outcome, no organization or repo name.
+  It is left out until an organization is set and the first search succeeds. With no PRs opened or
+  reviewed it says "credits per outcome: none, no PRs opened or reviewed yet".
+
+## GitHub outcomes (`GitHubOutcomesClient`)
+
+Outcomes are counted for the `gh` user (`@me`) in one organization, set in Settings and stored in
+`UserDefaults` under `githubOrganization`. With no organization the app works as before and the
+dashboard asks for one.
+
+The client runs `gh search` through `Process`, with gh found the same way as for `gh auth token`.
+gh reads its own login, so the app never reads or passes the token for these calls.
+`<cycle start>` is `Runway.cycleStart` in ISO 8601 UTC, for example `2026-10-01T00:00:00Z`.
+
+| Count | Command |
+|---|---|
+| PRs opened | `gh search prs --owner=<org> --author=@me --created=>=<cycle start> --json=number --limit=1000` |
+| PRs reviewed | `gh search prs --owner=<org> --reviewed-by=@me --updated=>=<cycle start> --json=number --limit=1000 -- -author:@me` |
+| Commits | `gh search commits --owner=<org> --author=@me --author-date=>=<cycle start> --json=sha --limit=1000` |
+
+- Only the length of each JSON list leaves Core. Each result decodes no fields, so no PR title,
+  repo name or commit message is kept. PR numbers repeat across repos, so results are not deduplicated.
+- Every value uses the `--flag=value` form, so an organization that starts with `-` stays a value.
+- PRs opened counts every PR created in the cycle: open, closed, merged and draft.
+- PRs reviewed: search has no review date qualifier. `--updated` counts PRs that you reviewed at any
+  time and that changed in the cycle. `-author:@me` removes your own PRs: without it,
+  `reviewed-by:@me` also matches your PRs where you replied to a review.
+- Commits: commit search covers only the default branch of each repo, so commits on branches that are
+  not merged do not count. `--author-date` is the date the commit was written, not pushed.
+- Credits per outcome = `credits_used` from the usage API / (PRs opened + PRs reviewed). Commits are
+  shown but are not outcomes. With 0 outcomes there is no value. `credits_used` is all Copilot use on
+  the account, also outside the organization.
+
+### Limits
+
+- The search API allows 30 requests per minute, and GitHub also has a secondary rate limit.
+  In October 2026, 8 fast searches after a few others hit the secondary limit.
+- gh fetches 100 results per request, so one refresh costs 3 requests, and up to 30 at the cap.
+- Search returns at most 1,000 results per query. A count at 1,000 shows as `1,000+`.
+- So outcomes refresh on launch (after the first good usage response, which gives the cycle start),
+  when the organization changes, and when a credits refresh finds the last search 30 minutes old or
+  more (`OutcomesFetch.isDue`). A new cycle start also refreshes. The organization saves on Return or
+  when Settings closes, not on each key. The searches run off the main thread.
+
+### Errors
+
+gh stderr can hold the organization and the query, so it never reaches the UI. `GitHubOutcomesClient.error`
+maps it to one short line. The samples are what gh 2.102 printed in October 2026.
+
+| Error | Signal |
+|---|---|
+| gh missing | No gh in the install folders, or it does not start |
+| Not logged in | Exit status 4 ("please run: gh auth login"), or `401` / `Bad credentials` in stderr |
+| Organization not found or no access | "cannot be searched either because the resources do not exist or you do not have permission" |
+| Rate limited | "rate limit" in stderr, for example "HTTP 403: You have exceeded a secondary rate limit" |
+| Other | Any other failure, or output that is not a JSON list |
+
+After an error the app keeps the last counts and tries again after 30 minutes.
 
 ## Prices (`PriceTable`)
 

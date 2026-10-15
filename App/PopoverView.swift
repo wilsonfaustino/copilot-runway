@@ -5,6 +5,7 @@ struct PopoverView: View {
   let usageStore: UsageStore
   @AppStorage("localOnlyNoticeDismissed") private var localOnlyNoticeDismissed = false
   @Environment(\.openWindow) private var openWindow
+  @Environment(\.openSettings) private var openSettings
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
@@ -55,6 +56,11 @@ struct PopoverView: View {
         Button("Open dashboard") {
           openWindow(id: DashboardView.windowId)
           // The app has no Dock icon, so it must come forward or the window opens behind other apps.
+          NSApplication.shared.activate()
+        }
+        // SettingsLink has no action to bring the app forward, so this button opens Settings itself.
+        Button("Settings") {
+          openSettings()
           NSApplication.shared.activate()
         }
         Spacer()

@@ -16,5 +16,8 @@ struct CopilotRunwayApp: App {
       DashboardView(usageStore: usageStore)
     }
     .defaultSize(width: 760, height: 640)
+    Settings {
+      SettingsView(usageStore: usageStore)
+    }
   }
 }

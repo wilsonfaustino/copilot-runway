@@ -9,7 +9,8 @@ public enum QuotaSummary {
     usage: CopilotUsage,
     now: Date,
     modelCredits: [ModelCredits],
-    categoryCredits: [CategoryCredits]
+    categoryCredits: [CategoryCredits],
+    outcomes: GitHubOutcomes? = nil
   ) -> String {
     let cycleStart = Runway.cycleStart(resetDate: usage.resetDate)
     let lastCycleDay = Runway.utcCalendar.date(byAdding: .day, value: -1, to: usage.resetDate)!
@@ -23,6 +24,9 @@ public enum QuotaSummary {
     lines.append("Average daily burn: \(number(Runway.averageDailyBurn(usage: usage, now: now))) credits/day")
     if !usage.isUnlimited {
       lines.append(runOutLine(usage: usage, now: now))
+    }
+    if let outcomes {
+      lines.append(outcomesLine(outcomes: outcomes, creditsUsed: usage.creditsUsed))
     }
 
     let pricedModels = modelCredits.compactMap { model in model.credits.map { (model.model, $0) } }
@@ -44,6 +48,15 @@ public enum QuotaSummary {
       return "Projected run-out: \(day(runOutDate)), before the reset on \(day(usage.resetDate))"
     }
     return "Projected run-out: after the reset on \(day(usage.resetDate))"
+  }
+
+  static func outcomesLine(outcomes: GitHubOutcomes, creditsUsed: Double) -> String {
+    let countsText = "\(GitHubOutcomes.countText(outcomes.prsOpened)) PRs opened, "
+      + "\(GitHubOutcomes.countText(outcomes.prsReviewed)) PRs reviewed, \(GitHubOutcomes.countText(outcomes.commits)) commits"
+    guard let creditsPerOutcome = outcomes.creditsPerOutcome(creditsUsed: creditsUsed) else {
+      return "Outcomes: \(countsText); credits per outcome: none, no PRs opened or reviewed yet"
+    }
+    return "Outcomes: \(countsText); \(number(creditsPerOutcome)) credits per outcome (PRs opened plus reviewed)"
   }
 
   // Expects entries sorted by credits, highest first, as Credits returns them.
