@@ -120,13 +120,17 @@ Open Settings with the gear button in the popover:
 
 ## Screenshots
 
-[screenshot: menu bar title]
+<img width="105" height="31" alt="image" src="https://github.com/user-attachments/assets/c5456a92-b4f3-4e4d-90cb-7da499011962" />
 
-[screenshot: popover]
 
-[screenshot: dashboard]
+<img width="360" height="536" alt="image" src="https://github.com/user-attachments/assets/6d25fa3f-ab18-4614-83f8-947631ee0cd2" />
 
-[screenshot: settings]
+
+<img width="1305" height="842" alt="image" src="https://github.com/user-attachments/assets/b87826c9-284b-4b38-bce5-e64e268be385" />
+
+
+<img width="480" height="476" alt="image" src="https://github.com/user-attachments/assets/73d7f4ed-9be3-4746-a274-e9a89d2a2413" />
+
 
 ## Requirements
 
