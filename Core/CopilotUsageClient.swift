@@ -1,6 +1,6 @@
 import Foundation
 
-// Same request as the OpenCode and Pi plugins in reference/, with the `gh` token.
+// Same request as the OpenCode and Pi Copilot credits plugins, with the `gh` token.
 // The token lives only inside fetchCurrentUsage(). Never log it or return it.
 public enum CopilotUsageClient {
   static let usageURL = URL(string: "https://api.github.com/copilot_internal/user")!
