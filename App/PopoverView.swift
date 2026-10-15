@@ -4,6 +4,7 @@ import SwiftUI
 struct PopoverView: View {
   let usageStore: UsageStore
   @AppStorage("localOnlyNoticeDismissed") private var localOnlyNoticeDismissed = false
+  @Environment(\.openWindow) private var openWindow
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
@@ -50,8 +51,16 @@ struct PopoverView: View {
         Text("Updated \(lastRefresh.formatted(date: .omitted, time: .shortened))")
           .foregroundStyle(.secondary)
       }
-      Button("Quit") {
-        NSApplication.shared.terminate(nil)
+      HStack {
+        Button("Open dashboard") {
+          openWindow(id: DashboardView.windowId)
+          // The app has no Dock icon, so it must come forward or the window opens behind other apps.
+          NSApplication.shared.activate()
+        }
+        Spacer()
+        Button("Quit") {
+          NSApplication.shared.terminate(nil)
+        }
       }
     }
     .padding()

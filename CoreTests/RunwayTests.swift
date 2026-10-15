@@ -43,3 +43,21 @@ func makeUsage(creditsUsed: Double, entitlement: Double = 12000, isUnlimited: Bo
   let usage = makeUsage(creditsUsed: 500, entitlement: 0, isUnlimited: true)
   #expect(Runway.daysLeft(usage: usage, now: utcDate("2026-10-11T00:00:00Z")) == nil)
 }
+
+@Test func runOutDateIsNowPlusDaysLeft() throws {
+  // 10 days into the cycle, 6000 used: 10 days left.
+  let runOutDate = try #require(Runway.runOutDate(usage: makeUsage(creditsUsed: 6000), now: utcDate("2026-10-11T00:00:00Z")))
+  #expect(runOutDate == utcDate("2026-10-21T00:00:00Z"))
+}
+
+@Test func runOutDateCanFallAfterReset() throws {
+  // 10 days into the cycle, 1000 used: burn 100/day, 11000 left -> 110 days.
+  let runOutDate = try #require(Runway.runOutDate(usage: makeUsage(creditsUsed: 1000), now: utcDate("2026-10-11T00:00:00Z")))
+  #expect(runOutDate == utcDate("2027-01-29T00:00:00Z"))
+}
+
+@Test func noRunOutDateWithoutBurnOrLimit() {
+  let now = utcDate("2026-10-11T00:00:00Z")
+  #expect(Runway.runOutDate(usage: makeUsage(creditsUsed: 0), now: now) == nil)
+  #expect(Runway.runOutDate(usage: makeUsage(creditsUsed: 500, entitlement: 0, isUnlimited: true), now: now) == nil)
+}

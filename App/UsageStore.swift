@@ -13,6 +13,9 @@ final class UsageStore {
   private(set) var usage: CopilotUsage?
   private(set) var averageDailyBurn: Double?
   private(set) var modelCredits: [ModelCredits] = []
+  private(set) var categoryCredits: [CategoryCredits] = []
+  private(set) var sourceCredits: [SourceCredits] = []
+  private(set) var dailyCredits: [DailyCredits] = []
   private(set) var sessionsWarning: String?
 
   @ObservationIgnored private var pollingTask: Task<Void, Never>?
@@ -51,14 +54,30 @@ final class UsageStore {
     // The cycle start comes from the API, so session credits wait for at least one good response.
     guard let usage else { return }
     let cycleStart = Runway.cycleStart(resetDate: usage.resetDate)
-    let (modelCredits, sessionsWarning) = await Task.detached(priority: .utility) {
-      Self.loadSessionCredits(since: cycleStart)
+    let sessionCredits = await Task.detached(priority: .utility) {
+      Self.loadSessionCredits(since: cycleStart, now: .now)
     }.value
-    self.modelCredits = modelCredits
-    self.sessionsWarning = sessionsWarning
+    modelCredits = sessionCredits.byModel
+    categoryCredits = sessionCredits.byCategory
+    sourceCredits = sessionCredits.bySource
+    dailyCredits = sessionCredits.byDay
+    sessionsWarning = sessionCredits.warning
   }
 
-  nonisolated static func loadSessionCredits(since cycleStart: Date) -> ([ModelCredits], String?) {
+  func summaryText() -> String? {
+    usage.map { QuotaSummary.text(usage: $0, now: .now, modelCredits: modelCredits, categoryCredits: categoryCredits) }
+  }
+
+  struct SessionCredits: Sendable {
+    let byModel: [ModelCredits]
+    let byCategory: [CategoryCredits]
+    let bySource: [SourceCredits]
+    let byDay: [DailyCredits]
+    let warning: String?
+  }
+
+  // Every aggregate comes from the same turns, so all dashboard totals add up.
+  nonisolated static func loadSessionCredits(since cycleStart: Date, now: Date) -> SessionCredits {
     var warnings: [String] = []
     let prices: [String: ModelPrice]
     do {
@@ -67,13 +86,19 @@ final class UsageStore {
       prices = PriceTable.bundled
       warnings.append("prices.json is invalid. Using bundled prices.")
     }
-    var records = PiSessionParser.records(since: cycleStart)
+    var turns = PiSessionParser.turns(since: cycleStart)
     do {
-      records += try OpenCodeSessionParser.records(since: cycleStart)
+      turns += try OpenCodeSessionParser.turns(since: cycleStart)
     } catch {
       warnings.append("Cannot read OpenCode sessions.")
     }
-    let modelCredits = Credits.byModel(records: records, prices: prices)
-    return (modelCredits, warnings.isEmpty ? nil : warnings.joined(separator: " "))
+    let records = turns.flatMap(\.records)
+    return SessionCredits(
+      byModel: Credits.byModel(records: records, prices: prices),
+      byCategory: Credits.byCategory(turns: turns, prices: prices),
+      bySource: Credits.bySource(turns: turns, prices: prices),
+      byDay: Credits.byDay(records: records, prices: prices, cycleStart: cycleStart, now: now, calendar: Runway.utcCalendar),
+      warning: warnings.isEmpty ? nil : warnings.joined(separator: " ")
+    )
   }
 }

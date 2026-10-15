@@ -12,5 +12,9 @@ struct CopilotRunwayApp: App {
       Text(usageStore.title)
     }
     .menuBarExtraStyle(.window)
+    Window("Copilot Runway", id: DashboardView.windowId) {
+      DashboardView(usageStore: usageStore)
+    }
+    .defaultSize(width: 760, height: 640)
   }
 }

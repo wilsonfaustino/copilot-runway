@@ -21,6 +21,27 @@ public struct CategoryCredits: Equatable, Sendable {
   }
 }
 
+public struct SourceCredits: Equatable, Sendable {
+  public let source: SessionSource
+  public let credits: Double
+
+  public init(source: SessionSource, credits: Double) {
+    self.source = source
+    self.credits = credits
+  }
+}
+
+public struct DailyCredits: Equatable, Sendable {
+  // Start of the day in the calendar given to Credits.byDay.
+  public let day: Date
+  public let credits: Double
+
+  public init(day: Date, credits: Double) {
+    self.day = day
+    self.credits = credits
+  }
+}
+
 public enum Credits {
   // 1 AI credit = $0.01 USD (GitHub models and pricing page).
   static let usdPerCredit = 0.01
@@ -68,6 +89,43 @@ public enum Credits {
     return categoryCredits.sorted { left, right in
       if left.credits != right.credits { return left.credits > right.credits }
       return left.category.rawValue < right.category.rawValue
+    }
+  }
+
+  // Same pricing rule as byCategory: messages from models without a price add 0. Highest spend first.
+  public static func bySource(turns: [Turn], prices: [String: ModelPrice]) -> [SourceCredits] {
+    let turnsBySource = Dictionary(grouping: turns, by: \.source)
+    let sourceCredits = turnsBySource.map { source, sourceTurns in
+      SourceCredits(source: source, credits: pricedTotal(records: sourceTurns.flatMap(\.records), prices: prices))
+    }
+    return sourceCredits.sorted { left, right in
+      if left.credits != right.credits { return left.credits > right.credits }
+      return left.source.rawValue < right.source.rawValue
+    }
+  }
+
+  // One entry per calendar day from the cycle start through now, days without messages at 0.
+  // The app passes Runway.utcCalendar, so the days line up with the UTC cycle boundaries.
+  public static func byDay(
+    records: [UsageRecord],
+    prices: [String: ModelPrice],
+    cycleStart: Date,
+    now: Date,
+    calendar: Calendar
+  ) -> [DailyCredits] {
+    let recordsByDay = Dictionary(grouping: records) { calendar.startOfDay(for: $0.timestamp) }
+    var dailyCredits: [DailyCredits] = []
+    var day = calendar.startOfDay(for: cycleStart)
+    while day <= now {
+      dailyCredits.append(DailyCredits(day: day, credits: pricedTotal(records: recordsByDay[day] ?? [], prices: prices)))
+      day = calendar.date(byAdding: .day, value: 1, to: day)!
+    }
+    return dailyCredits
+  }
+
+  static func pricedTotal(records: [UsageRecord], prices: [String: ModelPrice]) -> Double {
+    records.reduce(0) { total, record in
+      total + (prices[record.model].map { credits(for: record.tokens, price: $0) } ?? 0)
     }
   }
 }

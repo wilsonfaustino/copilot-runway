@@ -105,6 +105,49 @@ Rules, checked in this order. The first match wins.
 | Planning | No read, shell or edit calls, and the OpenCode `plan` agent or at least 1,000 output tokens (reasoning included) |
 | Uncategorized | None of the above |
 
+## Dashboard aggregates
+
+All dashboard numbers come from the same turns, so they add up to the same local total.
+The app takes the records for `Credits.byModel` and `Credits.byDay` from `turns.flatMap(\.records)`.
+In October 2026 this gave the same records and the same total as the parser `records` functions.
+Messages from models without a price add 0, as in `Credits.byCategory`.
+
+- `Credits.byDay`: one entry per day from the cycle start through now, days without messages at 0.
+  The caller passes the calendar. The app uses `Runway.utcCalendar` (UTC days), because the cycle
+  starts and resets at midnight UTC: every bucket is a whole day inside the cycle. With local days,
+  a user at UTC-3 gets a first bucket of 3 hours (September 30, 21:00 to midnight) and loses the
+  last 3 hours of the cycle. The chart labels days in UTC too.
+- `Credits.bySource`: priced credits per `Turn.source` (OpenCode, Pi). `UsageRecord` has no source.
+- `Runway.runOutDate`: now plus `daysLeft` days. It can fall after the reset date.
+  `nil` for unlimited plans and when no credits are used.
+
+## Quota summary (`QuotaSummary`)
+
+"Copy summary" puts this plain text on the clipboard. It holds only numbers, dates, model ids and
+category names: no login, org, token, file path, prompt or command. At most 12 lines.
+
+```
+GitHub Copilot AI credits, cycle 2026-10-01 to 2026-10-31 (UTC)
+Used: 6,000 of 12,000 credits (50% remaining)
+Average daily burn: 600 credits/day
+Projected run-out: 2026-10-21, before the reset on 2026-11-01
+Top models (share of 1,300 credits in local sessions):
+- gpt-6.1-sol: 900 credits (69%)
+- gpt-6-luna: 300 credits (23%)
+- gemini-3.8-flash: 60 credits (5%)
+Top categories (same local sessions):
+- Implementation: 700 credits (54%)
+- Investigation: 400 credits (31%)
+- Planning: 150 credits (12%)
+```
+
+- Cycle dates, reset and run-out dates are UTC days in ISO 8601. Numbers use `en_US` grouping,
+  so the text is the same on every machine.
+- Used, remaining and the average daily burn come from the GitHub API. Shares are of the priced
+  local session total. Models without a price are left out.
+- When the run-out falls on or after the reset, the line says "after the reset on <date>".
+  Unlimited plans have no limit and no run-out line. Sections with no local credits are left out.
+
 ## Prices (`PriceTable`)
 
 Bundled rates, in USD per 1 million tokens, from GitHub's

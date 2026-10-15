@@ -63,3 +63,64 @@ func isClose(_ actual: Double, _ expected: Double) -> Bool {
   let tokens = TokenUsage(input: 400000, cachedInput: 500000, cacheWrite: 0, output: 2000)
   #expect(isClose(Credits.credits(for: tokens, price: geminiPrice), 34.5))
 }
+
+let millionSolInputTokens = TokenUsage(input: 1_000_000, cachedInput: 0, cacheWrite: 0, output: 0)
+
+@Test func creditsBySourceSumsPricedTurnsPerSource() {
+  let timestamp = utcDate("2026-10-05T10:00:00Z")
+  let turns = [
+    Turn(timestamp: timestamp, source: .pi, records: [UsageRecord(model: "gpt-6.1-sol", timestamp: timestamp, tokens: millionSolInputTokens)]),
+    Turn(timestamp: timestamp, source: .opencode, records: [
+      UsageRecord(model: "gpt-6.1-sol", timestamp: timestamp, tokens: millionSolInputTokens),
+      UsageRecord(model: "unpriced-model", timestamp: timestamp, tokens: millionSolInputTokens),
+    ]),
+    Turn(timestamp: timestamp, source: .opencode, records: [UsageRecord(model: "gpt-6.1-sol", timestamp: timestamp, tokens: millionSolInputTokens)]),
+  ]
+  // 1M Sol input tokens are above the threshold: $4.00 = 400 credits each.
+  let bySource = Credits.bySource(turns: turns, prices: PriceTable.bundled)
+  #expect(bySource.map(\.source) == [.opencode, .pi])
+  #expect(isClose(bySource[0].credits, 800))
+  #expect(isClose(bySource[1].credits, 400))
+}
+
+@Test func creditsByDayFillsEveryCycleDayThroughNow() {
+  let records = [
+    UsageRecord(model: "gpt-6.1-sol", timestamp: utcDate("2026-10-01T09:00:00Z"), tokens: millionSolInputTokens),
+    UsageRecord(model: "gpt-6.1-sol", timestamp: utcDate("2026-10-03T12:00:00Z"), tokens: millionSolInputTokens),
+    UsageRecord(model: "unpriced-model", timestamp: utcDate("2026-10-03T13:00:00Z"), tokens: millionSolInputTokens),
+  ]
+  let byDay = Credits.byDay(
+    records: records,
+    prices: PriceTable.bundled,
+    cycleStart: utcDate("2026-10-01T00:00:00Z"),
+    now: utcDate("2026-10-04T08:00:00Z"),
+    calendar: Runway.utcCalendar
+  )
+  #expect(byDay.map(\.day) == [
+    utcDate("2026-10-01T00:00:00Z"), utcDate("2026-10-02T00:00:00Z"),
+    utcDate("2026-10-03T00:00:00Z"), utcDate("2026-10-04T00:00:00Z"),
+  ])
+  #expect(byDay.map(\.credits) == [400, 0, 400, 0])
+}
+
+@Test func creditsByDayUsesTheGivenCalendarDay() {
+  // 23:30 UTC on October 2 is 20:30 on October 2 in Sao Paulo, and 01:30 UTC on October 3 is 22:30 on October 2.
+  let records = [
+    UsageRecord(model: "gpt-6.1-sol", timestamp: utcDate("2026-10-02T23:30:00Z"), tokens: millionSolInputTokens),
+    UsageRecord(model: "gpt-6.1-sol", timestamp: utcDate("2026-10-03T01:30:00Z"), tokens: millionSolInputTokens),
+  ]
+  let cycleStart = utcDate("2026-10-01T00:00:00Z")
+  let now = utcDate("2026-10-03T12:00:00Z")
+  let utcDays = Credits.byDay(records: records, prices: PriceTable.bundled, cycleStart: cycleStart, now: now, calendar: Runway.utcCalendar)
+  #expect(utcDays.map(\.credits) == [0, 400, 400])
+
+  var saoPauloCalendar = Calendar(identifier: .gregorian)
+  saoPauloCalendar.timeZone = TimeZone(identifier: "America/Sao_Paulo")!
+  let localDays = Credits.byDay(records: records, prices: PriceTable.bundled, cycleStart: cycleStart, now: now, calendar: saoPauloCalendar)
+  // The cycle starts at 21:00 on September 30 in Sao Paulo, so that local day comes first.
+  #expect(localDays.map(\.day) == [
+    utcDate("2026-09-30T03:00:00Z"), utcDate("2026-10-01T03:00:00Z"),
+    utcDate("2026-10-02T03:00:00Z"), utcDate("2026-10-03T03:00:00Z"),
+  ])
+  #expect(localDays.map(\.credits) == [0, 0, 800, 0])
+}
