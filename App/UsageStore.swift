@@ -10,6 +10,7 @@ final class UsageStore {
 
   private(set) var title = MenuBarTitle.placeholder
   private(set) var errorMessage: String?
+  private(set) var usageError: CopilotUsageError?
   private(set) var lastRefresh: Date?
   private(set) var usage: CopilotUsage?
   private(set) var averageDailyBurn: Double?
@@ -21,7 +22,8 @@ final class UsageStore {
   private(set) var organization = UserDefaults.standard.string(forKey: organizationKey)
     .flatMap(GitHubOutcomesClient.normalizedOrganization)
   private(set) var outcomes: GitHubOutcomes?
-  private(set) var outcomesError: String?
+  private(set) var outcomesErrorKind: GitHubOutcomesError?
+  var outcomesError: String? { outcomesErrorKind?.message }
 
   @ObservationIgnored private var pollingTask: Task<Void, Never>?
   @ObservationIgnored private var lastOutcomesFetch: OutcomesFetch?
@@ -47,15 +49,18 @@ final class UsageStore {
       let usage = try await CopilotUsageClient.fetchCurrentUsage()
       title = MenuBarTitle.title(usage: usage, now: .now)
       errorMessage = nil
+      usageError = nil
       lastRefresh = .now
       self.usage = usage
       averageDailyBurn = Runway.averageDailyBurn(usage: usage, now: .now)
     } catch let usageError as CopilotUsageError {
       title = MenuBarTitle.title(error: usageError)
       errorMessage = usageError.message
+      self.usageError = usageError
     } catch {
       title = MenuBarTitle.title(error: .invalidResponse)
       errorMessage = CopilotUsageError.invalidResponse.message
+      usageError = .invalidResponse
     }
     // The cycle start comes from the API, so session credits wait for at least one good response.
     guard let usage else { return }
@@ -83,7 +88,7 @@ final class UsageStore {
     UserDefaults.standard.set(newOrganization, forKey: Self.organizationKey)
     organization = newOrganization
     outcomes = nil
-    outcomesError = nil
+    outcomesErrorKind = nil
     lastOutcomesFetch = nil
     Task { await refreshOutcomesIfDue() }
   }
@@ -108,9 +113,9 @@ final class UsageStore {
     switch result {
     case .success(let newOutcomes):
       outcomes = newOutcomes
-      outcomesError = nil
+      outcomesErrorKind = nil
     case .failure(let outcomesFailure):
-      outcomesError = outcomesFailure.message
+      outcomesErrorKind = outcomesFailure
     }
   }
 

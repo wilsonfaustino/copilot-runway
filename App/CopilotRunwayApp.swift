@@ -9,7 +9,15 @@ struct CopilotRunwayApp: App {
     MenuBarExtra {
       PopoverView(usageStore: usageStore)
     } label: {
-      Text(usageStore.title)
+      HStack {
+        if let usageError = usageStore.usageError {
+          Image(systemName: RunwayGlyph.menuBarSymbolName(error: usageError))
+        } else {
+          let health = RunwayHealth(usage: usageStore.usage, hasError: false, now: .now)
+          Image(nsImage: RunwayGlyph.menuBarImage(health: health))
+        }
+        Text(usageStore.title)
+      }
     }
     .menuBarExtraStyle(.window)
     Window("Copilot Runway", id: DashboardView.windowId) {
