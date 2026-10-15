@@ -244,10 +244,14 @@ numbers use the local credits.
 
 Copilot bills AI credits at published per-model rates for input, cached input, cache write and
 output tokens. 1 AI credit is $0.01 USD, so credits = USD x 100. The app has a bundled price table
-for `gpt-6.1-sol`, `gpt-6-luna` and `gemini-3.8-flash`, from GitHub's
-[Models and pricing for GitHub Copilot](https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing).
-For GPT models, the long context rates apply to the whole request when the prompt is more than
-272,000 tokens. The app prices each message and then adds them per model.
+for every model on GitHub's
+[Models and pricing for GitHub Copilot](https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing)
+page: OpenAI GPT-5 to GPT-6.1, Anthropic Claude Haiku, Sonnet, Opus and Fable, Google Gemini,
+Microsoft MAI-Code, xAI Grok and Moonshot AI Kimi. Core/README.md has the full list of ids and rates.
+For models with a long context tier, the long context rates apply to the whole request when the
+prompt is more than the tier threshold (272,000 tokens for most models). The app prices each
+message and then adds them per model. Claude Opus 4.8 (fast mode) is not in the table because its
+model id is not known.
 
 To change or add a price, write `~/.config/copilot-runway/prices.json`. Each entry replaces the
 bundled entry with the same model id. Models not in the file keep the bundled price. All four
@@ -361,8 +365,9 @@ configuration, ad-hoc signs `Core.framework` and the app, verifies the signature
 - The credits request uses `api.github.com/copilot_internal/user`, the same request as the
   OpenCode and Pi plugins. It is not part of the documented GitHub REST API, so GitHub can change it.
 - Outcomes cover one organization.
-- The bundled price table has three models. Other models show "no price" until you add them to
-  `prices.json`. The bundled Gemini 3.8 Flash rate is a promotional rate through December 31, 2026.
+- The bundled price table has the models on GitHub's pricing page. Other models show "no price" until
+  you add them to `prices.json`. The Gemini 3.7 Flash and 3.8 Flash rates are promotional rates through
+  December 31, 2026. The Gemini 4 Argon rate is promotional until December 1, 2026.
 - The app does not read the older OpenCode JSON file store under
   `~/.local/share/opencode/storage/`.
 

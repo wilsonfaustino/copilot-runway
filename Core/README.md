@@ -214,22 +214,73 @@ Bundled rates, in USD per 1 million tokens, from GitHub's
 
 | Model id | Tier | Input | Cached input | Cache write | Output |
 |---|---|---|---|---|---|
-| `gpt-6.1-sol` | Default, prompt <= 272K | 2.00 | 0.10 | 2.50 | 10.00 |
-| `gpt-6.1-sol` | Long context, prompt > 272K | 4.00 | 0.20 | 5.00 | 15.00 |
+| `gpt-5-mini` | Default, no tier | 0.25 | 0.025 | 0 | 2.00 |
+| `gpt-5.3-codex` | Default, no tier | 1.75 | 0.175 | 0 | 14.00 |
+| `gpt-5.4` | Default, prompt <= 272K | 2.50 | 0.25 | 0 | 15.00 |
+| `gpt-5.4` | Long context, prompt > 272K | 5.00 | 0.50 | 0 | 22.50 |
+| `gpt-5.4-mini` | Default, no tier | 0.75 | 0.075 | 0 | 4.50 |
+| `gpt-5.4-nano` | Default, no tier | 0.20 | 0.02 | 0 | 1.25 |
+| `gpt-5.5` | Default, prompt <= 272K | 5.00 | 0.50 | 0 | 30.00 |
+| `gpt-5.5` | Long context, prompt > 272K | 10.00 | 1.00 | 0 | 45.00 |
+| `gpt-5.6-luna` | Default, prompt <= 200K | 0.20 | 0.02 | 0.25 | 1.20 |
+| `gpt-5.6-luna` | Long context, prompt > 200K | 0.40 | 0.04 | 0.50 | 1.80 |
+| `gpt-5.6-sol` | Default, prompt <= 272K | 4.00 | 0.40 | 5.00 | 20.00 |
+| `gpt-5.6-sol` | Long context, prompt > 272K | 8.00 | 0.80 | 10.00 | 30.00 |
+| `gpt-5.6-terra` | Default, prompt <= 272K | 2.00 | 0.20 | 2.50 | 12.00 |
+| `gpt-5.6-terra` | Long context, prompt > 272K | 4.00 | 0.40 | 5.00 | 18.00 |
+| `gpt-6-astra` | Default, prompt <= 272K | 10.00 | 1.00 | 12.50 | 50.00 |
+| `gpt-6-astra` | Long context, prompt > 272K | 20.00 | 2.00 | 25.00 | 75.00 |
 | `gpt-6-luna` | Default, prompt <= 272K | 0.10 | 0.01 | 0.125 | 0.50 |
 | `gpt-6-luna` | Long context, prompt > 272K | 0.20 | 0.02 | 0.25 | 0.75 |
+| `gpt-6-sol` | Default, prompt <= 272K | 2.00 | 0.20 | 2.50 | 10.00 |
+| `gpt-6-sol` | Long context, prompt > 272K | 4.00 | 0.40 | 5.00 | 15.00 |
+| `gpt-6.1-sol` | Default, prompt <= 272K | 2.00 | 0.10 | 2.50 | 10.00 |
+| `gpt-6.1-sol` | Long context, prompt > 272K | 4.00 | 0.20 | 5.00 | 15.00 |
+| `claude-haiku-4.5` | Default, no tier | 1.00 | 0.10 | 1.25 | 5.00 |
+| `claude-haiku-5.5` | Default, prompt <= 100K | 0.10 | 0.01 | 0.125 | 0.50 |
+| `claude-haiku-5.5` | Long context, prompt > 100K | 0.50 | 0.05 | 0.625 | 2.50 |
+| `claude-sonnet-4` | Default, no tier | 3.00 | 0.30 | 3.75 | 15.00 |
+| `claude-sonnet-4.6` | Default, no tier | 3.00 | 0.30 | 3.75 | 15.00 |
+| `claude-opus-4.8` | Default, no tier | 5.00 | 0.50 | 6.25 | 25.00 |
+| `claude-opus-5` | Default, no tier | 5.00 | 0.50 | 6.25 | 25.00 |
+| `claude-opus-5.5` | Default, no tier | 4.00 | 0.20 | 5.00 | 20.00 |
+| `claude-sonnet-5` | Default, no tier | 2.00 | 0.20 | 2.50 | 10.00 |
+| `claude-sonnet-5.5` | Default, no tier | 2.00 | 0.10 | 2.50 | 10.00 |
+| `claude-fable-5` | Default, no tier | 10.00 | 1.00 | 12.50 | 50.00 |
+| `claude-fable-5.1` | Default, no tier | 10.00 | 0.25 | 12.50 | 50.00 |
+| `gemini-3.7-flash` | Default, no tier | 0.75 | 0.075 | 0 | 3.75 |
 | `gemini-3.8-flash` | Default, no tier | 0.75 | 0.075 | 0 | 3.75 |
+| `gemini-4-argon` | Default, no tier | 2.00 | 0.10 | 0 | 10.00 |
+| `mai-code-1.1-flash` | Default, no tier | 0.20 | 0.02 | 0 | 1.20 |
+| `grok-4.5` | Default, prompt <= 200K | 2.00 | 0.50 | 0 | 6.00 |
+| `grok-4.5` | Long context, prompt > 200K | 4.00 | 1.00 | 0 | 12.00 |
+| `grok-4.6` | Default, prompt <= 200K | 2.00 | 0.50 | 0 | 6.00 |
+| `grok-4.6` | Long context, prompt > 200K | 4.00 | 1.00 | 0 | 12.00 |
+| `grok-4.7` | Default, prompt <= 200K | 2.00 | 0.50 | 0 | 6.00 |
+| `grok-4.7` | Long context, prompt > 200K | 4.00 | 1.00 | 0 | 12.00 |
+| `kimi-k3` | Default, no tier | 3.00 | 0.30 | 0 | 15.00 |
 
 - The same page says: "1 AI credit = $0.01 USD". So credits = USD x 100.
-- GitHub lists a cache write rate for these models, so the table has one.
+- GitHub lists a cache write rate for GPT-5.6 and later OpenAI models and for all Anthropic models.
+  For all other models the page shows "Not applicable" or has no cache write column, so the table has 0.
+- The table has every model on that page except Claude Opus 4.8 (fast mode), which has a price but no
+  known model id. Add it to `prices.json` when you know the id OpenCode or Pi writes.
+- Model ids are the page names in lowercase with hyphens, for example `claude-opus-5.5`. Ids seen in
+  OpenCode and Pi session files follow this form. Ids for models not yet seen in a session file
+  (for example `grok-4.5` and `kimi-k3`) come from the same rule and are not checked.
+- The tier threshold uses the page value with 1K = 1,000 tokens. Most tiers are 272K. GPT-5.6 Luna and
+  the Grok models use 200K. Claude Haiku 5.5 uses 100K.
 - Tier rule: the long context rates apply to the whole request when
-  input + cached input + cache write > 272,000. Exactly 272,000 uses the default rates.
+  input + cached input + cache write > the model threshold (272,000 for most models).
+  A prompt of exactly the threshold uses the default rates.
   The GitHub page labels the threshold "input tokens" and does not define it further.
   Pi stores per message costs that match this rule exactly.
 - Credits are computed per message and then summed per model, because the tier depends on each request.
-- The Gemini 3.8 Flash rate is promotional "through December 31, 2026" (footnote on the same page).
-  GitHub lists no cache write rate for Google models, so it is 0. Pi records 0 cache write tokens for it.
-- Models without a price show as "no price".
+- The Gemini 3.7 Flash and Gemini 3.8 Flash rates are promotional "through December 31, 2026"
+  (footnote on the same page). The Gemini 4 Argon rate is promotional "until December 1, 2026".
+  GitHub lists no cache write rate for Google models, so it is 0. Pi records 0 cache write tokens for Gemini 3.8 Flash.
+- Models without a price show as "no price". The parsers keep only `github-copilot` records, so models
+  that you call with your own provider key never reach the price table.
 
 ### Override
 
