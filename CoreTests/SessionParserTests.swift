@@ -72,10 +72,10 @@ let fixtureCycleStart = utcDate("2026-10-01T00:00:00Z")
 }
 
 // Builds opencode.db in a temporary folder from the SQL fixture, so the fixture stays plain text.
-func makeOpenCodeDataDirectory() throws -> URL {
+func makeOpenCodeDataDirectory(fixture: String = "opencode/opencode.sql") throws -> URL {
   let dataDirectory = FileManager.default.temporaryDirectory.appending(path: "opencode-fixture-\(UUID().uuidString)")
   try FileManager.default.createDirectory(at: dataDirectory, withIntermediateDirectories: true)
-  let fixtureSQL = try String(contentsOf: fixturesDirectory.appending(path: "opencode/opencode.sql"), encoding: .utf8)
+  let fixtureSQL = try String(contentsOf: fixturesDirectory.appending(path: fixture), encoding: .utf8)
   var database: OpaquePointer?
   try #require(sqlite3_open(dataDirectory.appending(path: "opencode.db").path, &database) == SQLITE_OK)
   defer { sqlite3_close(database) }

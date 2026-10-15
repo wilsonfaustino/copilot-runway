@@ -49,10 +49,61 @@ The details below are what we found on disk in October 2026.
 - 2.x copies 1.x messages into `session_message` under the same id. The parser reads the legacy
   table first and skips current rows with an id it already has.
 - Child (subagent) sessions have their own rows, so the parser reads all rows and needs no session walk.
-- The queries select only model, token and time fields with `json_extract`, so prompt text never
-  leaves the database.
+- The queries select only time, agent, model, token and tool call fields (tool name, file path,
+  shell command) with `json_extract`, so prompt and answer text never leaves the database.
 - Not read: the file based JSON store under `~/.local/share/opencode/storage/`
   (only older sessions on our machines).
+
+## Turns and task categories
+
+### Turns (`Turn`)
+
+A turn is one user message plus all assistant messages and tool calls until the next user message.
+Each turn keeps its timestamp, source (`pi` or `opencode`), agent (OpenCode only), tool calls
+(name, file path for read and edit tools, command for shell tools), and the Copilot `UsageRecord`s
+of its assistant messages. The parsers use the same filters as for records, and keep only turns
+with at least one record. So every record is in exactly one turn, and `Credits.byCategory` adds up
+to the priced models in `Credits.byModel`.
+
+- Pi: only `message.role = "user"` starts a turn. `system` and `toolResult` messages do not.
+  Tool calls are the `content` items with `type: "toolCall"`: `name`, `arguments.path`,
+  `arguments.command`. Only these three fields are decoded. Message text is not.
+  Assistant messages before the first user message form a turn of their own.
+- OpenCode: rows of `session_message` in `session_id, seq` order. Only `type = 'user'` starts a turn.
+  `synthetic`, `system`, `shell`, `agent-switched` and other rows do not. The agent is
+  `data.agent` of the first assistant message. Tool calls are the `data.content` items with
+  `type: "tool"`: `name`, `state.input.path` (2.x) or `state.input.filePath` (1.x copies), and
+  `state.input.command`. A `patch` call becomes one tool call per file in `state.metadata.files[].file`.
+  A patch without metadata (16 of 217 in our data, all with `state.status = "error"`) has no file path.
+- OpenCode turns read only the 2.x table. The 158 legacy `message` rows that 2.x did not copy end in
+  April 2026, so they cannot be in a current cycle. They still count in `records`.
+- A turn that starts before the cycle keeps only its messages in the cycle. OpenCode also drops its
+  tool calls from before the cycle. Pi keeps them.
+
+### Tool names
+
+| Kind | Pi | OpenCode |
+|---|---|---|
+| Read (read, search, fetch) | `read`, `grep`, `find`, `ls` | `read`, `grep`, `glob`, `list`, `webfetch`, `websearch` |
+| Shell | `bash` | `shell`, `bash` (1.x) |
+| Edit | `edit`, `write` | `patch`, `apply_patch`, `edit`, `write`, `multiedit` (1.x) |
+| Neutral | all others, for example `codemode`, `tool_search`, `mcp__*` | all others, for example `execute`, `skill`, `question`, `subagent`, `todowrite` |
+
+Neutral tools do not change the category. `execute` and `codemode` run code that can call other
+tools, and the session does not record which ones, so they stay neutral.
+
+### Categories (`TaskCategorizer`)
+
+Rules, checked in this order. The first match wins.
+
+| Category | Rule |
+|---|---|
+| Debugging | An edit, then a shell call, then an edit of the same file path |
+| Implementation | Any edit. Every edited file counts as a source file, docs included |
+| Review | A shell command that contains `gh pr diff` or `gh pr view`, no edits. Substring match, so `rtk gh pr view` also counts |
+| Investigation | Any read or shell call, no edits |
+| Planning | No read, shell or edit calls, and the OpenCode `plan` agent or at least 1,000 output tokens (reasoning included) |
+| Uncategorized | None of the above |
 
 ## Prices (`PriceTable`)
 
