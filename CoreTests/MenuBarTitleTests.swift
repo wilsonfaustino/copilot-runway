@@ -4,3 +4,33 @@ import Testing
 @Test func placeholderTitle() {
   #expect(MenuBarTitle.placeholder == "--% · --d")
 }
+
+@Test func titleShowsPercentRemainingAndWholeDaysLeft() {
+  // 10 days in, 6000 used -> 50% left, exactly 10 days left.
+  let title = MenuBarTitle.title(usage: makeUsage(creditsUsed: 6000), now: utcDate("2026-10-11T00:00:00Z"))
+  #expect(title == "50% · 10d")
+}
+
+@Test func partialDaysRoundDown() {
+  // 10 days in, 6100 used -> 9.67 days left.
+  let title = MenuBarTitle.title(usage: makeUsage(creditsUsed: 6100), now: utcDate("2026-10-11T00:00:00Z"))
+  #expect(title == "49% · 9d")
+}
+
+@Test func titleWithoutRunwayEstimate() {
+  let title = MenuBarTitle.title(usage: makeUsage(creditsUsed: 0), now: utcDate("2026-10-11T00:00:00Z"))
+  #expect(title == "100% · --d")
+}
+
+@Test func unlimitedPlanTitle() {
+  let usage = makeUsage(creditsUsed: 500, entitlement: 0, isUnlimited: true)
+  #expect(MenuBarTitle.title(usage: usage, now: utcDate("2026-10-11T00:00:00Z")) == "∞")
+}
+
+@Test func errorTitles() {
+  #expect(MenuBarTitle.title(error: .ghNotFound) == "gh missing")
+  #expect(MenuBarTitle.title(error: .notLoggedIn) == "gh login")
+  #expect(MenuBarTitle.title(error: .network) == "offline")
+  #expect(MenuBarTitle.title(error: .httpStatus(500)) == "error")
+  #expect(MenuBarTitle.title(error: .invalidResponse) == "error")
+}
