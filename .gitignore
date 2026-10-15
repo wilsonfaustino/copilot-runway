@@ -3,3 +3,4 @@ build/
 DerivedData/
 *.xcodeproj/
 xcuserdata/
+dist/
