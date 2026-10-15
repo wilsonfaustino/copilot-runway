@@ -13,6 +13,16 @@ struct SettingsView: View {
     (PriceTable.overrideURL.path as NSString).abbreviatingWithTildeInPath
   }
 
+  private static let authorURL = URL(string: "https://github.com/wilsonfaustino")!
+  private static let repositoryURL = URL(string: "https://github.com/wilsonfaustino/copilot-runway")!
+  private static let licenseURL = URL(string: "https://github.com/wilsonfaustino/copilot-runway/blob/main/LICENSE")!
+
+  private var versionText: String {
+    let shortVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+    let buildNumber = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
+    return "Version \(shortVersion) (\(buildNumber))"
+  }
+
   var body: some View {
     Form {
       Section {
@@ -38,12 +48,33 @@ struct SettingsView: View {
           .captionStyle()
           .padding(.top, Theme.Spacing.small)
       }
+      aboutSection
     }
     .formStyle(.grouped)
     .frame(width: 480)
     .fixedSize(horizontal: false, vertical: true)
     .onAppear { organizationText = usageStore.organization ?? "" }
     .onDisappear { usageStore.setOrganization(organizationText) }
+  }
+
+  private var aboutSection: some View {
+    Section("About") {
+      LabeledContent("Copilot Runway") {
+        Text(versionText)
+          .foregroundStyle(.secondary)
+      }
+      LabeledContent("Made by") {
+        Link("Wilson Faustino", destination: Self.authorURL)
+      }
+      LabeledContent("Source") {
+        Link(destination: Self.repositoryURL) {
+          Label("Star on GitHub", systemImage: "star")
+        }
+      }
+      LabeledContent("License") {
+        Link("MIT License", destination: Self.licenseURL)
+      }
+    }
   }
 
   private var statusRow: some View {

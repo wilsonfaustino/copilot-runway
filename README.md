@@ -116,6 +116,7 @@ Open Settings with the gear button in the popover:
 - GitHub organization for outcomes. The status line under it shows if gh can search it.
 - The GitHub account source ("From gh auth. No token stored.").
 - The path of the price override file.
+- An About section with the app version, the author, a Star on GitHub link and the license.
 
 ## Screenshots
 
