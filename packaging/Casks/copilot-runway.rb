@@ -1,13 +1,12 @@
 cask "copilot-runway" do
   version "0.1.0"
   # Matches the zip from scripts/release.sh. Update it with each release.
-  sha256 "690c19cc5947aa45717fedced1dc5d271940769f6a0e376ac20fc86b20d483be"
+  sha256 "4ba6b63390f1ec98f025d896724b0a412ffba7400260586f7500d1a945fde257"
 
-  # Placeholder host. Replace it with the real release URL before you publish the tap.
-  url "https://example.com/REPLACE_ME/CopilotRunway-#{version}.zip"
+  url "https://github.com/wilsonfaustino/copilot-runway/releases/download/v#{version}/CopilotRunway-#{version}.zip"
   name "Copilot Runway"
   desc "Menu bar app that shows GitHub Copilot credit runway"
-  homepage "https://example.com/REPLACE_ME"
+  homepage "https://github.com/wilsonfaustino/copilot-runway"
 
   depends_on macos: :sonoma
 

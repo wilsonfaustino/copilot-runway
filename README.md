@@ -142,10 +142,10 @@ Open Settings with the gear button in the popover:
 
 ### From a Homebrew tap
 
-The tap is not published yet. When it is, install with the fully qualified name:
+Install with the fully qualified name:
 
 ```sh
-brew install --cask <owner>/<tap>/copilot-runway
+brew install --cask wilsonfaustino/tap/copilot-runway
 ```
 
 Since Homebrew 6.0.0, Homebrew loads code from a third-party tap only after you trust it.
@@ -361,7 +361,6 @@ configuration, ad-hoc signs `Core.framework` and the app, verifies the signature
 ## Known limitations
 
 - The app is not notarized. Each new version needs the first-launch step.
-- The Homebrew tap is not published, and the cask has a placeholder download URL.
 - The app has no app icon yet.
 - The credits request uses `api.github.com/copilot_internal/user`, the same request as the
   OpenCode and Pi plugins. It is not part of the documented GitHub REST API, so GitHub can change it.
@@ -377,7 +376,6 @@ configuration, ad-hoc signs `Core.framework` and the app, verifies the signature
 - Sign with a Developer ID, turn the hardened runtime back on, and notarize the release. Then the
   first-launch step goes away.
 - Add an app icon.
-- Publish the Homebrew tap.
 
 ## Author
 
