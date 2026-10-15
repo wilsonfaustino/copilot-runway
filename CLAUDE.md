@@ -98,8 +98,11 @@ Each rule gets unit tests with fixture sessions in `CoreTests/Fixtures/`.
 - Headline metric: credits per outcome (PRs plus reviews), not credits per PR
 
 ### M6. Distribution
-- Homebrew tap with a cask, signed and notarized build. Signing identity is still an open
-  question; stop and ask before choosing one.
+- Homebrew tap with a cask, signed and notarized build.
+- Decision (2026-10-15): releases are ad-hoc signed for now, not notarized. No Developer ID yet.
+- `scripts/release.sh` signs without hardened runtime. Library validation needs a Team ID, and dyld refuses `Core.framework` under an ad-hoc signature.
+- When a Developer ID is available: turn hardened runtime back on in `scripts/release.sh` and add notarization. Ask the user before choosing or using any identity.
+- No tap repo exists yet. Creating repos or releases is outward-facing, so ask first.
 
 ## Out of scope
 
