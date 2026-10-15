@@ -3,7 +3,7 @@
 A native macOS menu bar app that shows GitHub Copilot AI credit usage as **runway**:
 how much is left, how fast it burns, and where it goes. Built for a team of Mac users
 on Copilot usage-based billing who code through OpenCode and Pi Agent with
-GPT-6.1 Sol and GPT-6 Luna.
+GPT-6.1 Sol, GPT-6 Luna and Gemini 3.8 Flash.
 
 Codeburn already covers spend across agents. This app covers what codeburn does not:
 the Copilot limit as the primary view, burn rate, projected run-out date, and
@@ -52,7 +52,7 @@ reference/      Wilson's existing plugin code and sample data (read-only input)
    Codeburn (MIT) documents both formats: `docs/providers/opencode.md` and `docs/providers/pi.md`
    in github.com/getagentseal/codeburn. Document the paths you find in `Core/README.md`.
 3. **Pricing.** Copilot credits are consumed at published API rates per model (input, output,
-   cached tokens). Ship a small bundled price table for Sol and Luna and allow a JSON override
+   cached tokens). Ship a small bundled price table for Sol, Luna and Gemini 3.8 Flash and allow a JSON override
    at `~/.config/copilot-runway/prices.json`.
 4. **GitHub outcomes (later milestone).** `gh search prs/commits` scoped to `@me` and one org.
 
