@@ -21,6 +21,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.wilsonfaustino.CopilotRunway
         GENERATE_INFOPLIST_FILE: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_CFBundleDisplayName: Copilot Runway
         INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright (c) 2026 Wilson Faustino. MIT License."

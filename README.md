@@ -390,7 +390,6 @@ configuration, ad-hoc signs `Core.framework` and the app, verifies the signature
 ## Known limitations
 
 - The app is not notarized. Each new version needs the first-launch step.
-- The app has no app icon yet.
 - The credits request uses `api.github.com/copilot_internal/user`, the same request as the
   OpenCode and Pi plugins. It is not part of the documented GitHub REST API, so GitHub can change it.
 - Outcomes cover one organization.
@@ -404,7 +403,6 @@ configuration, ad-hoc signs `Core.framework` and the app, verifies the signature
 
 - Sign with a Developer ID, turn the hardened runtime back on, and notarize the release. Then the
   first-launch step goes away.
-- Add an app icon.
 
 ## Author
 
