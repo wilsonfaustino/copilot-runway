@@ -233,7 +233,8 @@ struct PopoverView: View {
             valueText: model.credits.map { modelCredits in
               "\(Credits.formatted(modelCredits)) · \(Credits.sharePercent(modelCredits, of: pricedTotal))%"
             } ?? "no price",
-            share: model.credits.map { pricedTotal > 0 ? $0 / pricedTotal : 0 }
+            share: model.credits.map { pricedTotal > 0 ? $0 / pricedTotal : 0 },
+            lowCachePercent: usageStore.cacheHits.first { $0.model == model.model && $0.isLow }?.wholePercent
           )
         }
       }
@@ -372,13 +373,24 @@ private struct ModelBar: View {
   let valueText: String
   // nil when the model has no price, so it has no bar.
   let share: Double?
+  // nil unless the model's cache hit rate is low.
+  let lowCachePercent: Int?
 
   private static let height: CGFloat = 6
 
   var body: some View {
     VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-      HStack {
+      HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
         Text(name)
+        if let lowCachePercent {
+          HStack(alignment: .firstTextBaseline, spacing: 3) {
+            Image(systemName: "exclamationmark.circle")
+              .accessibilityHidden(true)
+            Text("cache hit \(lowCachePercent)%")
+          }
+          .font(.system(size: 11, weight: .semibold))
+          .foregroundStyle(Theme.accent(.short))
+        }
         Spacer()
         Text(valueText)
           .monospacedDigit()

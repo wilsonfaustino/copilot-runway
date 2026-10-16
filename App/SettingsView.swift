@@ -4,6 +4,7 @@ import SwiftUI
 struct SettingsView: View {
   let usageStore: UsageStore
   @State private var organizationText = ""
+  @AppStorage(RunwayNotifier.enabledKey) private var runwayNotificationsEnabled = true
 
   private var organizationStatus: SettingsOrganizationStatus {
     SettingsOrganizationStatus(usageStore: usageStore, enteredText: organizationText)
@@ -38,6 +39,7 @@ struct SettingsView: View {
           .captionStyle()
           .padding(.top, Theme.Spacing.small)
       }
+      notificationsSection
       Section {
         LabeledContent("GitHub account") {
           Label("From gh auth. No token stored.", systemImage: "text.alignleft")
@@ -62,6 +64,28 @@ struct SettingsView: View {
     .fixedSize(horizontal: false, vertical: true)
     .onAppear { organizationText = usageStore.organization ?? "" }
     .onDisappear { usageStore.setOrganization(organizationText) }
+  }
+
+  private var notificationsSection: some View {
+    Section {
+      Toggle("Runway notifications", isOn: $runwayNotificationsEnabled)
+        .toggleStyle(.switch)
+      #if DEBUG
+      Button("Send test notice") {
+        Task { await usageStore.runwayNotifier.sendTestNotice(usage: usageStore.usage) }
+      }
+      .controlSize(.small)
+      #endif
+    } header: {
+      Text("Notifications")
+    } footer: {
+      Text(
+        "One notice at 80% used, one when runway turns short, one when it turns critical and one when the limit is reached."
+          + " Each is sent once per billing cycle."
+      )
+      .captionStyle()
+      .padding(.top, Theme.Spacing.small)
+    }
   }
 
   private var aboutSection: some View {

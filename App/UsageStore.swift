@@ -18,6 +18,8 @@ final class UsageStore {
   private(set) var categoryCredits: [CategoryCredits] = []
   private(set) var sourceCredits: [SourceCredits] = []
   private(set) var dailyCredits: [DailyCredits] = []
+  private(set) var cacheHits: [ModelCacheHit] = []
+  private(set) var lowCacheSentences: [String] = []
   private(set) var sessionsWarning: String?
   private(set) var organization = UserDefaults.standard.string(forKey: organizationKey)
     .flatMap(GitHubOutcomesClient.normalizedOrganization)
@@ -25,6 +27,8 @@ final class UsageStore {
   private(set) var outcomesErrorKind: GitHubOutcomesError?
   var outcomesError: String? { outcomesErrorKind?.message }
   private(set) var availableVersion: String?
+  // The notification center keeps only a weak reference to its delegate, so the store owns the notifier.
+  @ObservationIgnored let runwayNotifier = RunwayNotifier()
 
   @ObservationIgnored private var pollingTask: Task<Void, Never>?
   @ObservationIgnored private var lastOutcomesFetch: OutcomesFetch?
@@ -60,6 +64,8 @@ final class UsageStore {
       usageError = nil
       lastRefresh = .now
       self.usage = usage
+      // Not awaited, because a permission prompt can stay open and must not stop the poll.
+      Task { await runwayNotifier.sendDueNotices(usage: usage) }
     } catch {
       title = MenuBarTitle.title(error: error)
       errorMessage = error.message
@@ -76,6 +82,8 @@ final class UsageStore {
     categoryCredits = sessionCredits.byCategory
     sourceCredits = sessionCredits.bySource
     dailyCredits = sessionCredits.byDay
+    cacheHits = sessionCredits.cacheHits
+    lowCacheSentences = sessionCredits.lowCacheSentences
     sessionsWarning = sessionCredits.warning
   }
 

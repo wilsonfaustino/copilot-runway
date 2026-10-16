@@ -219,6 +219,9 @@ struct DashboardView: View {
     if unpricedModelCount > 0 {
       footnotes.append("\(unpricedModelCount) model(s) have no price and are not counted.")
     }
+    if !usageStore.lowCacheSentences.isEmpty {
+      footnotes.append(usageStore.lowCacheSentences.joined(separator: " "))
+    }
     return shareCard(title: "By model", entries: pricedModels, footnotes: footnotes)
   }
 
