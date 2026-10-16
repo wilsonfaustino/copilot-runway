@@ -15,9 +15,13 @@ public enum Runway {
   }
 
   // Elapsed time counts as at least one day, so the first hours of a cycle do not inflate the burn.
+  public static func averageDailyBurn(credits: Double, resetDate: Date, now: Date) -> Double {
+    let elapsedDays = now.timeIntervalSince(cycleStart(resetDate: resetDate)) / secondsPerDay
+    return credits / max(elapsedDays, 1)
+  }
+
   public static func averageDailyBurn(usage: CopilotUsage, now: Date) -> Double {
-    let elapsedDays = now.timeIntervalSince(cycleStart(resetDate: usage.resetDate)) / secondsPerDay
-    return usage.creditsUsed / max(elapsedDays, 1)
+    averageDailyBurn(credits: usage.creditsUsed, resetDate: usage.resetDate, now: now)
   }
 
   // daysLeft = remaining / averageDailyBurn over the current billing cycle.

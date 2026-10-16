@@ -197,7 +197,7 @@ struct PopoverView: View {
     let card = StatCard(
       title: "Per outcome",
       value: creditsPerOutcome.map(credits) ?? "-",
-      detail: usageStore.organization == nil ? "no org set" : "credits/outcome"
+      detail: usageStore.organization == nil ? "no org set" : "credits each"
     )
     if usageStore.organization == nil {
       Button {
@@ -238,7 +238,10 @@ struct PopoverView: View {
         ForEach(modelCredits, id: \.model) { model in
           ModelBar(
             name: model.model,
-            valueText: model.credits.map(credits) ?? "no price",
+            valueText: model.credits.map { modelCredits in
+              let percent = pricedTotal > 0 ? Int((modelCredits / pricedTotal * 100).rounded()) : 0
+              return "\(credits(modelCredits)) · \(percent)%"
+            } ?? "no price",
             share: model.credits.map { pricedTotal > 0 ? $0 / pricedTotal : 0 }
           )
         }

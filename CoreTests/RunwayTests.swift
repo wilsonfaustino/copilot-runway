@@ -24,6 +24,15 @@ func makeUsage(creditsUsed: Double, entitlement: Double = 12000, isUnlimited: Bo
   #expect(abs(averageDailyBurn - 600) < 0.0001)
 }
 
+@Test func averageDailyBurnFromCreditsMatchesUsageOverload() {
+  let usage = makeUsage(creditsUsed: 6000)
+  let now = utcDate("2026-10-11T00:00:00Z")
+  let fromCredits = Runway.averageDailyBurn(credits: 6000, resetDate: usage.resetDate, now: now)
+  #expect(fromCredits == Runway.averageDailyBurn(usage: usage, now: now))
+  // 10 days into the cycle, 6000 credits -> 600/day.
+  #expect(abs(fromCredits - 600) < 0.0001)
+}
+
 @Test func daysLeftIsRemainingOverAverageDailyBurn() throws {
   // 10 days into the cycle, 6000 used: burn 600/day, 6000 left -> 10 days.
   let daysLeft = try #require(Runway.daysLeft(usage: makeUsage(creditsUsed: 6000), now: utcDate("2026-10-11T00:00:00Z")))

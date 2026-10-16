@@ -35,7 +35,7 @@ struct DashboardView: View {
           HStack(alignment: .top, spacing: Theme.Spacing.regular) {
             shareCard(title: "By task", entries: usageStore.categoryCredits.map { ($0.category.displayName, $0.credits) })
             modelCard(usage: usage)
-            shareCard(title: "By agent", entries: usageStore.sourceCredits.map { ($0.source.displayName, $0.credits) })
+            agentCard(usage: usage)
           }
           .fixedSize(horizontal: false, vertical: true)
         } else {
@@ -315,9 +315,20 @@ struct DashboardView: View {
     return shareCard(title: "By model", entries: pricedModels, footnotes: footnotes)
   }
 
+  private func agentCard(usage: CopilotUsage) -> some View {
+    let sourceCredits = usageStore.sourceCredits
+    let creditsPerDay = sourceCredits.map { source in
+      "\(source.source.displayName): \(credits(Runway.averageDailyBurn(credits: source.credits, resetDate: usage.resetDate, now: .now))) credits/day."
+    }
+    return shareCard(
+      title: "By agent",
+      entries: sourceCredits.map { ($0.source.displayName, $0.credits) },
+      footnotes: creditsPerDay.isEmpty ? [] : [creditsPerDay.joined(separator: " ")]
+    )
+  }
+
   private func shareCard(title: String, entries: [(name: String, credits: Double)], footnotes: [String] = []) -> some View {
     let total = entries.reduce(0) { $0 + $1.credits }
-    let maxCredits = entries.map(\.credits).max() ?? 0
     return VStack(alignment: .leading, spacing: Theme.Spacing.regular) {
       Text(title)
         .font(.system(size: 14, weight: .semibold))
@@ -333,7 +344,7 @@ struct DashboardView: View {
             }
             .font(.system(size: 12))
             .lineLimit(1)
-            shareBar(fraction: entry.credits / maxCredits, color: Self.barColor)
+            shareBar(fraction: entry.credits / total, color: Self.barColor)
           }
         }
       } else {
