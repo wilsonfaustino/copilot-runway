@@ -121,10 +121,10 @@ Open Settings with the gear button in the popover:
 
 ## Screenshots
 
-<img width="105" height="31" alt="image" src="https://github.com/user-attachments/assets/c5456a92-b4f3-4e4d-90cb-7da499011962" />
+<img width="102" height="33" alt="image" src="https://github.com/user-attachments/assets/5162a701-c3bb-4b6e-863e-428ff33e7e4e" />
+<br />
 
-
-<img width="360" height="536" alt="image" src="https://github.com/user-attachments/assets/6d25fa3f-ab18-4614-83f8-947631ee0cd2" />
+<img width="360" height="472" alt="image" src="https://github.com/user-attachments/assets/c9cde478-4e3f-45cc-b1d6-69777186d076" />
 
 
 <img width="1305" height="842" alt="image" src="https://github.com/user-attachments/assets/b87826c9-284b-4b38-bce5-e64e268be385" />
