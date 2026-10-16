@@ -20,12 +20,46 @@ let sampleCommitResults = Data("""
   ])
 }
 
-@Test func reviewedQueryExcludesOwnPullRequests() {
-  let arguments = GitHubOutcomesClient.arguments(for: .prsReviewed, organization: "example-org", since: outcomesCycleStart)
-  #expect(arguments == [
-    "search", "prs", "--owner=example-org", "--reviewed-by=@me", "--updated=>=2026-10-01T00:00:00Z",
-    "--json=number", "--limit=1000", "--", "-author:@me",
+@Test func reviewedSearchExcludesOwnPullRequests() {
+  let query = GitHubOutcomesClient.reviewedSearchQuery(organization: "example-org", since: outcomesCycleStart)
+  #expect(query == "org:example-org is:pr reviewed-by:@me -author:@me updated:>=2026-10-01T00:00:00Z")
+}
+
+@Test func reviewedArgumentsSendOrganizationAndLoginAsVariables() throws {
+  let arguments = GitHubOutcomesClient.reviewedArguments(
+    organization: "example-org", login: "example-user", since: outcomesCycleStart, after: nil
+  )
+  #expect(Array(arguments.prefix(3)) == ["api", "graphql", "-f"])
+  let document = try #require(arguments.first { $0.hasPrefix("query=") })
+  #expect(!document.contains("example-org"))
+  #expect(!document.contains("example-user"))
+  #expect(arguments.suffix(4) == [
+    "-f", "q=org:example-org is:pr reviewed-by:@me -author:@me updated:>=2026-10-01T00:00:00Z",
+    "-f", "login=example-user",
   ])
+  #expect(!arguments.contains { $0.hasPrefix("after=") })
+}
+
+@Test func reviewedArgumentsSendCursorForLaterPages() {
+  let arguments = GitHubOutcomesClient.reviewedArguments(
+    organization: "example-org", login: "example-user", since: outcomesCycleStart, after: "Y3Vyc29yOjEwMA=="
+  )
+  #expect(arguments.suffix(2) == ["-f", "after=Y3Vyc29yOjEwMA=="])
+}
+
+@Test func organizationMustBeAGitHubLogin() {
+  #expect(GitHubOutcomesClient.isValidOrganization("example-org"))
+  #expect(GitHubOutcomesClient.isValidOrganization("Example-Org-2"))
+  #expect(!GitHubOutcomesClient.isValidOrganization("foo is:open"))
+  #expect(!GitHubOutcomesClient.isValidOrganization("-x"))
+  #expect(!GitHubOutcomesClient.isValidOrganization("foo:bar"))
+  #expect(!GitHubOutcomesClient.isValidOrganization(""))
+}
+
+@Test func invalidOrganizationFailsBeforeAnySearch() {
+  #expect(throws: GitHubOutcomesError.organizationNotFound) {
+    try GitHubOutcomesClient.fetchOutcomes(organization: "foo is:open", since: outcomesCycleStart)
+  }
 }
 
 @Test func commitQueryFiltersByAuthorDate() {
@@ -57,6 +91,75 @@ let sampleCommitResults = Data("""
   #expect(try GitHubOutcomesClient.count(from: samplePullRequestResults) == 3)
   #expect(try GitHubOutcomesClient.count(from: sampleCommitResults) == 2)
   #expect(try GitHubOutcomesClient.count(from: Data("[]".utf8)) == 0)
+}
+
+// Shape of the reviewed search response. Each node is one PR with your last submitted review, if any.
+func reviewedResponse(_ nodes: String, hasNextPage: Bool = false) -> Data {
+  Data("""
+    {"data": {"search": {"pageInfo": {"hasNextPage": \(hasNextPage), "endCursor": "Y3Vyc29yOjEwMA=="}, "nodes": [\(nodes)]}}}
+    """.utf8)
+}
+
+func reviewNode(_ submittedAt: String) -> String {
+  #"{"reviews": {"nodes": [{"submittedAt": "\#(submittedAt)"}]}}"#
+}
+
+@Test func reviewedCountsOnlyLastReviewsInTheCycle() throws {
+  let lastReviewBeforeCycle = reviewNode("2026-09-30T23:59:59Z")
+  let lastReviewInCycle = reviewNode("2026-10-07T10:00:00Z")
+  let page = try GitHubOutcomesClient.reviewedPage(
+    from: reviewedResponse([lastReviewBeforeCycle, lastReviewInCycle].joined(separator: ",")), since: outcomesCycleStart
+  )
+  #expect(page.reviewedCount == 1)
+  #expect(page.resultCount == 2)
+  #expect(page.nextCursor == nil)
+}
+
+@Test func reviewedCountsReviewAtCycleStart() throws {
+  let page = try GitHubOutcomesClient.reviewedPage(
+    from: reviewedResponse(reviewNode("2026-10-01T00:00:00Z")), since: outcomesCycleStart
+  )
+  #expect(page.reviewedCount == 1)
+}
+
+@Test func reviewedSkipsPullRequestsWithOnlyPendingReviews() throws {
+  // The states filter leaves out pending reviews, so the list is empty.
+  let page = try GitHubOutcomesClient.reviewedPage(
+    from: reviewedResponse(#"{"reviews": {"nodes": []}}, {}"#), since: outcomesCycleStart
+  )
+  #expect(page.reviewedCount == 0)
+  #expect(page.resultCount == 2)
+}
+
+@Test func reviewedPageGivesCursorOnlyWhenMorePagesExist() throws {
+  let page = try GitHubOutcomesClient.reviewedPage(
+    from: reviewedResponse(reviewNode("2026-10-07T10:00:00Z"), hasNextPage: true), since: outcomesCycleStart
+  )
+  #expect(page.nextCursor == "Y3Vyc29yOjEwMA==")
+}
+
+@Test func graphQLErrorsThrowInsteadOfCountingZero() {
+  let errorsWithData = Data("""
+    {"data": {"search": {"pageInfo": {"hasNextPage": false, "endCursor": null}, "nodes": []}},
+     "errors": [{"message": "Something went wrong while executing your query."}]}
+    """.utf8)
+  #expect(throws: GitHubOutcomesError.searchFailed) {
+    try GitHubOutcomesClient.reviewedPage(from: errorsWithData, since: outcomesCycleStart)
+  }
+  let rateLimited = Data(#"{"data": null, "errors": [{"type": "RATE_LIMITED", "message": "API rate limit exceeded for user ID 1."}]}"#.utf8)
+  #expect(throws: GitHubOutcomesError.rateLimited) {
+    try GitHubOutcomesClient.reviewedPage(from: rateLimited, since: outcomesCycleStart)
+  }
+  #expect(throws: GitHubOutcomesError.searchFailed) {
+    try GitHubOutcomesClient.reviewedPage(from: Data("[]".utf8), since: outcomesCycleStart)
+  }
+}
+
+@Test func readsViewerLogin() throws {
+  #expect(try GitHubOutcomesClient.login(from: Data(#"{"data": {"viewer": {"login": "example-user"}}}"#.utf8)) == "example-user")
+  #expect(throws: GitHubOutcomesError.searchFailed) {
+    try GitHubOutcomesClient.login(from: Data(#"{"data": {"viewer": null}}"#.utf8))
+  }
 }
 
 @Test func outputThatIsNotAListFails() {

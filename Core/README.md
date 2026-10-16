@@ -158,23 +158,41 @@ Outcomes are counted for the `gh` user (`@me`) in one organization, set in Setti
 `UserDefaults` under `githubOrganization`. With no organization the app works as before and the
 dashboard asks for one.
 
-The client runs `gh search` through `Process`, with gh found the same way as for `gh auth token`.
-gh reads its own login, so the app never reads or passes the token for these calls.
+The client runs `gh search` and `gh api graphql` through `Process`, with gh found the same way as for
+`gh auth token`. gh reads its own login, so the app never reads or passes the token for these calls.
 `<cycle start>` is `Runway.cycleStart` in ISO 8601 UTC, for example `2026-10-01T00:00:00Z`.
 
 | Count | Command |
 |---|---|
 | PRs opened | `gh search prs --owner=<org> --author=@me --created=>=<cycle start> --json=number --limit=1000` |
-| PRs reviewed | `gh search prs --owner=<org> --reviewed-by=@me --updated=>=<cycle start> --json=number --limit=1000 -- -author:@me` |
+| PRs reviewed | `gh api graphql -f query={ viewer { login } }`, then `gh api graphql -f query=<document> -f q=<search> -f login=<login> [-f after=<cursor>]` |
 | Commits | `gh search commits --owner=<org> --author=@me --author-date=>=<cycle start> --json=sha --limit=1000` |
 
 - Only the length of each JSON list leaves Core. Each result decodes no fields, so no PR title,
   repo name or commit message is kept. PR numbers repeat across repos, so results are not deduplicated.
 - Every value uses the `--flag=value` form, so an organization that starts with `-` stays a value.
+- The organization must be a GitHub login (ASCII letters, digits and hyphens, not starting with a
+  hyphen). Any other value gives "Organization not found" before gh runs, because the reviewed count
+  puts the organization in a search string, where a space or `:` could add qualifiers.
 - PRs opened counts every PR created in the cycle: open, closed, merged and draft.
-- PRs reviewed: search has no review date qualifier. `--updated` counts PRs that you reviewed at any
-  time and that changed in the cycle. `-author:@me` removes your own PRs: without it,
-  `reviewed-by:@me` also matches your PRs where you replied to a review.
+- PRs reviewed: search has no review date qualifier. `reviewed-by:@me` matches a PR that you reviewed
+  at any time, and `updated:` filters on any PR activity. So the search
+  `org:<org> is:pr reviewed-by:@me -author:@me updated:>=<cycle start>` only finds candidates. For each
+  candidate the query reads your last submitted review (`reviews(author: $login, last: 1, states:
+  [APPROVED, CHANGES_REQUESTED, COMMENTED, DISMISSED])`), and the PR counts only if its `submittedAt`
+  is at or after the cycle start. A pending review has no `submittedAt`, and the states filter leaves
+  it out. Search gives one node per PR, so each PR counts once. In October 2026 this changed one
+  account's count from 32 to 23: 9 PRs had their last review before the cycle and only changed in it.
+- `reviews(author:)` needs the login, and GraphQL cannot pass `viewer.login` into it in the same query,
+  so the login comes from a separate call first. `viewerLatestReview` needs no login, but it has no
+  states filter and its behavior with a pending review is not documented, so it is not used. The search string, login and page cursor go in as `-f`
+  string variables, never into the query document.
+- `-author:@me` removes your own PRs: without it, `reviewed-by:@me` also matches your PRs where you
+  replied to a review.
+- gh exits with 1 when the response has an `errors` list, and stderr is classified as for search. The
+  parser also rejects an `errors` list, so a response with exit 0 never counts as 0. The messages are
+  classified like stderr and never go to the UI. An unknown organization gives 0 results here, not an
+  error, but the PRs opened search runs first and reports it.
 - Commits: commit search covers only the default branch of each repo, so commits on branches that are
   not merged do not count. `--author-date` is the date the commit was written, not pushed.
 - Credits per outcome = `credits_used` from the usage API / (PRs opened + PRs reviewed). Commits are
@@ -185,8 +203,11 @@ gh reads its own login, so the app never reads or passes the token for these cal
 
 - The search API allows 30 requests per minute, and GitHub also has a secondary rate limit.
   In October 2026, 8 fast searches after a few others hit the secondary limit.
-- gh fetches 100 results per request, so one refresh costs 3 requests, and up to 30 at the cap.
-- Search returns at most 1,000 results per query. A count at 1,000 shows as `1,000+`.
+- gh fetches 100 results per request. The reviewed count uses 1 GraphQL call for the login and 1 per
+  100 candidate PRs. So one refresh costs 4 requests, and up to 31 at the cap.
+- Search returns at most 1,000 results per query. A count at 1,000 shows as `1,000+`. The reviewed
+  count stops after 1,000 candidates, and it shows the PRs among them with a review in the cycle. That
+  count is then a lower bound, but it shows no `+`.
 - So outcomes refresh on launch (after the first good usage response, which gives the cycle start),
   when the organization changes, and when a credits refresh finds the last search 30 minutes old or
   more (`OutcomesFetch.isDue`). A new cycle start also refreshes. The organization saves on Return or
@@ -203,7 +224,7 @@ maps it to one short line. The samples are what gh 2.102 printed in October 2026
 | Not logged in | Exit status 4 ("please run: gh auth login"), or `401` / `Bad credentials` in stderr |
 | Organization not found or no access | "cannot be searched either because the resources do not exist or you do not have permission" |
 | Rate limited | "rate limit" in stderr, for example "HTTP 403: You have exceeded a secondary rate limit" |
-| Other | Any other failure, or output that is not a JSON list |
+| Other | Any other failure, output that is not a JSON list, or a GraphQL response that does not decode |
 
 After an error the app keeps the last counts and tries again after 30 minutes.
 
