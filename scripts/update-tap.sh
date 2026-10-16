@@ -41,7 +41,7 @@ fi
 echo "sha256 ok: $downloaded_sha256"
 
 if [[ ! -e "$tap_dir" ]]; then
-  git clone --quiet https://github.com/wilsonfaustino/homebrew-tap.git "$tap_dir"
+  git clone --quiet git@github.com:wilsonfaustino/homebrew-tap.git "$tap_dir"
 else
   if ! git -C "$tap_dir" rev-parse --git-dir > /dev/null 2>&1; then
     echo "error: $tap_dir exists but is not a git repo" >&2
