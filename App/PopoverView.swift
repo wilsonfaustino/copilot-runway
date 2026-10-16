@@ -126,7 +126,7 @@ struct PopoverView: View {
     return HStack(spacing: 18) {
       RunwayRing(
         remainingFraction: MenuBarTitle.remainingFraction(usage: usage),
-        percentRemaining: usage?.percentRemaining,
+        percentRemaining: usage.map(Runway.wholePercentRemaining),
         accent: accent,
         openCount: openCount
       )
@@ -153,9 +153,8 @@ struct PopoverView: View {
     }
   }
 
-  // Floored like the menu bar title, so both show the same number.
   private func wholeDaysLeft(usage: CopilotUsage?, now: Date) -> Int? {
-    usage.flatMap { Runway.daysLeft(usage: $0, now: now) }.map { Int($0.rounded(.down)) }
+    usage.flatMap { Runway.wholeDaysLeft(usage: $0, now: now) }
   }
 
   private func daysFigure(usage: CopilotUsage?, now: Date) -> String {
@@ -303,7 +302,7 @@ struct PopoverView: View {
 
 private struct RunwayRing: View {
   let remainingFraction: Double
-  let percentRemaining: Double?
+  let percentRemaining: Int?
   let accent: Color
   // Each change replays the sweep from full to the current fraction.
   let openCount: Int
@@ -342,7 +341,7 @@ private struct RunwayRing: View {
         }
         .animation(reduceMotion ? nil : .easeOut(duration: Self.refreshDuration), value: remainingFraction)
       VStack(spacing: 0) {
-        Text(percentRemaining.map { "\(Int($0.rounded()))%" } ?? "--%")
+        Text(percentRemaining.map { "\($0)%" } ?? "--%")
           .bigFigureStyle()
         Text("left")
           .captionStyle()
@@ -352,7 +351,7 @@ private struct RunwayRing: View {
     .frame(width: Self.diameter, height: Self.diameter)
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(
-      percentRemaining.map { "\(Int($0.rounded())) percent of credits remaining" } ?? "Credits remaining unknown"
+      percentRemaining.map { "\($0) percent of credits remaining" } ?? "Credits remaining unknown"
     )
   }
 }

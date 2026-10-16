@@ -56,9 +56,9 @@ let sampleCommitResults = Data("""
   #expect(!GitHubOutcomesClient.isValidOrganization(""))
 }
 
-@Test func invalidOrganizationFailsBeforeAnySearch() {
-  #expect(throws: GitHubOutcomesError.organizationNotFound) {
-    try GitHubOutcomesClient.fetchOutcomes(organization: "foo is:open", since: outcomesCycleStart)
+@Test func invalidOrganizationFailsBeforeAnySearch() async {
+  await #expect(throws: GitHubOutcomesError.organizationNotFound) {
+    try await GitHubOutcomesClient.fetchOutcomes(organization: "foo is:open", since: outcomesCycleStart)
   }
 }
 

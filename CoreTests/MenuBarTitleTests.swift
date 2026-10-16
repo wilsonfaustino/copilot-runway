@@ -67,3 +67,9 @@ import Testing
   let usage = makeUsage(creditsUsed: 500, entitlement: 0, isUnlimited: true)
   #expect(MenuBarTitle.remainingFraction(usage: usage) == 1)
 }
+
+@Test func overLimitUsageShowsZeroPercentAndZeroDays() {
+  // 20 days in, 12500 of 12000 used -> -4.17% and -0.8 days before the clamp.
+  let title = MenuBarTitle.title(usage: makeUsage(creditsUsed: 12500), now: utcDate("2026-10-21T00:00:00Z"))
+  #expect(title == "0% · 0d")
+}

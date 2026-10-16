@@ -158,11 +158,9 @@ struct DashboardView: View {
       if usage.isUnlimited {
         Text("∞").bigFigureStyle(size: 34)
         kpiDetail("Unlimited plan")
-      } else if let daysLeft = Runway.daysLeft(usage: usage, now: .now),
+      } else if let wholeDays = Runway.wholeDaysLeft(usage: usage, now: .now),
         let runOutDate = Runway.runOutDate(usage: usage, now: .now)
       {
-        // Rounded down like the menu bar title, so both show the same days.
-        let wholeDays = max(Int(daysLeft.rounded(.down)), 0)
         Text(wholeDays == 1 ? "1 day" : "\(wholeDays) days")
           .bigFigureStyle(size: 34)
           .foregroundStyle(Theme.accent(health))
@@ -180,7 +178,7 @@ struct DashboardView: View {
         Text("Unlimited").bigFigureStyle(size: 34)
         kpiDetail("\(credits(usage.creditsUsed)) used")
       } else {
-        Text("\(Int(usage.percentRemaining.rounded()))%").bigFigureStyle(size: 34)
+        Text("\(Runway.wholePercentRemaining(usage: usage))%").bigFigureStyle(size: 34)
         shareBar(fraction: usage.percentRemaining / 100, color: Theme.accent(health))
         kpiDetail("\(credits(usage.creditsUsed)) of \(credits(usage.entitlement)) used")
       }

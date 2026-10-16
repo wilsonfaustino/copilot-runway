@@ -57,3 +57,9 @@ func utcDate(_ isoString: String) -> Date {
   #expect(request.value(forHTTPHeaderField: "Authorization") == "token test-token")
   #expect(request.value(forHTTPHeaderField: "Editor-Version") == "vscode/1.99.0")
 }
+
+@Test func redirectStatusIsInvalidResponse() {
+  #expect(throws: CopilotUsageError.invalidResponse) {
+    try CopilotUsageClient.usage(from: Data(), statusCode: 302)
+  }
+}

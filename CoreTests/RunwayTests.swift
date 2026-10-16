@@ -70,3 +70,27 @@ func makeUsage(creditsUsed: Double, entitlement: Double = 12000, isUnlimited: Bo
   #expect(Runway.runOutDate(usage: makeUsage(creditsUsed: 0), now: now) == nil)
   #expect(Runway.runOutDate(usage: makeUsage(creditsUsed: 500, entitlement: 0, isUnlimited: true), now: now) == nil)
 }
+
+@Test func wholeDaysLeftRoundsDown() {
+  // 10 days in, 6100 used -> 9.67 days left.
+  #expect(Runway.wholeDaysLeft(usage: makeUsage(creditsUsed: 6100), now: utcDate("2026-10-11T00:00:00Z")) == 9)
+}
+
+@Test func wholeDaysLeftClampsOverLimitUsageToZero() {
+  // 20 days in, 12500 of 12000 used -> -0.8 days before the clamp.
+  #expect(Runway.wholeDaysLeft(usage: makeUsage(creditsUsed: 12500), now: utcDate("2026-10-21T00:00:00Z")) == 0)
+}
+
+@Test func wholeDaysLeftIsNilWithoutBurn() {
+  #expect(Runway.wholeDaysLeft(usage: makeUsage(creditsUsed: 0), now: utcDate("2026-10-11T00:00:00Z")) == nil)
+}
+
+@Test func wholePercentRemainingRounds() {
+  // 6100 of 12000 used -> 49.17% left.
+  #expect(Runway.wholePercentRemaining(usage: makeUsage(creditsUsed: 6100)) == 49)
+}
+
+@Test func wholePercentRemainingClampsOverLimitUsageToZero() {
+  // 12500 of 12000 used -> -4.17% before the clamp.
+  #expect(Runway.wholePercentRemaining(usage: makeUsage(creditsUsed: 12500)) == 0)
+}

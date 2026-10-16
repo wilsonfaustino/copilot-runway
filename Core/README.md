@@ -224,7 +224,7 @@ maps it to one short line. The samples are what gh 2.102 printed in October 2026
 | Not logged in | Exit status 4 ("please run: gh auth login"), or `401` / `Bad credentials` in stderr |
 | Organization not found or no access | "cannot be searched either because the resources do not exist or you do not have permission" |
 | Rate limited | "rate limit" in stderr, for example "HTTP 403: You have exceeded a secondary rate limit" |
-| Other | Any other failure, output that is not a JSON list, or a GraphQL response that does not decode |
+| Other | Any other failure, gh still running after 30 seconds, output that is not a JSON list, or a GraphQL response that does not decode |
 
 After an error the app keeps the last counts and tries again after 30 minutes.
 

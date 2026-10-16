@@ -5,8 +5,8 @@ public enum MenuBarTitle {
 
   public static func title(usage: CopilotUsage, now: Date) -> String {
     if usage.isUnlimited { return "∞" }
-    let percentRemaining = Int(usage.percentRemaining.rounded())
-    let daysLabel = Runway.daysLeft(usage: usage, now: now).map { "\(Int($0.rounded(.down)))d" } ?? "--d"
+    let percentRemaining = Runway.wholePercentRemaining(usage: usage)
+    let daysLabel = Runway.wholeDaysLeft(usage: usage, now: now).map { "\($0)d" } ?? "--d"
     return "\(percentRemaining)% · \(daysLabel)"
   }
 

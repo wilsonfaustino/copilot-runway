@@ -30,6 +30,8 @@ final class UsageStore {
   @ObservationIgnored private var pollingTask: Task<Void, Never>?
   @ObservationIgnored private var lastOutcomesFetch: OutcomesFetch?
   @ObservationIgnored private var lastReleaseCheck: Date?
+  // The poll and the wake observer can both call refresh() at wake.
+  @ObservationIgnored private var isRefreshing = false
 
   init() {
     pollingTask = Task { [weak self] in
@@ -48,8 +50,11 @@ final class UsageStore {
   }
 
   func refresh() async {
+    guard !isRefreshing else { return }
+    isRefreshing = true
+    defer { isRefreshing = false }
     Task { await refreshReleaseIfDue() }
-    do {
+    do throws(CopilotUsageError) {
       let usage = try await CopilotUsageClient.fetchCurrentUsage()
       title = MenuBarTitle.title(usage: usage, now: .now)
       errorMessage = nil
@@ -57,14 +62,10 @@ final class UsageStore {
       lastRefresh = .now
       self.usage = usage
       averageDailyBurn = Runway.averageDailyBurn(usage: usage, now: .now)
-    } catch let usageError as CopilotUsageError {
-      title = MenuBarTitle.title(error: usageError)
-      errorMessage = usageError.message
-      self.usageError = usageError
     } catch {
-      title = MenuBarTitle.title(error: .invalidResponse)
-      errorMessage = CopilotUsageError.invalidResponse.message
-      usageError = .invalidResponse
+      title = MenuBarTitle.title(error: error)
+      errorMessage = error.message
+      usageError = error
     }
     // The cycle start comes from the API, so session credits wait for at least one good response.
     guard let usage else { return }
@@ -107,9 +108,11 @@ final class UsageStore {
     }
     let fetch = OutcomesFetch(organization: organization, cycleStart: cycleStart, startDate: .now)
     lastOutcomesFetch = fetch
-    let result = await Task.detached(priority: .utility) {
-      Result { () throws(GitHubOutcomesError) in
-        try GitHubOutcomesClient.fetchOutcomes(organization: organization, since: cycleStart)
+    let result = await Task.detached(priority: .utility) { () -> Result<GitHubOutcomes, GitHubOutcomesError> in
+      do throws(GitHubOutcomesError) {
+        return .success(try await GitHubOutcomesClient.fetchOutcomes(organization: organization, since: cycleStart))
+      } catch {
+        return .failure(error)
       }
     }.value
     // The organization changed or a newer fetch started, so this result is stale.

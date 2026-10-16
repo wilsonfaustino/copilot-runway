@@ -6,15 +6,24 @@ public enum CopilotUsageClient {
   static let usageURL = URL(string: "https://api.github.com/copilot_internal/user")!
   static let ghPaths = ["/opt/homebrew/bin/gh", "/usr/local/bin/gh", "/usr/bin/gh"]
 
-  public static func fetchCurrentUsage() async throws -> CopilotUsage {
-    let token = try readGitHubToken()
+  // A wake refresh can run before Wi-Fi is back, so the request waits for a connection up to this limit.
+  static let resourceTimeout: TimeInterval = 30
+
+  public static func fetchCurrentUsage() async throws(CopilotUsageError) -> CopilotUsage {
+    guard let ghPath = ghPaths.first(where: FileManager.default.isExecutableFile(atPath:)) else {
+      throw CopilotUsageError.ghNotFound
+    }
+    let token = try await readGitHubToken(ghPath: ghPath)
     // Ephemeral: no disk cache for the response, no stored credentials.
-    let session = URLSession(configuration: .ephemeral)
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.waitsForConnectivity = true
+    configuration.timeoutIntervalForResource = resourceTimeout
+    let session = URLSession(configuration: configuration)
     defer { session.finishTasksAndInvalidate() }
     let data: Data
     let response: URLResponse
     do {
-      (data, response) = try await session.data(for: makeRequest(token: token))
+      (data, response) = try await session.data(for: makeRequest(token: token), delegate: RedirectRefusal())
     } catch {
       throw CopilotUsageError.network
     }
@@ -30,8 +39,10 @@ public enum CopilotUsageClient {
     return request
   }
 
-  public static func usage(from data: Data, statusCode: Int) throws -> CopilotUsage {
+  public static func usage(from data: Data, statusCode: Int) throws(CopilotUsageError) -> CopilotUsage {
     if statusCode == 401 { throw CopilotUsageError.notLoggedIn }
+    // RedirectRefusal stops every redirect, so a 3xx arrives here as the final response.
+    if (300..<400).contains(statusCode) { throw CopilotUsageError.invalidResponse }
     guard (200..<300).contains(statusCode) else { throw CopilotUsageError.httpStatus(statusCode) }
     let decoder = JSONDecoder()
     decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -50,27 +61,33 @@ public enum CopilotUsageClient {
     )
   }
 
-  // GUI apps do not get the shell PATH, so look for gh in the usual install folders.
-  static func readGitHubToken() throws -> String {
-    guard let ghPath = ghPaths.first(where: FileManager.default.isExecutableFile(atPath:)) else {
-      throw CopilotUsageError.ghNotFound
-    }
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: ghPath)
-    process.arguments = ["auth", "token"]
-    let outputPipe = Pipe()
-    process.standardOutput = outputPipe
-    process.standardError = FileHandle.nullDevice
-    do {
-      try process.run()
+  // GUI apps do not get the shell PATH, so fetchCurrentUsage() looks for gh in the usual install folders.
+  // stderr goes to /dev/null, so no gh output can reach an error.
+  static func readGitHubToken(ghPath: String, timeout: Duration = GhRunner.defaultTimeout) async throws(CopilotUsageError) -> String {
+    let output: GhRunner.Output
+    do throws(GhRunner.Failure) {
+      output = try await GhRunner.run(path: ghPath, arguments: ["auth", "token"], readsStandardError: false, timeout: timeout)
     } catch {
-      throw CopilotUsageError.ghNotFound
+      switch error {
+      case .launchFailed: throw CopilotUsageError.ghNotFound
+      case .timedOut: throw CopilotUsageError.network
+      }
     }
-    let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-    process.waitUntilExit()
-    let token = String(decoding: outputData, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
-    guard process.terminationStatus == 0, !token.isEmpty else { throw CopilotUsageError.notLoggedIn }
+    let token = String(decoding: output.standardOutput, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+    guard output.exitStatus == 0, !token.isEmpty else { throw CopilotUsageError.notLoggedIn }
     return token
+  }
+}
+
+// Refuses every redirect, so the Authorization header never goes to a host other than api.github.com.
+final class RedirectRefusal: NSObject, URLSessionTaskDelegate {
+  func urlSession(
+    _ session: URLSession,
+    task: URLSessionTask,
+    willPerformHTTPRedirection response: HTTPURLResponse,
+    newRequest request: URLRequest
+  ) async -> URLRequest? {
+    nil
   }
 }
 

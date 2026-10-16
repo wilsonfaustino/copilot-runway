@@ -127,30 +127,29 @@ public enum GitHubOutcomesClient {
     return .searchFailed
   }
 
-  // Blocks while gh runs, so call it off the main thread.
-  public static func fetchOutcomes(organization: String, since cycleStart: Date) throws(GitHubOutcomesError) -> GitHubOutcomes {
+  public static func fetchOutcomes(organization: String, since cycleStart: Date) async throws(GitHubOutcomesError) -> GitHubOutcomes {
     guard isValidOrganization(organization) else { throw GitHubOutcomesError.organizationNotFound }
     guard let ghPath = CopilotUsageClient.ghPaths.first(where: FileManager.default.isExecutableFile(atPath:)) else {
       throw GitHubOutcomesError.ghNotFound
     }
-    func searchCount(_ search: Search) throws(GitHubOutcomesError) -> Int {
-      try count(from: runGh(ghPath: ghPath, arguments: arguments(for: search, organization: organization, since: cycleStart)))
+    func searchCount(_ search: Search) async throws(GitHubOutcomesError) -> Int {
+      try count(from: await runGh(ghPath: ghPath, arguments: arguments(for: search, organization: organization, since: cycleStart)))
     }
     return GitHubOutcomes(
-      prsOpened: try searchCount(.prsOpened),
-      prsReviewed: try reviewedCount(ghPath: ghPath, organization: organization, since: cycleStart),
-      commits: try searchCount(.commits)
+      prsOpened: try await searchCount(.prsOpened),
+      prsReviewed: try await reviewedCount(ghPath: ghPath, organization: organization, since: cycleStart),
+      commits: try await searchCount(.commits)
     )
   }
 
-  static func reviewedCount(ghPath: String, organization: String, since cycleStart: Date) throws(GitHubOutcomesError) -> Int {
-    let login = try login(from: runGh(ghPath: ghPath, arguments: loginArguments))
+  static func reviewedCount(ghPath: String, organization: String, since cycleStart: Date) async throws(GitHubOutcomesError) -> Int {
+    let login = try login(from: await runGh(ghPath: ghPath, arguments: loginArguments))
     var reviewedCount = 0
     var resultCount = 0
     var cursor: String?
     repeat {
       let arguments = reviewedArguments(organization: organization, login: login, since: cycleStart, after: cursor)
-      let page = try reviewedPage(from: runGh(ghPath: ghPath, arguments: arguments), since: cycleStart)
+      let page = try reviewedPage(from: await runGh(ghPath: ghPath, arguments: arguments), since: cycleStart)
       reviewedCount += page.reviewedCount
       resultCount += page.resultCount
       cursor = page.nextCursor
@@ -158,26 +157,24 @@ public enum GitHubOutcomesClient {
     return reviewedCount
   }
 
-  static func runGh(ghPath: String, arguments: [String]) throws(GitHubOutcomesError) -> Data {
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: ghPath)
-    process.arguments = arguments
-    let outputPipe = Pipe()
-    let errorPipe = Pipe()
-    process.standardOutput = outputPipe
-    process.standardError = errorPipe
-    do {
-      try process.run()
+  static func runGh(
+    ghPath: String,
+    arguments: [String],
+    timeout: Duration = GhRunner.defaultTimeout
+  ) async throws(GitHubOutcomesError) -> Data {
+    let output: GhRunner.Output
+    do throws(GhRunner.Failure) {
+      output = try await GhRunner.run(path: ghPath, arguments: arguments, readsStandardError: true, timeout: timeout)
     } catch {
-      throw GitHubOutcomesError.ghNotFound
+      switch error {
+      case .launchFailed: throw GitHubOutcomesError.ghNotFound
+      case .timedOut: throw GitHubOutcomesError.searchFailed
+      }
     }
-    let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-    let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-    process.waitUntilExit()
-    guard process.terminationStatus == 0 else {
-      throw error(exitStatus: process.terminationStatus, standardError: String(decoding: errorData, as: UTF8.self))
+    guard output.exitStatus == 0 else {
+      throw self.error(exitStatus: output.exitStatus, standardError: String(decoding: output.standardError, as: UTF8.self))
     }
-    return outputData
+    return output.standardOutput
   }
 }
 

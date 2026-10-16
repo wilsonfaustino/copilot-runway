@@ -30,6 +30,16 @@ public enum Runway {
     return usage.creditsRemaining / averageDailyBurn(usage: usage, now: now)
   }
 
+  // Floored and never below 0, so overage shows 0 days. The menu bar, popover and dashboard all use it.
+  public static func wholeDaysLeft(usage: CopilotUsage, now: Date) -> Int? {
+    daysLeft(usage: usage, now: now).map { max(Int($0.rounded(.down)), 0) }
+  }
+
+  // Rounded and never below 0, so overage shows 0%. The menu bar, popover and dashboard all use it.
+  public static func wholePercentRemaining(usage: CopilotUsage) -> Int {
+    max(Int(usage.percentRemaining.rounded()), 0)
+  }
+
   // The moment the remaining credits reach 0 at the average daily burn. It can fall after the reset date.
   public static func runOutDate(usage: CopilotUsage, now: Date) -> Date? {
     daysLeft(usage: usage, now: now).map { now.addingTimeInterval($0 * secondsPerDay) }
