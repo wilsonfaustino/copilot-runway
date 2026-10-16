@@ -14,7 +14,8 @@ struct CopilotRunwayApp: App {
           Image(systemName: RunwayGlyph.menuBarSymbolName(error: usageError))
         } else {
           let health = RunwayHealth(usage: usageStore.usage, hasError: false, now: .now)
-          Image(nsImage: RunwayGlyph.menuBarImage(health: health))
+          let remainingFraction = MenuBarTitle.remainingFraction(usage: usageStore.usage)
+          Image(nsImage: RunwayGlyph.menuBarImage(remainingFraction: remainingFraction, health: health))
         }
         Text(usageStore.title)
       }

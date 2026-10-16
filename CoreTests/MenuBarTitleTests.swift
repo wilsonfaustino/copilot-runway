@@ -34,3 +34,36 @@ import Testing
   #expect(MenuBarTitle.title(error: .httpStatus(500)) == "error")
   #expect(MenuBarTitle.title(error: .invalidResponse) == "error")
 }
+
+@Test func remainingFractionIsOneWhenNothingIsUsed() {
+  #expect(MenuBarTitle.remainingFraction(usage: makeUsage(creditsUsed: 0)) == 1)
+}
+
+@Test func remainingFractionIsZeroWhenAllCreditsAreUsed() {
+  #expect(MenuBarTitle.remainingFraction(usage: makeUsage(creditsUsed: 12000)) == 0)
+}
+
+@Test func remainingFractionMatchesPercentRemaining() {
+  #expect(MenuBarTitle.remainingFraction(usage: makeUsage(creditsUsed: 6000)) == 0.5)
+}
+
+@Test func remainingFractionClampsOverLimitUsageToZero() {
+  #expect(MenuBarTitle.remainingFraction(usage: makeUsage(creditsUsed: 13000)) == 0)
+}
+
+@Test func remainingFractionClampsAboveOneHundredPercent() {
+  #expect(MenuBarTitle.remainingFraction(usage: makeUsage(creditsUsed: -600)) == 1)
+}
+
+@Test func remainingFractionIsZeroForZeroLimit() {
+  #expect(MenuBarTitle.remainingFraction(usage: makeUsage(creditsUsed: 0, entitlement: 0)) == 0)
+}
+
+@Test func remainingFractionIsZeroWithoutUsage() {
+  #expect(MenuBarTitle.remainingFraction(usage: nil) == 0)
+}
+
+@Test func remainingFractionIsOneForUnlimitedPlan() {
+  let usage = makeUsage(creditsUsed: 500, entitlement: 0, isUnlimited: true)
+  #expect(MenuBarTitle.remainingFraction(usage: usage) == 1)
+}

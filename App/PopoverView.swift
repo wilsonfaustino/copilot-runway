@@ -6,15 +6,20 @@ struct PopoverView: View {
   @AppStorage("localOnlyNoticeDismissed") private var localOnlyNoticeDismissed = false
   @Environment(\.openWindow) private var openWindow
   @Environment(\.openSettings) private var openSettings
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @State private var openCount = 0
 
   // Stale numbers stay visible after a fetch error, but faded.
   private static let staleOpacity = 0.45
+  private static let entranceOffset: CGFloat = -4
+  private static let entranceDuration = 0.15
 
   var body: some View {
     let now = Date.now
     let health = RunwayHealth(usage: usageStore.usage, hasError: usageStore.usageError != nil, now: now)
+    let entranceSlide = reduceMotion ? 0 : Self.entranceOffset
     VStack(alignment: .leading, spacing: Theme.Spacing.section) {
-      header(health: health)
+      header
       if !localOnlyNoticeDismissed {
         localOnlyBanner
       }
@@ -46,16 +51,33 @@ struct PopoverView: View {
     .padding(Theme.Spacing.panel)
     .frame(width: 360)
     .background(.regularMaterial)
+    // Each trigger change replays the entrance from progress 0, so every open animates.
+    // With Reduce Motion on, the popover only fades.
+    .keyframeAnimator(initialValue: 0.0, trigger: openCount) { content, progress in
+      content
+        .opacity(progress)
+        .offset(y: (1 - progress) * entranceSlide)
+    } keyframes: { _ in
+      LinearKeyframe(1.0, duration: Self.entranceDuration, timingCurve: .easeOut)
+    }
+    // onAppear may fire only once for window-style content, so a key window change counts each open.
+    // onAppear also shows the content if the window name below ever stops matching.
+    .onAppear { openCount += 1 }
+    .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { notification in
+      // Settings and the dashboard also become key, so only the menu bar window counts.
+      if (notification.object as? NSWindow)?.className.contains("MenuBarExtraWindow") == true { openCount += 1 }
+    }
   }
 
-  private func header(health: RunwayHealth) -> some View {
+  // applicationIconImage follows the system icon style (Clear renders a low-contrast grey glass). The asset catalog keeps the full-colour icon.
+  private static let headerIcon: NSImage = Bundle.main.image(forResource: "AppIcon") ?? NSApplication.shared.applicationIconImage
+
+  private var header: some View {
     HStack {
       HStack(spacing: 8) {
-        RunwayGlyph()
-          .stroke(Theme.accent(health), style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-          .frame(width: 16, height: 16)
+        Image(nsImage: Self.headerIcon)
+          .resizable()
           .frame(width: 26, height: 26)
-          .background(Theme.cardFill, in: RoundedRectangle(cornerRadius: 7))
           .accessibilityHidden(true)
         Text("Copilot Runway")
           .font(.system(size: 14, weight: .semibold))
