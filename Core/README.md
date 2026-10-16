@@ -233,6 +233,26 @@ The client runs `gh search` and `gh api graphql` through `Process`, with gh foun
   shown but are not outcomes. With 0 outcomes there is no value. `credits_used` is all Copilot use on
   the account, also outside the organization.
 
+### Copilot code reviews
+
+This count is separate from PRs reviewed. It counts Copilot code reviews on your own PRs.
+
+- What it counts: reviews by `copilot-pull-request-reviewer` with `submittedAt` at or after the cycle
+  start, on PRs where you are the author.
+- The query: `gh api graphql` with search type `ISSUE` and the search `author:@me is:pr updated:>=<cycle start>`.
+  The client follows the pages and reads `reviews(first: 100)` for each PR. There is no organization
+  qualifier, because automatic reviews bill the PR author on any repo. The count does not need the
+  organization setting.
+- Only the reviewer login and `submittedAt` are decoded. No PR title, repo name or review text is kept.
+- The app refreshes this count on the outcomes 30 minute schedule. An error hides the count.
+- The dashboard By model card shows the count as a footnote next to the "not in local sessions" gap.
+- Limits:
+  - It does not count reviews that you requested on other people's PRs. Those reviews also bill you.
+  - It counts reviews on PRs where the organization pays. Those reviews do not use your credits.
+  - It counts reviews, not credits. The API the app can read has no per-feature credit split. Exact
+    credits need the billing `ai_credit/usage` endpoint with the user token scope (rows with model
+    `Code Review model`). The app does not use that endpoint.
+
 ### Limits
 
 - The search API allows 30 requests per minute, and GitHub also has a secondary rate limit.
