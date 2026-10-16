@@ -124,7 +124,12 @@ struct PopoverView: View {
     let usage = usageStore.usage
     let accent = Theme.accent(health)
     return HStack(spacing: 18) {
-      RunwayRing(percentRemaining: usage?.percentRemaining, accent: accent)
+      RunwayRing(
+        remainingFraction: MenuBarTitle.remainingFraction(usage: usage),
+        percentRemaining: usage?.percentRemaining,
+        accent: accent,
+        openCount: openCount
+      )
       VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
         HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
           Text(daysFigure(usage: usage, now: now))
@@ -294,21 +299,45 @@ struct PopoverView: View {
 }
 
 private struct RunwayRing: View {
+  let remainingFraction: Double
   let percentRemaining: Double?
   let accent: Color
+  // Each change replays the sweep from full to the current fraction.
+  let openCount: Int
+
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   private static let diameter: CGFloat = 116
-  private static let lineWidth: CGFloat = 10
+  nonisolated private static let lineWidth: CGFloat = 10
+  private static let sweepDuration = 0.7
+  private static let refreshDuration = 0.25
+
+  // Same shape as the menu bar gauge: a horseshoe that opens at the bottom.
+  nonisolated private static func horseshoe(fraction: Double, color: Color) -> some View {
+    Circle()
+      .trim(from: 0, to: RunwayGlyph.trackSweepDegrees / 360 * fraction)
+      .stroke(color, style: StrokeStyle(lineWidth: Self.lineWidth, lineCap: .round))
+      .rotationEffect(.degrees(RunwayGlyph.trackStartDegrees))
+  }
 
   var body: some View {
-    let fraction = min(max((percentRemaining ?? 0) / 100, 0), 1)
+    let reduceMotion = reduceMotion
+    let remainingFraction = remainingFraction
+    let accent = accent
     ZStack {
-      Circle()
-        .stroke(Color.primary.opacity(0.08), lineWidth: Self.lineWidth)
-      Circle()
-        .trim(from: 0, to: fraction)
-        .stroke(accent, style: StrokeStyle(lineWidth: Self.lineWidth, lineCap: .round))
-        .rotationEffect(.degrees(-90))
+      Self.horseshoe(fraction: 1, color: accent.opacity(RunwayGlyph.trackOpacity))
+      // The animator only supplies the progress value. The arc is built from it, so the clear view is not shown.
+      Color.clear
+        .keyframeAnimator(initialValue: 0.0, trigger: openCount) { _, progress in
+          let sweepProgress = reduceMotion ? 1 : progress
+          let shownFraction = 1 - (1 - remainingFraction) * sweepProgress
+          if shownFraction > 0 {
+            Self.horseshoe(fraction: shownFraction, color: accent)
+          }
+        } keyframes: { _ in
+          LinearKeyframe(1.0, duration: Self.sweepDuration, timingCurve: .easeOut)
+        }
+        .animation(reduceMotion ? nil : .easeOut(duration: Self.refreshDuration), value: remainingFraction)
       VStack(spacing: 0) {
         Text(percentRemaining.map { "\(Int($0.rounded()))%" } ?? "--%")
           .bigFigureStyle()

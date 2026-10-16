@@ -6,6 +6,10 @@ import SwiftUI
 // The gauge is drawn on a 24 unit grid.
 struct RunwayGlyph {
   static let menuBarSize: CGFloat = 16
+  // Shared with the popover ring, so both gauges have the same shape.
+  static let trackStartDegrees = 135.0
+  static let trackSweepDegrees = 270.0
+  static let trackOpacity = 0.28
 
   // Menu bar labels turn SF Symbols into monochrome templates, so the tinted glyph is a non-template NSImage.
   // The drawing handler runs at draw time, so the dynamic accent color follows the menu bar appearance.
@@ -19,22 +23,20 @@ struct RunwayGlyph {
       let unitScale = menuBarSize / 24
       let center = CGPoint(x: rect.midX, y: rect.midY)
       let gaugeRadius = 8.5 * unitScale
-      let trackStartDegrees = 135.0
-      let trackSweepDegrees = 270.0
       func strokeArc(sweepDegrees: Double, color: NSColor) {
         context.setStrokeColor(color.cgColor)
         context.setLineWidth(3 * unitScale)
         context.setLineCap(.round)
         context.addArc(
           center: center, radius: gaugeRadius,
-          startAngle: trackStartDegrees * .pi / 180,
-          endAngle: (trackStartDegrees + sweepDegrees) * .pi / 180,
+          startAngle: Self.trackStartDegrees * .pi / 180,
+          endAngle: (Self.trackStartDegrees + sweepDegrees) * .pi / 180,
           clockwise: false)
         context.strokePath()
       }
-      strokeArc(sweepDegrees: trackSweepDegrees, color: accentColor.withAlphaComponent(0.28))
+      strokeArc(sweepDegrees: Self.trackSweepDegrees, color: accentColor.withAlphaComponent(Self.trackOpacity))
       if remainingFraction > 0 {
-        strokeArc(sweepDegrees: trackSweepDegrees * remainingFraction, color: accentColor)
+        strokeArc(sweepDegrees: Self.trackSweepDegrees * remainingFraction, color: accentColor)
       }
       return true
     }
