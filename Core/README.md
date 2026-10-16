@@ -207,6 +207,17 @@ maps it to one short line. The samples are what gh 2.102 printed in October 2026
 
 After an error the app keeps the last counts and tries again after 30 minutes.
 
+## Release check (`ReleaseCheck`)
+
+- The app requests `https://api.github.com/repos/wilsonfaustino/copilot-runway/releases/latest` with the
+  `Accept: application/vnd.github+json` header. The request has no `Authorization` header and no `gh` call.
+- The check reads `tag_name` and removes a leading `v`.
+- The numeric dot components are compared. Missing components count as 0, so `0.2` equals `0.2.0`.
+  A version that does not parse never counts as an update.
+- The app runs the check on launch and at most once every 24 hours. A failure keeps the last result
+  and shows no error.
+- When a newer version exists, the UI offers "Copy brew command", which copies `brew upgrade --cask copilot-runway`.
+
 ## Prices (`PriceTable`)
 
 Bundled rates, in USD per 1 million tokens, from GitHub's

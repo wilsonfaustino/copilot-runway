@@ -7,6 +7,7 @@ import Observation
 final class UsageStore {
   static let refreshInterval: Duration = .seconds(5 * 60)
   static let organizationKey = "githubOrganization"
+  static let releaseCheckInterval: TimeInterval = 24 * 60 * 60
 
   private(set) var title = MenuBarTitle.placeholder
   private(set) var errorMessage: String?
@@ -24,9 +25,11 @@ final class UsageStore {
   private(set) var outcomes: GitHubOutcomes?
   private(set) var outcomesErrorKind: GitHubOutcomesError?
   var outcomesError: String? { outcomesErrorKind?.message }
+  private(set) var availableVersion: String?
 
   @ObservationIgnored private var pollingTask: Task<Void, Never>?
   @ObservationIgnored private var lastOutcomesFetch: OutcomesFetch?
+  @ObservationIgnored private var lastReleaseCheck: Date?
 
   init() {
     pollingTask = Task { [weak self] in
@@ -45,6 +48,7 @@ final class UsageStore {
   }
 
   func refresh() async {
+    Task { await refreshReleaseIfDue() }
     do {
       let usage = try await CopilotUsageClient.fetchCurrentUsage()
       title = MenuBarTitle.title(usage: usage, now: .now)
@@ -116,6 +120,19 @@ final class UsageStore {
       outcomesErrorKind = nil
     case .failure(let outcomesFailure):
       outcomesErrorKind = outcomesFailure
+    }
+  }
+
+  // Runs on launch and then at most once a day. A failure keeps the last result and shows nothing.
+  private func refreshReleaseIfDue() async {
+    if let lastReleaseCheck, Date.now.timeIntervalSince(lastReleaseCheck) < Self.releaseCheckInterval { return }
+    // Set before the request, so a wake refresh during the request does not start a second one.
+    lastReleaseCheck = .now
+    guard let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String else { return }
+    do {
+      availableVersion = try await ReleaseCheck.fetchNewerVersion(currentVersion: currentVersion)
+    } catch {
+      // Offline, rate limited or no release yet: keep the last result.
     }
   }
 

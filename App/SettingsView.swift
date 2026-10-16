@@ -70,6 +70,18 @@ struct SettingsView: View {
         Text(versionText)
           .foregroundStyle(.secondary)
       }
+      if let availableVersion = usageStore.availableVersion {
+        HStack(spacing: Theme.Spacing.small) {
+          Text("Version \(availableVersion) is available.")
+          Spacer()
+          Button("Copy brew command") {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(ReleaseCheck.upgradeCommand, forType: .string)
+          }
+          .controlSize(.small)
+          .help(ReleaseCheck.upgradeCommand)
+        }
+      }
       LabeledContent("Made by") {
         Link("Wilson Faustino", destination: Self.authorURL)
       }

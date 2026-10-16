@@ -37,6 +37,10 @@ struct PopoverView: View {
           .fixedSize(horizontal: false, vertical: true)
       }
       Divider()
+      // The footer row has no room, so the update line sits just above it.
+      if let availableVersion = usageStore.availableVersion {
+        updateNotice(version: availableVersion)
+      }
       footer
     }
     .padding(Theme.Spacing.panel)
@@ -212,6 +216,21 @@ struct PopoverView: View {
           )
         }
       }
+    }
+  }
+
+  private func updateNotice(version: String) -> some View {
+    HStack(spacing: Theme.Spacing.small) {
+      Text("Version \(version) is available.")
+        .font(.system(size: 12))
+        .foregroundStyle(.secondary)
+      Spacer()
+      Button("Copy brew command") {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(ReleaseCheck.upgradeCommand, forType: .string)
+      }
+      .controlSize(.small)
+      .help(ReleaseCheck.upgradeCommand)
     }
   }
 
