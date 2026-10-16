@@ -5,6 +5,10 @@ public struct SessionCredits: Sendable {
   public let byCategory: [CategoryCredits]
   public let bySource: [SourceCredits]
   public let byDay: [DailyCredits]
+  // Same order as byModel.
+  public let cacheHits: [ModelCacheHit]
+  // One sentence per model with a low cache hit rate, for the dashboard note.
+  public let lowCacheSentences: [String]
   public let warning: String?
 
   // Every aggregate comes from the same turns, so all dashboard totals add up.
@@ -34,11 +38,14 @@ public struct SessionCredits: Sendable {
       warnings.append("Cannot read OpenCode sessions.")
     }
     let records = turns.flatMap(\.records)
+    let cacheHits = CacheHit.byModel(records: records, prices: prices)
     return SessionCredits(
       byModel: Credits.byModel(records: records, prices: prices),
       byCategory: Credits.byCategory(turns: turns, prices: prices),
       bySource: Credits.bySource(turns: turns, prices: prices),
       byDay: Credits.byDay(records: records, prices: prices, cycleStart: cycleStart, now: now, calendar: Runway.utcCalendar),
+      cacheHits: cacheHits,
+      lowCacheSentences: CacheHit.lowSentences(cacheHits: cacheHits, prices: prices),
       warning: warnings.isEmpty ? nil : warnings.joined(separator: " ")
     )
   }

@@ -125,6 +125,36 @@ Messages from models without a price add 0, as in `Credits.byCategory`.
 - `Runway.runOutDate`: now plus `daysLeft` days. It can fall after the reset date.
   `nil` for unlimited plans and when no credits are used.
 
+## Cache hit and run-out notices
+
+### Cache hit (`CacheHit`)
+
+- Rate per model: `cachedInput / promptTokens`, summed over the model's records in the cycle.
+  `promptTokens = input + cachedInput + cacheWrite`. Our `input` excludes cached tokens, so the
+  codeburn formula `cacheRead / (input + cacheRead)` does not apply as is. A model with 0 prompt
+  tokens has no rate.
+- A rate under `CacheHit.lowThreshold` (0.5) is low. Exactly 50% is not low. A low rate that
+  rounds to 50% shows as 49%.
+- `SessionCredits.load` builds `cacheHits` (same order as `byModel`) and `lowCacheSentences`
+  (one per low model, highest credits first) from the same records and prices.
+- The sentence names the standard price ratio `cachedInput / input`: one twentieth, one tenth,
+  one quarter, half, else "P% of the price". A model with no price or no cached price gets the
+  rate sentence only.
+
+### Run-out notices (`RunwayNotice`)
+
+- `RunwayNotice.toSend(usage:now:sentKeys:)` gives the notices to send now, in this order:
+  `used80` (80% of the entitlement used), `short` and `critical` (from `RunwayHealth`, critical
+  only while credits remain), `limitReached` (no credits remain).
+- The key is the kind plus the reset date as an ISO 8601 UTC day, for example
+  `used80-2026-11-01`. The app stores sent keys. A key in `sentKeys` does not fire again, and
+  the next cycle has a new reset date, so each kind fires once per billing cycle.
+- Each kind is independent. A more severe notice does not cancel a less severe one that was
+  never sent. `critical` and `limitReached` never fire together, because one needs credits left
+  and the other needs none.
+- Missing usage, an unlimited plan, and usage from a past cycle (now at or after the reset)
+  give no notices.
+
 ## Quota summary (`QuotaSummary`)
 
 "Copy summary" puts this plain text on the clipboard. It holds only numbers, dates, model ids and

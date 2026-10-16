@@ -19,6 +19,10 @@ public enum RunwayInsight {
     return "At this pace you run out on \(day(runOutDate, locale: locale)), \(daysText) before the reset on \(resetText)."
   }
 
+  public static func limitSentence(usage: CopilotUsage, locale: Locale = .current) -> String {
+    "You used all credits for this cycle. Resets \(day(usage.resetDate, locale: locale))."
+  }
+
   // The highest average burn from now on that still reaches the reset with credits left.
   public static func requiredDailyBurn(usage: CopilotUsage, now: Date) -> Double? {
     guard !usage.isUnlimited, now < usage.resetDate else { return nil }
