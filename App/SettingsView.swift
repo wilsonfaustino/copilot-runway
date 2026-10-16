@@ -27,9 +27,16 @@ struct SettingsView: View {
     Form {
       Section {
         // Saved on Return or when the window closes, not on each key, because every save runs GitHub searches.
-        TextField("GitHub organization", text: $organizationText)
+        TextField("GitHub organization", text: $organizationText, prompt: Text("your-org"))
+          .textFieldStyle(.roundedBorder)
           .onSubmit { usageStore.setOrganization(organizationText) }
         statusRow
+      } header: {
+        Text("Outcomes")
+      } footer: {
+        Text("Optional. Counts your PRs, reviews and commits in this organization through gh.")
+          .captionStyle()
+          .padding(.top, Theme.Spacing.small)
       }
       Section {
         LabeledContent("GitHub account") {
@@ -90,6 +97,11 @@ struct SettingsView: View {
       Text(status.text)
         .font(.callout)
         .foregroundStyle(.secondary)
+      if status == .unsaved {
+        Spacer()
+        Button("Save") { usageStore.setOrganization(organizationText) }
+          .controlSize(.small)
+      }
     }
   }
 }

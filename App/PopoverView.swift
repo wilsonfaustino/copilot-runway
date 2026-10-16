@@ -156,11 +156,30 @@ struct PopoverView: View {
         value: usageStore.averageDailyBurn.map(credits) ?? "--",
         detail: "credits/day"
       )
-      StatCard(
-        title: "Per outcome",
-        value: creditsPerOutcome.map(credits) ?? "-",
-        detail: usageStore.organization == nil ? "no org set" : "credits/outcome"
-      )
+      perOutcomeCard
+    }
+  }
+
+  // Without an organization the tile opens Settings, where the organization is set.
+  @ViewBuilder
+  private var perOutcomeCard: some View {
+    let card = StatCard(
+      title: "Per outcome",
+      value: creditsPerOutcome.map(credits) ?? "-",
+      detail: usageStore.organization == nil ? "no org set" : "credits/outcome"
+    )
+    if usageStore.organization == nil {
+      Button {
+        openSettings()
+        NSApplication.shared.activate()
+      } label: {
+        card
+      }
+      .buttonStyle(.plain)
+      .help("Set a GitHub organization in Settings")
+      .accessibilityHint("Opens Settings")
+    } else {
+      card
     }
   }
 

@@ -33,7 +33,7 @@ enum SettingsOrganizationStatus: Equatable {
   var text: String {
     switch self {
     case .notSet: "Not set. Add an organization to count your PRs, reviews and commits."
-    case .unsaved: "Press Return to save."
+    case .unsaved: "Press Return or click Save."
     case .loading: "Checking the organization through gh."
     case .found: "Found. Counts your PRs, reviews and commits here through gh."
     case .notFound: "Not found, or you have no access to it."

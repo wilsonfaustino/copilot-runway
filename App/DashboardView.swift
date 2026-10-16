@@ -12,6 +12,7 @@ struct DashboardView: View {
   let usageStore: UsageStore
   @State private var selectedDayLabel: String?
   @State private var summaryCopied = false
+  @Environment(\.openSettings) private var openSettings
 
   var body: some View {
     let health = RunwayHealth(usage: usageStore.usage, hasError: usageStore.usageError != nil, now: .now)
@@ -194,6 +195,12 @@ struct DashboardView: View {
           .font(.system(size: 12))
           .lineLimit(3)
           .fixedSize(horizontal: false, vertical: true)
+        Button("Open Settings") {
+          openSettings()
+          NSApplication.shared.activate()
+        }
+        .buttonStyle(.link)
+        .controlSize(.small)
       } else {
         if let outcomes = usageStore.outcomes {
           Text(outcomes.creditsPerOutcome(creditsUsed: usage.creditsUsed).map { credits($0) } ?? "No PRs yet")
