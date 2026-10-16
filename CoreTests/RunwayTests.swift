@@ -94,3 +94,7 @@ func makeUsage(creditsUsed: Double, entitlement: Double = 12000, isUnlimited: Bo
   // 12500 of 12000 used -> -4.17% before the clamp.
   #expect(Runway.wholePercentRemaining(usage: makeUsage(creditsUsed: 12500)) == 0)
 }
+
+@Test func lastCycleDayIsTheDayBeforeReset() {
+  #expect(Runway.lastCycleDay(resetDate: utcDate("2026-11-01T00:00:00Z")) == utcDate("2026-10-31T00:00:00Z"))
+}

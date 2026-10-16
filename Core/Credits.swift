@@ -81,9 +81,7 @@ public enum Credits {
     let categoryCredits = turnsByCategory.map { category, categoryTurns in
       CategoryCredits(
         category: category,
-        credits: categoryTurns.flatMap(\.records).reduce(0) { total, record in
-          total + (prices[record.model].map { credits(for: record.tokens, price: $0) } ?? 0)
-        }
+        credits: pricedTotal(records: categoryTurns.flatMap(\.records), prices: prices)
       )
     }
     return categoryCredits.sorted { left, right in
@@ -121,6 +119,17 @@ public enum Credits {
       day = calendar.date(byAdding: .day, value: 1, to: day)!
     }
     return dailyCredits
+  }
+
+  // Whole credits for display, for example "1,234" in en_US.
+  public static func formatted(_ credits: Double, locale: Locale = .current) -> String {
+    credits.formatted(.number.precision(.fractionLength(0)).locale(locale))
+  }
+
+  // The rounded percent that part is of total. 0 when total is 0 or less.
+  public static func sharePercent(_ part: Double, of total: Double) -> Int {
+    guard total > 0 else { return 0 }
+    return Int((part / total * 100).rounded())
   }
 
   static func pricedTotal(records: [UsageRecord], prices: [String: ModelPrice]) -> Double {

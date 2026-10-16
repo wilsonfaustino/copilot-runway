@@ -12,7 +12,7 @@ func categoriesByHour(_ turns: [Turn]) -> [Int: TaskCategory] {
 }
 
 func piFixtureCategories() -> [Int: TaskCategory] {
-  categoriesByHour(PiSessionParser.turns(inDirectory: turnFixturesDirectory.appending(path: "pi-categories"), since: fixtureCycleStart))
+  categoriesByHour(PiSessionParser.turns(inDirectory: turnFixturesDirectory.appending(path: "pi-categories"), since: fixtureCycleStart).turns)
 }
 
 func openCodeFixtureCategories() throws -> [Int: TaskCategory] {
@@ -95,7 +95,7 @@ func openCodeFixtureCategories() throws -> [Int: TaskCategory] {
 }
 
 @Test func creditsByCategoryAddUpToCreditsByModel() {
-  let turns = PiSessionParser.turns(inDirectory: turnFixturesDirectory.appending(path: "pi-categories"), since: fixtureCycleStart)
+  let turns = PiSessionParser.turns(inDirectory: turnFixturesDirectory.appending(path: "pi-categories"), since: fixtureCycleStart).turns
   let byCategory = Credits.byCategory(turns: turns, prices: PriceTable.bundled)
   let byModel = Credits.byModel(records: turns.flatMap(\.records), prices: PriceTable.bundled)
   #expect(isClose(byCategory.reduce(0) { $0 + $1.credits }, byModel.compactMap(\.credits).reduce(0, +)))

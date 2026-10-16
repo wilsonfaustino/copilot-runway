@@ -1,0 +1,2 @@
+{"kind":"session","version":4,"id":"session-renamed","timestamp":"2026-10-05T11:00:00.000Z"}
+{"kind":"message","message":{"role":"assistant","provider":"github-copilot","model":"gpt-6-luna","responseId":"resp_renamed","usage":{"input":10,"output":20},"timestamp":1791198000000}}

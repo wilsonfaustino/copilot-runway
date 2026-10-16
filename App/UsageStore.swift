@@ -14,7 +14,6 @@ final class UsageStore {
   private(set) var usageError: CopilotUsageError?
   private(set) var lastRefresh: Date?
   private(set) var usage: CopilotUsage?
-  private(set) var averageDailyBurn: Double?
   private(set) var modelCredits: [ModelCredits] = []
   private(set) var categoryCredits: [CategoryCredits] = []
   private(set) var sourceCredits: [SourceCredits] = []
@@ -61,7 +60,6 @@ final class UsageStore {
       usageError = nil
       lastRefresh = .now
       self.usage = usage
-      averageDailyBurn = Runway.averageDailyBurn(usage: usage, now: .now)
     } catch {
       title = MenuBarTitle.title(error: error)
       errorMessage = error.message
@@ -72,7 +70,7 @@ final class UsageStore {
     Task { await refreshOutcomesIfDue() }
     let cycleStart = Runway.cycleStart(resetDate: usage.resetDate)
     let sessionCredits = await Task.detached(priority: .utility) {
-      Self.loadSessionCredits(since: cycleStart, now: .now)
+      SessionCredits.load(since: cycleStart, now: .now)
     }.value
     modelCredits = sessionCredits.byModel
     categoryCredits = sessionCredits.byCategory
@@ -137,39 +135,5 @@ final class UsageStore {
     } catch {
       // Offline, rate limited or no release yet: keep the last result.
     }
-  }
-
-  struct SessionCredits: Sendable {
-    let byModel: [ModelCredits]
-    let byCategory: [CategoryCredits]
-    let bySource: [SourceCredits]
-    let byDay: [DailyCredits]
-    let warning: String?
-  }
-
-  // Every aggregate comes from the same turns, so all dashboard totals add up.
-  nonisolated static func loadSessionCredits(since cycleStart: Date, now: Date) -> SessionCredits {
-    var warnings: [String] = []
-    let prices: [String: ModelPrice]
-    do {
-      prices = try PriceTable.load()
-    } catch {
-      prices = PriceTable.bundled
-      warnings.append("prices.json is invalid. Using bundled prices.")
-    }
-    var turns = PiSessionParser.turns(since: cycleStart)
-    do {
-      turns += try OpenCodeSessionParser.turns(since: cycleStart)
-    } catch {
-      warnings.append("Cannot read OpenCode sessions.")
-    }
-    let records = turns.flatMap(\.records)
-    return SessionCredits(
-      byModel: Credits.byModel(records: records, prices: prices),
-      byCategory: Credits.byCategory(turns: turns, prices: prices),
-      bySource: Credits.bySource(turns: turns, prices: prices),
-      byDay: Credits.byDay(records: records, prices: prices, cycleStart: cycleStart, now: now, calendar: Runway.utcCalendar),
-      warning: warnings.isEmpty ? nil : warnings.joined(separator: " ")
-    )
   }
 }

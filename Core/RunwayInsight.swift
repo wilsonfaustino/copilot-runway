@@ -38,7 +38,51 @@ public enum RunwayInsight {
   public static func topCategoryShare(categoryCredits: [CategoryCredits]) -> (category: TaskCategory, percent: Int)? {
     let total = categoryCredits.reduce(0) { $0 + $1.credits }
     guard total > 0, let top = categoryCredits.max(by: { $0.credits < $1.credits }) else { return nil }
-    return (top.category, Int((top.credits / total * 100).rounded()))
+    return (top.category, Credits.sharePercent(top.credits, of: total))
+  }
+
+  // The dashboard banner. The headline names the state, the detail adds what to do next and the top category.
+  // A past cycle with credits used has no run-out sentence, so it falls through to the reset sentence.
+  public static func banner(
+    usage: CopilotUsage,
+    errorMessage: String?,
+    categoryCredits: [CategoryCredits],
+    now: Date,
+    locale: Locale = .current
+  ) -> (headline: String, detail: String) {
+    var detailSentences: [String] = []
+    let headline: String
+    if let errorMessage {
+      headline = errorMessage
+      detailSentences.append("The numbers below are from the last good refresh.")
+    } else if usage.isUnlimited {
+      headline = "Unlimited plan."
+      detailSentences.append("\(Credits.formatted(usage.creditsUsed, locale: locale)) credits used this cycle.")
+    } else if let runOutSentence = runOutSentence(usage: usage, now: now, locale: locale) {
+      headline = runOutSentence
+      // Rounded down, so the burn stays under the target. A target of 0 is not a useful instruction.
+      let targetBurn = requiredDailyBurn(usage: usage, now: now).map { Int($0.rounded(.down)) } ?? 0
+      if let runOutDate = Runway.runOutDate(usage: usage, now: now), runOutDate < usage.resetDate, targetBurn > 0 {
+        detailSentences.append(
+          "To reach \(day(usage.resetDate, locale: locale)), keep the burn under \(targetBurn.formatted(.number.locale(locale))) credits/day."
+        )
+      }
+    } else {
+      headline = "No credits used yet this cycle."
+      detailSentences.append("Resets \(day(usage.resetDate, locale: locale)).")
+    }
+    if let topShare = topCategoryShare(categoryCredits: categoryCredits) {
+      detailSentences.append("\(topShare.category.displayName) turns use \(topShare.percent)% of local credits.")
+    }
+    return (headline, detailSentences.joined(separator: " "))
+  }
+
+  // The one sentence under the popover runway figure. nil when there is nothing useful to say.
+  public static func popoverSentence(usage: CopilotUsage, now: Date, locale: Locale = .current) -> String? {
+    if let runOutSentence = runOutSentence(usage: usage, now: now, locale: locale) { return runOutSentence }
+    if usage.isUnlimited { return "Unlimited plan. Credits do not run out." }
+    if usage.creditsUsed == 0 { return "No credits used yet this cycle." }
+    return nil
   }
 
   // The billing cycle resets at midnight UTC, so dates show the UTC day.

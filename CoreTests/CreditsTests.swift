@@ -124,3 +124,13 @@ let millionSolInputTokens = TokenUsage(input: 1_000_000, cachedInput: 0, cacheWr
   ])
   #expect(localDays.map(\.credits) == [0, 0, 800, 0])
 }
+
+@Test func sharePercentRoundsAndIsZeroWithoutTotal() {
+  #expect(Credits.sharePercent(1, of: 3) == 33)
+  #expect(Credits.sharePercent(2, of: 3) == 67)
+  #expect(Credits.sharePercent(5, of: 0) == 0)
+}
+
+@Test func formattedCreditsHaveNoFraction() {
+  #expect(Credits.formatted(1234.6, locale: Locale(identifier: "en_US")) == "1,235")
+}

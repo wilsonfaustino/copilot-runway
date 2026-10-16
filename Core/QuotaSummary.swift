@@ -13,7 +13,7 @@ public enum QuotaSummary {
     outcomes: GitHubOutcomes? = nil
   ) -> String {
     let cycleStart = Runway.cycleStart(resetDate: usage.resetDate)
-    let lastCycleDay = Runway.utcCalendar.date(byAdding: .day, value: -1, to: usage.resetDate)!
+    let lastCycleDay = Runway.lastCycleDay(resetDate: usage.resetDate)
     var lines = ["GitHub Copilot AI credits, cycle \(day(cycleStart)) to \(day(lastCycleDay)) (UTC)"]
     if usage.isUnlimited {
       lines.append("Used: \(number(usage.creditsUsed)) credits (unlimited plan)")
@@ -62,7 +62,7 @@ public enum QuotaSummary {
   // Expects entries sorted by credits, highest first, as Credits returns them.
   static func topLines(_ entries: [(name: String, credits: Double)], total: Double) -> [String] {
     entries.filter { $0.credits > 0 }.prefix(topCount).map { entry in
-      "- \(entry.name): \(number(entry.credits)) credits (\(Int((entry.credits / total * 100).rounded()))%)"
+      "- \(entry.name): \(number(entry.credits)) credits (\(Credits.sharePercent(entry.credits, of: total))%)"
     }
   }
 

@@ -10,7 +10,6 @@ struct DashboardView: View {
   static let dayLabelStyle = Date.FormatStyle(timeZone: TimeZone(identifier: "UTC")!).month(.abbreviated).day()
 
   let usageStore: UsageStore
-  @State private var selectedDayLabel: String?
   @State private var summaryCopied = false
   @Environment(\.openSettings) private var openSettings
 
@@ -24,14 +23,18 @@ struct DashboardView: View {
             runwayCard(usage: usage, health: health)
             remainingCard(usage: usage, health: health)
             kpiCard("Average daily burn") {
-              Text(credits(Runway.averageDailyBurn(usage: usage, now: .now)))
+              Text(Credits.formatted(Runway.averageDailyBurn(usage: usage, now: .now)))
                 .bigFigureStyle(size: 34)
               kpiDetail("credits per day")
             }
             outcomesCard(usage: usage)
           }
           .fixedSize(horizontal: false, vertical: true)
-          dailyBurnCard(usage: usage, health: health)
+          DailyBurnChart(
+            dailyCredits: usageStore.dailyCredits,
+            averageDailyBurn: Runway.averageDailyBurn(usage: usage, now: .now),
+            health: health
+          )
           HStack(alignment: .top, spacing: Theme.Spacing.regular) {
             shareCard(title: "By task", entries: usageStore.categoryCredits.map { ($0.category.displayName, $0.credits) })
             modelCard(usage: usage)
@@ -71,7 +74,7 @@ struct DashboardView: View {
   private var cycleSubtitle: String {
     guard let usage = usageStore.usage else { return "" }
     let cycleStart = Runway.cycleStart(resetDate: usage.resetDate)
-    let lastCycleDay = Runway.utcCalendar.date(byAdding: .day, value: -1, to: usage.resetDate)!
+    let lastCycleDay = Runway.lastCycleDay(resetDate: usage.resetDate)
     return "Cycle \(day(cycleStart)) to \(day(lastCycleDay)) · resets \(day(usage.resetDate))"
   }
 
@@ -79,7 +82,9 @@ struct DashboardView: View {
 
   private func insightBanner(usage: CopilotUsage, health: RunwayHealth) -> some View {
     let accent = Theme.accent(health)
-    let (headline, detail) = bannerText(usage: usage)
+    let (headline, detail) = RunwayInsight.banner(
+      usage: usage, errorMessage: usageStore.errorMessage, categoryCredits: usageStore.categoryCredits, now: .now
+    )
     return HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.regular) {
       Image(systemName: bannerSymbolName(health: health))
         .font(.system(size: 15, weight: .semibold))
@@ -94,32 +99,6 @@ struct DashboardView: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(accent.opacity(0.10), in: RoundedRectangle(cornerRadius: Theme.Radius.card))
     .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card).strokeBorder(accent.opacity(0.28)))
-  }
-
-  private func bannerText(usage: CopilotUsage) -> (headline: String, detail: String) {
-    var detailSentences: [String] = []
-    let headline: String
-    if let errorMessage = usageStore.errorMessage {
-      headline = errorMessage
-      detailSentences.append("The numbers below are from the last good refresh.")
-    } else if usage.isUnlimited {
-      headline = "Unlimited plan."
-      detailSentences.append("\(credits(usage.creditsUsed)) credits used this cycle.")
-    } else if let runOutSentence = RunwayInsight.runOutSentence(usage: usage, now: .now) {
-      headline = runOutSentence
-      // Rounded down, so the burn stays under the target. A target of 0 is not a useful instruction.
-      let targetBurn = RunwayInsight.requiredDailyBurn(usage: usage, now: .now).map { Int($0.rounded(.down)) } ?? 0
-      if let runOutDate = Runway.runOutDate(usage: usage, now: .now), runOutDate < usage.resetDate, targetBurn > 0 {
-        detailSentences.append("To reach \(day(usage.resetDate)), keep the burn under \(targetBurn.formatted()) credits/day.")
-      }
-    } else {
-      headline = "No credits used yet this cycle."
-      detailSentences.append("Resets \(day(usage.resetDate)).")
-    }
-    if let topShare = RunwayInsight.topCategoryShare(categoryCredits: usageStore.categoryCredits) {
-      detailSentences.append("\(topShare.category.displayName) turns use \(topShare.percent)% of local credits.")
-    }
-    return (headline, detailSentences.joined(separator: " "))
   }
 
   private func bannerSymbolName(health: RunwayHealth) -> String {
@@ -176,11 +155,11 @@ struct DashboardView: View {
     kpiCard("Remaining") {
       if usage.isUnlimited {
         Text("Unlimited").bigFigureStyle(size: 34)
-        kpiDetail("\(credits(usage.creditsUsed)) used")
+        kpiDetail("\(Credits.formatted(usage.creditsUsed)) used")
       } else {
         Text("\(Runway.wholePercentRemaining(usage: usage))%").bigFigureStyle(size: 34)
         shareBar(fraction: usage.percentRemaining / 100, color: Theme.accent(health))
-        kpiDetail("\(credits(usage.creditsUsed)) of \(credits(usage.entitlement)) used")
+        kpiDetail("\(Credits.formatted(usage.creditsUsed)) of \(Credits.formatted(usage.entitlement)) used")
       }
     }
   }
@@ -201,7 +180,7 @@ struct DashboardView: View {
         .controlSize(.small)
       } else {
         if let outcomes = usageStore.outcomes {
-          Text(outcomes.creditsPerOutcome(creditsUsed: usage.creditsUsed).map { credits($0) } ?? "No PRs yet")
+          Text(outcomes.creditsPerOutcome(creditsUsed: usage.creditsUsed).map { Credits.formatted($0) } ?? "No PRs yet")
             .bigFigureStyle(size: 34)
           kpiDetail(
             "\(GitHubOutcomes.countText(outcomes.prsOpened)) PRs opened · \(GitHubOutcomes.countText(outcomes.prsReviewed)) reviewed"
@@ -225,76 +204,6 @@ struct DashboardView: View {
     }
   }
 
-  // MARK: Daily burn
-
-  private func dailyBurnCard(usage: CopilotUsage, health: RunwayHealth) -> some View {
-    let localTotal = usageStore.dailyCredits.reduce(0) { $0 + $1.credits }
-    let averageDailyBurn = Runway.averageDailyBurn(usage: usage, now: .now)
-    // A healthy rule in the bar blue would blend into the bars.
-    let averageColor = health == .healthy ? Color.secondary : Theme.accent(health)
-    let dayLabels = usageStore.dailyCredits.map { $0.day.formatted(Self.dayLabelStyle) }
-    let selectedDay = usageStore.dailyCredits.first { $0.day.formatted(Self.dayLabelStyle) == selectedDayLabel }
-    return VStack(alignment: .leading, spacing: 12) {
-      HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.regular) {
-        Text("Daily burn")
-          .font(.system(size: 14, weight: .semibold))
-        Text("Days are UTC.")
-          .captionStyle()
-        Spacer()
-        HStack(spacing: Theme.Spacing.panel) {
-          HStack(spacing: Theme.Spacing.small) {
-            RoundedRectangle(cornerRadius: 2)
-              .fill(Self.barColor)
-              .frame(width: 10, height: 10)
-            Text("Local sessions, \(credits(localTotal)) credits")
-          }
-          HStack(spacing: Theme.Spacing.small) {
-            Path { path in
-              path.move(to: CGPoint(x: 0, y: 1))
-              path.addLine(to: CGPoint(x: 14, y: 1))
-            }
-            .stroke(averageColor, style: StrokeStyle(lineWidth: 2, dash: [3, 2]))
-            .frame(width: 14, height: 2)
-            Text("GitHub average, \(credits(averageDailyBurn))/day")
-          }
-        }
-        .captionStyle()
-        .monospacedDigit()
-      }
-      Chart {
-        ForEach(usageStore.dailyCredits, id: \.day) { dailyCredits in
-          BarMark(
-            x: .value("Day", dailyCredits.day.formatted(Self.dayLabelStyle)),
-            y: .value("Credits", dailyCredits.credits)
-          )
-          .foregroundStyle(Self.barColor)
-          .cornerRadius(4)
-        }
-        RuleMark(y: .value("GitHub average", averageDailyBurn))
-          .foregroundStyle(averageColor)
-          .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 4]))
-        if let selectedDay {
-          RuleMark(x: .value("Day", selectedDay.day.formatted(Self.dayLabelStyle)))
-            .foregroundStyle(.secondary.opacity(0.4))
-            .annotation(position: .top, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
-              Text("\(selectedDay.day.formatted(Self.dayLabelStyle)): \(credits(selectedDay.credits)) credits")
-                .font(.caption)
-                .monospacedDigit()
-                .padding(4)
-                .background(.background, in: RoundedRectangle(cornerRadius: 4))
-            }
-        }
-      }
-      .chartXSelection(value: $selectedDayLabel)
-      .chartXAxis {
-        // Every fifth day, so the labels do not collide.
-        AxisMarks(values: dayLabels.enumerated().filter { $0.offset % 5 == 0 }.map(\.element))
-      }
-      .frame(height: 200)
-    }
-    .cardStyle(padding: Theme.Spacing.panel)
-  }
-
   // MARK: Share cards
 
   private func modelCard(usage: CopilotUsage) -> some View {
@@ -316,7 +225,7 @@ struct DashboardView: View {
   private func agentCard(usage: CopilotUsage) -> some View {
     let sourceCredits = usageStore.sourceCredits
     let creditsPerDay = sourceCredits.map { source in
-      "\(source.source.displayName): \(credits(Runway.averageDailyBurn(credits: source.credits, resetDate: usage.resetDate, now: .now))) credits/day."
+      "\(source.source.displayName): \(Credits.formatted(Runway.averageDailyBurn(credits: source.credits, resetDate: usage.resetDate, now: .now))) credits/day."
     }
     return shareCard(
       title: "By agent",
@@ -336,7 +245,7 @@ struct DashboardView: View {
             HStack {
               Text(entry.name)
               Spacer()
-              Text("\(credits(entry.credits)) · \(Int((entry.credits / total * 100).rounded()))%")
+              Text("\(Credits.formatted(entry.credits)) · \(Credits.sharePercent(entry.credits, of: total))%")
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
             }
@@ -376,8 +285,79 @@ struct DashboardView: View {
   private func day(_ date: Date) -> String {
     date.formatted(Self.dayLabelStyle)
   }
+}
 
-  private func credits(_ value: Double) -> String {
-    value.formatted(.number.precision(.fractionLength(0)))
+// Its own view, so a hover change re-renders only the chart and not the whole dashboard.
+private struct DailyBurnChart: View {
+  let dailyCredits: [DailyCredits]
+  let averageDailyBurn: Double
+  let health: RunwayHealth
+  @State private var selectedDayLabel: String?
+
+  var body: some View {
+    let localTotal = dailyCredits.reduce(0) { $0 + $1.credits }
+    // A healthy rule in the bar blue would blend into the bars.
+    let averageColor = health == .healthy ? Color.secondary : Theme.accent(health)
+    let dayLabels = dailyCredits.map { $0.day.formatted(DashboardView.dayLabelStyle) }
+    let selectedDay = dailyCredits.first { $0.day.formatted(DashboardView.dayLabelStyle) == selectedDayLabel }
+    VStack(alignment: .leading, spacing: 12) {
+      HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.regular) {
+        Text("Daily burn")
+          .font(.system(size: 14, weight: .semibold))
+        Text("Days are UTC.")
+          .captionStyle()
+        Spacer()
+        HStack(spacing: Theme.Spacing.panel) {
+          HStack(spacing: Theme.Spacing.small) {
+            RoundedRectangle(cornerRadius: 2)
+              .fill(DashboardView.barColor)
+              .frame(width: 10, height: 10)
+            Text("Local sessions, \(Credits.formatted(localTotal)) credits")
+          }
+          HStack(spacing: Theme.Spacing.small) {
+            Path { path in
+              path.move(to: CGPoint(x: 0, y: 1))
+              path.addLine(to: CGPoint(x: 14, y: 1))
+            }
+            .stroke(averageColor, style: StrokeStyle(lineWidth: 2, dash: [3, 2]))
+            .frame(width: 14, height: 2)
+            Text("GitHub average, \(Credits.formatted(averageDailyBurn))/day")
+          }
+        }
+        .captionStyle()
+        .monospacedDigit()
+      }
+      Chart {
+        ForEach(dailyCredits, id: \.day) { dayCredits in
+          BarMark(
+            x: .value("Day", dayCredits.day.formatted(DashboardView.dayLabelStyle)),
+            y: .value("Credits", dayCredits.credits)
+          )
+          .foregroundStyle(DashboardView.barColor)
+          .cornerRadius(4)
+        }
+        RuleMark(y: .value("GitHub average", averageDailyBurn))
+          .foregroundStyle(averageColor)
+          .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 4]))
+        if let selectedDay {
+          RuleMark(x: .value("Day", selectedDay.day.formatted(DashboardView.dayLabelStyle)))
+            .foregroundStyle(.secondary.opacity(0.4))
+            .annotation(position: .top, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+              Text("\(selectedDay.day.formatted(DashboardView.dayLabelStyle)): \(Credits.formatted(selectedDay.credits)) credits")
+                .font(.caption)
+                .monospacedDigit()
+                .padding(4)
+                .background(.background, in: RoundedRectangle(cornerRadius: 4))
+            }
+        }
+      }
+      .chartXSelection(value: $selectedDayLabel)
+      .chartXAxis {
+        // Every fifth day, so the labels do not collide.
+        AxisMarks(values: dayLabels.enumerated().filter { $0.offset % 5 == 0 }.map(\.element))
+      }
+      .frame(height: 200)
+    }
+    .cardStyle(padding: Theme.Spacing.panel)
   }
 }

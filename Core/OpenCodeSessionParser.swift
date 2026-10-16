@@ -15,31 +15,8 @@ public enum OpenCodeSessionParser {
   static let busyTimeoutMilliseconds: Int32 = 2_000
   static let copilotProvider = "github-copilot"
 
-  // OpenCode 1.x table. 2.x stops writing it but keeps the old rows.
-  static let legacyTable = "message"
-  static let legacyQuery = """
-    SELECT id, time_created, json_extract(data, '$.modelID'),
-      json_extract(data, '$.tokens.input'), json_extract(data, '$.tokens.output'),
-      json_extract(data, '$.tokens.reasoning'), json_extract(data, '$.tokens.cache.read'),
-      json_extract(data, '$.tokens.cache.write')
-    FROM message
-    WHERE time_created >= ?1
-      AND json_extract(data, '$.role') = 'assistant'
-      AND json_extract(data, '$.providerID') = 'github-copilot'
-    """
-
   // OpenCode 2.x table.
   static let currentTable = "session_message"
-  static let currentQuery = """
-    SELECT id, time_created, json_extract(data, '$.model.id'),
-      json_extract(data, '$.tokens.input'), json_extract(data, '$.tokens.output'),
-      json_extract(data, '$.tokens.reasoning'), json_extract(data, '$.tokens.cache.read'),
-      json_extract(data, '$.tokens.cache.write')
-    FROM session_message
-    WHERE time_created >= ?1
-      AND type = 'assistant'
-      AND json_extract(data, '$.model.providerID') = 'github-copilot'
-    """
 
   // OpenCode 2.x rows that start or continue a turn, in session order.
   static let turnQuery = """
@@ -69,10 +46,6 @@ public enum OpenCodeSessionParser {
     ORDER BY message.id, tool.key, patchFile.key
     """
 
-  public static func records(inDirectory directory: URL = dataDirectory, since cycleStart: Date) throws -> [UsageRecord] {
-    try databaseURLs(in: directory).flatMap { try records(inDatabaseAt: $0, since: cycleStart) }
-  }
-
   // Only turns with at least one Copilot record in the cycle. Reads the 2.x table only, see Core/README.md.
   public static func turns(inDirectory directory: URL = dataDirectory, since cycleStart: Date) throws -> [Turn] {
     try databaseURLs(in: directory).flatMap { try turns(inDatabaseAt: $0, since: cycleStart) }
@@ -83,24 +56,6 @@ public enum OpenCodeSessionParser {
     return fileNames
       .filter { $0.hasPrefix("opencode") && $0.hasSuffix(".db") }
       .map { directory.appending(path: $0) }
-  }
-
-  // 2.x copies 1.x messages into session_message under the same id, so read legacy rows first
-  // and add only the current rows with a new id.
-  static func records(inDatabaseAt databaseURL: URL, since cycleStart: Date) throws -> [UsageRecord] {
-    let database = try openDatabase(at: databaseURL)
-    defer { sqlite3_close(database) }
-    let cycleStartMilliseconds = Int64(cycleStart.timeIntervalSince1970 * 1000)
-    var seenMessageIds = Set<String>()
-    var records: [UsageRecord] = []
-    for (table, query) in [(legacyTable, legacyQuery), (currentTable, currentQuery)] {
-      guard try tableExists(table, in: database) else { continue }
-      for (messageId, record) in try rows(query: query, in: database, since: cycleStartMilliseconds)
-      where seenMessageIds.insert(messageId).inserted {
-        records.append(record)
-      }
-    }
-    return records
   }
 
   static func turns(inDatabaseAt databaseURL: URL, since cycleStart: Date) throws -> [Turn] {
@@ -193,15 +148,5 @@ public enum OpenCodeSessionParser {
     }
     defer { sqlite3_finalize(statement) }
     return sqlite3_step(statement) == SQLITE_ROW
-  }
-
-  private static func rows(query: String, in database: OpaquePointer?, since cycleStartMilliseconds: Int64) throws -> [(String, UsageRecord)] {
-    var rows: [(String, UsageRecord)] = []
-    try forEachRow(query: query, in: database, since: cycleStartMilliseconds) { statement in
-      guard let messageId = text(statement, 0), let model = text(statement, 2) else { return }
-      let timestamp = Date(timeIntervalSince1970: Double(sqlite3_column_int64(statement, 1)) / 1000)
-      rows.append((messageId, UsageRecord(model: model, timestamp: timestamp, tokens: tokens(statement, firstColumn: 3))))
-    }
-    return rows
   }
 }

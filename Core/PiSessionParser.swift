@@ -6,39 +6,45 @@ public enum PiSessionParser {
     .appending(path: ".pi/agent/sessions")
   static let copilotProvider = "github-copilot"
 
-  public static func records(inDirectory directory: URL = sessionsDirectory, since cycleStart: Date) -> [UsageRecord] {
-    turns(inDirectory: directory, since: cycleStart).flatMap(\.records)
-  }
-
   // Only turns with at least one Copilot record in the cycle, so every record is in exactly one turn.
-  public static func turns(inDirectory directory: URL = sessionsDirectory, since cycleStart: Date) -> [Turn] {
+  // hasUndecodableFile is true when a file has lines but none of them decode, for example after a format change.
+  public static func turns(
+    inDirectory directory: URL = sessionsDirectory,
+    since cycleStart: Date
+  ) -> (turns: [Turn], hasUndecodableFile: Bool) {
     guard let enumerator = FileManager.default.enumerator(
       at: directory,
       includingPropertiesForKeys: [.contentModificationDateKey]
-    ) else { return [] }
+    ) else { return ([], false) }
     var seenResponseIds = Set<String>()
     var allTurns: [Turn] = []
+    var hasUndecodableFile = false
     for case let fileURL as URL in enumerator where fileURL.pathExtension == "jsonl" {
       let modificationDate = (try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
       // A file last written before the cycle cannot hold messages from this cycle.
       if let modificationDate, modificationDate < cycleStart { continue }
       guard let fileData = try? Data(contentsOf: fileURL) else { continue }
-      allTurns += turns(fromJSONL: fileData, since: cycleStart, seenResponseIds: &seenResponseIds)
+      guard let fileTurns = turns(fromJSONL: fileData, since: cycleStart, seenResponseIds: &seenResponseIds) else {
+        hasUndecodableFile = true
+        continue
+      }
+      allTurns += fileTurns
     }
-    return allTurns
+    return (allTurns, hasUndecodableFile)
   }
 
   // Forked sessions copy earlier entries, so the same response can appear in more than one file.
-  static func turns(fromJSONL fileData: Data, since cycleStart: Date, seenResponseIds: inout Set<String>) -> [Turn] {
+  // A single bad line is skipped, because Pi can be writing the last line. nil when the file has lines but none decode.
+  static func turns(fromJSONL fileData: Data, since cycleStart: Date, seenResponseIds: inout Set<String>) -> [Turn]? {
     let decoder = JSONDecoder()
+    let lines = fileData.split(separator: UInt8(ascii: "\n"))
+    var decodedLineCount = 0
     var turns: [Turn] = []
     var currentTurn: Turn?
-    for line in fileData.split(separator: UInt8(ascii: "\n")) {
-      guard
-        let entry = try? decoder.decode(Entry.self, from: Data(line)),
-        entry.type == "message",
-        let message = entry.message
-      else { continue }
+    for line in lines {
+      guard let entry = try? decoder.decode(Entry.self, from: Data(line)) else { continue }
+      decodedLineCount += 1
+      guard entry.type == "message", let message = entry.message else { continue }
       switch message.role {
       case "user":
         if let currentTurn { turns.append(currentTurn) }
@@ -54,6 +60,7 @@ public enum PiSessionParser {
         continue
       }
     }
+    if !lines.isEmpty && decodedLineCount == 0 { return nil }
     if let currentTurn { turns.append(currentTurn) }
     return turns.filter { !$0.records.isEmpty }
   }

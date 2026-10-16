@@ -32,7 +32,7 @@ struct PopoverView: View {
       // Model bars come from local session files, so a fetch error does not make them stale.
       Group {
         runwaySection(health: health, now: now)
-        statCards
+        statCards(now: now)
       }
       .opacity(usageStore.usageError == nil ? 1 : Self.staleOpacity)
       modelBars
@@ -142,7 +142,7 @@ struct PopoverView: View {
           Text(daysCaption(usage: usage, now: now))
             .font(.system(size: 15, weight: .semibold))
         }
-        if let usage, let insight = insightText(usage: usage, now: now) {
+        if let usage, let insight = RunwayInsight.popoverSentence(usage: usage, now: now) {
           Text(insight)
             .font(.system(size: 12.5))
             .foregroundStyle(.secondary)
@@ -166,24 +166,17 @@ struct PopoverView: View {
     wholeDaysLeft(usage: usage, now: now) == 1 ? "day of runway" : "days of runway"
   }
 
-  private func insightText(usage: CopilotUsage, now: Date) -> String? {
-    if let runOutSentence = RunwayInsight.runOutSentence(usage: usage, now: now) { return runOutSentence }
-    if usage.isUnlimited { return "Unlimited plan. Credits do not run out." }
-    if usage.creditsUsed == 0 { return "No credits used yet this cycle." }
-    return nil
-  }
-
-  private var statCards: some View {
+  private func statCards(now: Date) -> some View {
     let usage = usageStore.usage
     return HStack(spacing: 8) {
       StatCard(
         title: "Used",
-        value: usage.map { credits($0.creditsUsed) } ?? "--",
-        detail: usage.map { $0.isUnlimited ? "unlimited" : "of \(credits($0.entitlement))" } ?? " "
+        value: usage.map { Credits.formatted($0.creditsUsed) } ?? "--",
+        detail: usage.map { $0.isUnlimited ? "unlimited" : "of \(Credits.formatted($0.entitlement))" } ?? " "
       )
       StatCard(
         title: "Daily burn",
-        value: usageStore.averageDailyBurn.map(credits) ?? "--",
+        value: usage.map { Credits.formatted(Runway.averageDailyBurn(usage: $0, now: now)) } ?? "--",
         detail: "credits/day"
       )
       perOutcomeCard
@@ -195,7 +188,7 @@ struct PopoverView: View {
   private var perOutcomeCard: some View {
     let card = StatCard(
       title: "Per outcome",
-      value: creditsPerOutcome.map(credits) ?? "-",
+      value: creditsPerOutcome.map { Credits.formatted($0) } ?? "-",
       detail: usageStore.organization == nil ? "no org set" : "credits each"
     )
     if usageStore.organization == nil {
@@ -230,7 +223,7 @@ struct PopoverView: View {
             .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(.secondary)
           Spacer()
-          Text("local sessions, \(credits(pricedTotal))")
+          Text("local sessions, \(Credits.formatted(pricedTotal))")
             .captionStyle()
             .monospacedDigit()
         }
@@ -238,8 +231,7 @@ struct PopoverView: View {
           ModelBar(
             name: model.model,
             valueText: model.credits.map { modelCredits in
-              let percent = pricedTotal > 0 ? Int((modelCredits / pricedTotal * 100).rounded()) : 0
-              return "\(credits(modelCredits)) · \(percent)%"
+              "\(Credits.formatted(modelCredits)) · \(Credits.sharePercent(modelCredits, of: pricedTotal))%"
             } ?? "no price",
             share: model.credits.map { pricedTotal > 0 ? $0 / pricedTotal : 0 }
           )
@@ -293,10 +285,6 @@ struct PopoverView: View {
       .buttonStyle(FooterButtonStyle(fillOpacity: 0.06))
       .accessibilityLabel("Quit Copilot Runway")
     }
-  }
-
-  private func credits(_ value: Double) -> String {
-    value.formatted(.number.precision(.fractionLength(0)))
   }
 }
 

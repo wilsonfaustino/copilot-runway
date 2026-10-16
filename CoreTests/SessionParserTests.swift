@@ -7,8 +7,10 @@ let fixturesDirectory = URL(fileURLWithPath: #filePath).deletingLastPathComponen
 let fixtureCycleStart = utcDate("2026-10-01T00:00:00Z")
 
 @Test func piParserKeepsCopilotAssistantMessagesInCycle() {
-  let records = PiSessionParser.records(inDirectory: fixturesDirectory.appending(path: "pi/sessions"), since: fixtureCycleStart)
-    .sorted { $0.timestamp < $1.timestamp }
+  let piTurns = PiSessionParser.turns(inDirectory: fixturesDirectory.appending(path: "pi/sessions"), since: fixtureCycleStart)
+  let records = piTurns.turns.flatMap(\.records).sorted { $0.timestamp < $1.timestamp }
+  // One malformed line among good lines is skipped without a warning.
+  #expect(!piTurns.hasUndecodableFile)
   // Skipped: user, tool result, other provider, before cycle, compaction, malformed line,
   // and resp_1 and resp_2 repeated in a fork and in a second file.
   #expect(records == [
@@ -37,16 +39,32 @@ let fixtureCycleStart = utcDate("2026-10-01T00:00:00Z")
 
 @Test func piParserWithoutSessionsDirectoryReturnsNothing() {
   let missingDirectory = fixturesDirectory.appending(path: "missing")
-  #expect(PiSessionParser.records(inDirectory: missingDirectory, since: fixtureCycleStart).isEmpty)
+  let piTurns = PiSessionParser.turns(inDirectory: missingDirectory, since: fixtureCycleStart)
+  #expect(piTurns.turns.isEmpty)
+  #expect(!piTurns.hasUndecodableFile)
 }
 
-@Test func openCodeParserReadsLegacyAndCurrentTablesOnce() throws {
+// One file has lines but none decode, as after a Pi format change. The good file still counts.
+@Test func piParserFlagsFileWithNoDecodableLine() {
+  let piTurns = PiSessionParser.turns(inDirectory: fixturesDirectory.appending(path: "pi/undecodable"), since: fixtureCycleStart)
+  #expect(piTurns.hasUndecodableFile)
+  #expect(piTurns.turns.flatMap(\.records) == [
+    UsageRecord(
+      model: "gpt-6-luna",
+      timestamp: utcDate("2026-10-05T12:00:00Z"),
+      tokens: TokenUsage(input: 10, cachedInput: 0, cacheWrite: 0, output: 20)
+    ),
+  ])
+}
+
+@Test func openCodeParserKeepsCopilotAssistantMessagesInCycle() throws {
   let dataDirectory = try makeOpenCodeDataDirectory()
   defer { try? FileManager.default.removeItem(at: dataDirectory) }
-  let records = try OpenCodeSessionParser.records(inDirectory: dataDirectory, since: fixtureCycleStart)
+  let records = try OpenCodeSessionParser.turns(inDirectory: dataDirectory, since: fixtureCycleStart)
+    .flatMap(\.records)
     .sorted { $0.timestamp < $1.timestamp }
-  // Skipped: user rows, other provider, before cycle, and the legacy message copied into session_message.
-  // Output includes reasoning tokens.
+  // Skipped: user rows, other provider, before cycle, and the 1.x message table, which the parser does not read.
+  // The legacy message copied into session_message counts once. Output includes reasoning tokens.
   #expect(records == [
     UsageRecord(
       model: "gpt-6.1-sol",
@@ -68,7 +86,7 @@ let fixtureCycleStart = utcDate("2026-10-01T00:00:00Z")
 
 @Test func openCodeParserWithoutDatabaseReturnsNothing() throws {
   let missingDirectory = fixturesDirectory.appending(path: "missing")
-  #expect(try OpenCodeSessionParser.records(inDirectory: missingDirectory, since: fixtureCycleStart).isEmpty)
+  #expect(try OpenCodeSessionParser.turns(inDirectory: missingDirectory, since: fixtureCycleStart).isEmpty)
 }
 
 // Builds opencode.db in a temporary folder from the SQL fixture, so the fixture stays plain text.

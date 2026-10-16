@@ -31,6 +31,10 @@ The details below are what we found on disk in October 2026.
 - A forked session repeats earlier entries, so records are unique by `responseId` across all files.
 - Files last modified before the cycle start are skipped.
 - `compaction` entries also carry `usage` but no model, so they are not counted.
+- A line that does not decode is skipped, because Pi can be writing the last line. A file that has
+  lines but no line that decodes sets `hasUndecodableFile`, for example after a Pi format change.
+  `SessionCredits.load` then adds the warning "Cannot read some Pi sessions.", and the app shows it
+  where it shows the OpenCode warning.
 
 ### OpenCode (`OpenCodeSessionParser`)
 
@@ -43,11 +47,11 @@ The details below are what we found on disk in October 2026.
     `data.tokens.cache.read`, `data.tokens.cache.write`
 - OpenCode 1.x table `message`: `id`, `session_id`, `time_created` (ms), `data` (JSON) with
   `data.role = 'assistant'`, `data.providerID`, `data.modelID`, and the same `data.tokens` shape.
-  2.x stops writing this table but keeps the old rows.
+  2.x stops writing this table but keeps the old rows. The parser does not read this table.
 - `tokens.input` excludes cached tokens. `tokens.output` excludes reasoning, so the parser adds
   `tokens.reasoning` to output.
-- 2.x copies 1.x messages into `session_message` under the same id. The parser reads the legacy
-  table first and skips current rows with an id it already has.
+- 2.x copies 1.x messages into `session_message` under the same id, so reading only
+  `session_message` counts each copied message once.
 - Child (subagent) sessions have their own rows, so the parser reads all rows and needs no session walk.
 - The queries select only time, agent, model, token and tool call fields (tool name, file path,
   shell command) with `json_extract`, so prompt and answer text never leaves the database.
@@ -61,8 +65,8 @@ The details below are what we found on disk in October 2026.
 A turn is one user message plus all assistant messages and tool calls until the next user message.
 Each turn keeps its timestamp, source (`pi` or `opencode`), agent (OpenCode only), tool calls
 (name, file path for read and edit tools, command for shell tools), and the Copilot `UsageRecord`s
-of its assistant messages. The parsers use the same filters as for records, and keep only turns
-with at least one record. So every record is in exactly one turn, and `Credits.byCategory` adds up
+of its assistant messages. The parsers keep only the records that pass the filters in
+[Session files](#session-files), and keep only turns with at least one record. So every record is in exactly one turn, and `Credits.byCategory` adds up
 to the priced models in `Credits.byModel`.
 
 - Pi: only `message.role = "user"` starts a turn. `system` and `toolResult` messages do not.
@@ -76,7 +80,7 @@ to the priced models in `Credits.byModel`.
   `state.input.command`. A `patch` call becomes one tool call per file in `state.metadata.files[].file`.
   A patch without metadata (16 of 217 in our data, all with `state.status = "error"`) has no file path.
 - OpenCode turns read only the 2.x table. The 158 legacy `message` rows that 2.x did not copy end in
-  April 2026, so they cannot be in a current cycle. They still count in `records`.
+  April 2026, so they cannot be in a current cycle.
 - A turn that starts before the cycle keeps only its messages in the cycle. OpenCode also drops its
   tool calls from before the cycle. Pi keeps them.
 
@@ -108,8 +112,8 @@ Rules, checked in this order. The first match wins.
 ## Dashboard aggregates
 
 All dashboard numbers come from the same turns, so they add up to the same local total.
-The app takes the records for `Credits.byModel` and `Credits.byDay` from `turns.flatMap(\.records)`.
-In October 2026 this gave the same records and the same total as the parser `records` functions.
+`SessionCredits.load` reads the Pi and OpenCode turns once, picks the prices, and builds every
+aggregate. It takes the records for `Credits.byModel` and `Credits.byDay` from `turns.flatMap(\.records)`.
 Messages from models without a price add 0, as in `Credits.byCategory`.
 
 - `Credits.byDay`: one entry per day from the cycle start through now, days without messages at 0.

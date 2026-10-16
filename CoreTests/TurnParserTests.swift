@@ -13,7 +13,7 @@ func lunaRecord(_ isoString: String, output: Int = 10) -> UsageRecord {
 }
 
 @Test func piTurnsGroupMessagesUntilTheNextUserMessage() {
-  let turns = PiSessionParser.turns(inDirectory: turnFixturesDirectory.appending(path: "pi-grouping"), since: fixtureCycleStart)
+  let turns = PiSessionParser.turns(inDirectory: turnFixturesDirectory.appending(path: "pi-grouping"), since: fixtureCycleStart).turns
   // Dropped: the turn with only another provider. Skipped: the message before the cycle.
   #expect(turns == [
     Turn(
@@ -58,23 +58,4 @@ func lunaRecord(_ isoString: String, output: Int = 10) -> UsageRecord {
   ])
   #expect(turns[2].records.count == 3)
   #expect(turns[6].toolCalls == [ToolCall(name: "patch")])
-}
-
-// Every record is in exactly one turn, so credits by category add up to credits by model.
-@Test func piTurnsHoldEveryRecord() {
-  let piDirectory = fixturesDirectory.appending(path: "pi/sessions")
-  let turnRecords = PiSessionParser.turns(inDirectory: piDirectory, since: fixtureCycleStart).flatMap(\.records)
-  let records = PiSessionParser.records(inDirectory: piDirectory, since: fixtureCycleStart)
-  #expect(turnRecords.sorted { $0.timestamp < $1.timestamp } == records.sorted { $0.timestamp < $1.timestamp })
-  #expect(records.count == 4)
-}
-
-@Test func openCodeTurnsHoldEveryRecord() throws {
-  let dataDirectory = try makeOpenCodeDataDirectory()
-  defer { try? FileManager.default.removeItem(at: dataDirectory) }
-  let turns = try OpenCodeSessionParser.turns(inDirectory: dataDirectory, since: fixtureCycleStart)
-  let records = try OpenCodeSessionParser.records(inDirectory: dataDirectory, since: fixtureCycleStart)
-  let turnRecords = turns.flatMap(\.records)
-  #expect(turnRecords.sorted { $0.timestamp < $1.timestamp } == records.sorted { $0.timestamp < $1.timestamp })
-  #expect(records.count == 3)
 }
