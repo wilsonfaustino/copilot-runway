@@ -1,9 +1,12 @@
 #!/bin/zsh
-# Copy the repo cask into a fresh clone of the Homebrew tap and commit it there. Never pushes.
+# Copy the repo cask into the local Homebrew tap clone and commit it there. Never pushes.
 set -euo pipefail
 
 repo_root="${0:A:h:h}"
 cd "$repo_root"
+
+# Must be under ~/www so the includeIf rule applies the personal git identity and credentials.
+tap_dir="$HOME/www/dot/homebrew-tap"
 
 version="$(sed -n 's/^ *MARKETING_VERSION: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p' project.yml)"
 if [[ -z "$version" ]]; then
@@ -37,24 +40,38 @@ if [[ "$downloaded_sha256" != "$cask_sha256" ]]; then
 fi
 echo "sha256 ok: $downloaded_sha256"
 
-clone_dir="$work_dir/homebrew-tap"
-git clone --quiet https://github.com/wilsonfaustino/homebrew-tap.git "$clone_dir"
+if [[ ! -e "$tap_dir" ]]; then
+  git clone --quiet https://github.com/wilsonfaustino/homebrew-tap.git "$tap_dir"
+else
+  if ! git -C "$tap_dir" rev-parse --git-dir > /dev/null 2>&1; then
+    echo "error: $tap_dir exists but is not a git repo" >&2
+    exit 1
+  fi
+  tap_origin_url="$(git -C "$tap_dir" remote get-url origin)"
+  if [[ "$tap_origin_url" != *wilsonfaustino/homebrew-tap(|.git) ]]; then
+    echo "error: origin of $tap_dir is $tap_origin_url, not the homebrew-tap repo" >&2
+    exit 1
+  fi
+  if [[ -n "$(git -C "$tap_dir" status --porcelain)" ]]; then
+    echo "error: $tap_dir has uncommitted changes" >&2
+    exit 1
+  fi
+  git -C "$tap_dir" pull --quiet --ff-only
+fi
 
-cp "$cask_source" "$clone_dir/$tap_cask_path"
-if [[ -z "$(git -C "$clone_dir" status --porcelain -- "$tap_cask_path")" ]]; then
+cp "$cask_source" "$tap_dir/$tap_cask_path"
+if [[ -z "$(git -C "$tap_dir" status --porcelain -- "$tap_cask_path")" ]]; then
   echo "tap is already up to date"
   exit 0
 fi
 
-# The clone sits outside the includeIf folders, so take the identity from the last tap commit.
-author_name="$(git -C "$clone_dir" log -1 --format=%an)"
-author_email="$(git -C "$clone_dir" log -1 --format=%ae)"
-git -C "$clone_dir" add "$tap_cask_path"
-git -C "$clone_dir" -c user.name="$author_name" -c user.email="$author_email" \
-  commit --quiet -m "copilot-runway $version" -- "$tap_cask_path"
+if [[ -z "$(git -C "$tap_dir" config user.email)" ]]; then
+  echo "error: git user.email is empty in $tap_dir; the folder must be under an includeIf rule" >&2
+  exit 1
+fi
+git -C "$tap_dir" add "$tap_cask_path"
+git -C "$tap_dir" commit --quiet -m "copilot-runway $version" -- "$tap_cask_path"
 
-# Keep the clone: the push command below runs from it.
-trap - EXIT
-git -C "$clone_dir" log -1 --oneline
+git -C "$tap_dir" log -1 --oneline
 echo "push with:"
-echo "  git -C $clone_dir push"
+echo "  git -C $tap_dir push"
