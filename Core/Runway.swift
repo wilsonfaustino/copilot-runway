@@ -29,6 +29,20 @@ public enum Runway {
     averageDailyBurn(credits: usage.creditsUsed, resetDate: usage.resetDate, now: now)
   }
 
+  // The burn that spends the remaining credits exactly by the reset. Time until the reset counts as at least
+  // one day, like averageDailyBurn, so the last hours of a cycle do not inflate it.
+  public static func allowedDailyBurn(usage: CopilotUsage, now: Date) -> Double {
+    let daysUntilReset = usage.resetDate.timeIntervalSince(now) / secondsPerDay
+    return usage.creditsRemaining / max(daysUntilReset, 1)
+  }
+
+  // allowedDailyBurn minus averageDailyBurn: above 0 is room to spare, below 0 is over budget.
+  // nil for unlimited plans, with no credits used or left, and after the reset.
+  public static func dailyHeadroom(usage: CopilotUsage, now: Date) -> Double? {
+    guard !usage.isUnlimited, usage.creditsUsed > 0, usage.creditsRemaining > 0, now < usage.resetDate else { return nil }
+    return allowedDailyBurn(usage: usage, now: now) - averageDailyBurn(usage: usage, now: now)
+  }
+
   // daysLeft = remaining / averageDailyBurn over the current billing cycle.
   public static func daysLeft(usage: CopilotUsage, now: Date) -> Double? {
     guard !usage.isUnlimited, usage.creditsUsed > 0 else { return nil }

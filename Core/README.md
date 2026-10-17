@@ -125,6 +125,11 @@ Messages from models without a price add 0, as in `Credits.byCategory`.
 - `Credits.bySource`: priced credits per `Turn.source` (OpenCode, Pi). `UsageRecord` has no source.
 - `Runway.runOutDate`: now plus `daysLeft` days. It can fall after the reset date.
   `nil` for unlimited plans and when no credits are used.
+- `Runway.dailyHeadroom`: `allowedDailyBurn` minus `averageDailyBurn`. `allowedDailyBurn` is the credits
+  remaining divided by the days until the reset, at least 1 day. `nil` for unlimited plans, with no
+  credits used or left, and after the reset. `RunwayInsight.headroomText` shows it as "N credits/day of
+  headroom" or "N credits/day over budget", on the second line under the popover runway figure and at
+  the end of the dashboard banner run-out sentences.
 - `ShareBreakdown`: the items of the By task, By model and By agent split bars, with rounded shares.
   - `local(entries:)` keeps the order of the entries. Shares are of the local total.
   - `tasks(_:)` is `local(entries:)` for the By task card. It always has an Uncategorized item, at 0
