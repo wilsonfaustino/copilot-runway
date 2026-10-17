@@ -1,0 +1,33 @@
+name: Sonar
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  sonar:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Select Xcode 26.6
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen
+      - name: Run tests with coverage
+        run: |
+          rm -rf build/tests.xcresult
+          xcodebuild test -scheme CopilotRunway -destination 'platform=macOS' -resultBundlePath build/tests.xcresult
+      - name: Convert coverage for Sonar
+        run: scripts/xccov-to-sonarqube-generic.sh build/tests.xcresult > build/coverage.xml
+      - uses: SonarSource/sonarqube-scan-action@v8.3.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
