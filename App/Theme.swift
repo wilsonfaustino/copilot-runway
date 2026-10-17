@@ -35,6 +35,45 @@ enum Theme {
   static let cardFill = Color.primary.opacity(0.05)
   static let cardBorder = Color.primary.opacity(0.08)
 
+  // Split bar ramps, one hue per card. Dark values come from the mockup. Each light ramp is darker so its
+  // lightest step keeps 2:1 contrast on a white background (checked with the dataviz palette validator).
+  static func taskColor(_ category: TaskCategory) -> Color {
+    let nsColor =
+      switch category {
+      case .investigation: dynamicColor(dark: 0xCDE2FB, light: 0x61A7FF)
+      case .debugging: dynamicColor(dark: 0x9EC5F4, light: 0x3F8DEB)
+      case .implementation: dynamicColor(dark: 0x6DA7EC, light: 0x2374D0)
+      case .review: dynamicColor(dark: 0x3987E5, light: 0x005BB4)
+      case .uncategorized: dynamicColor(dark: 0x256ABF, light: 0x00468D)
+      case .planning: dynamicColor(dark: 0x184F95, light: 0x003167)
+      }
+    return Color(nsColor: nsColor)
+  }
+
+  // By credit rank, because the model set changes. ShareBreakdown.namedModelLimit is the count.
+  private static let modelRamp = [
+    Color(nsColor: dynamicColor(dark: 0x7FD3AE, light: 0x3FB787)),
+    Color(nsColor: dynamicColor(dark: 0x199E70, light: 0x028A60)),
+    Color(nsColor: dynamicColor(dark: 0x0F7050, light: 0x015C3F)),
+  ]
+
+  // The dashboard and the popover both draw the model breakdown, so a model has one color in both.
+  static func modelColors(for breakdown: ShareBreakdown) -> [String: Color] {
+    let namedModels = breakdown.items.filter { $0.kind == .entry }.map(\.name)
+    return Dictionary(uniqueKeysWithValues: zip(namedModels, modelRamp))
+  }
+
+  static func agentColor(_ source: SessionSource) -> Color {
+    switch source {
+    case .opencode: Color(nsColor: dynamicColor(dark: 0xF2A27E, light: 0xF57242))
+    case .pi: Color(nsColor: dynamicColor(dark: 0xD95926, light: 0xC04200))
+    }
+  }
+
+  // System grays switch with the appearance. The stripes, not a hue, tell the gap from the solid Other models gray.
+  static let otherModelsColor = Color(nsColor: .tertiaryLabelColor)
+  static let notInLocalSessionsStripe = Color(nsColor: .systemGray)
+
   private static func dynamicColor(dark: Int, light: Int) -> NSColor {
     NSColor(name: nil) { appearance in
       let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua

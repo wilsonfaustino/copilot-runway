@@ -1,22 +1,35 @@
 import Foundation
 
 public enum RunwayInsight {
-  // Stale usage from a past cycle has no estimate, and an unlimited plan or a cycle with no burn has no run-out.
-  public static func runOutSentence(usage: CopilotUsage, now: Date, locale: Locale = .current) -> String? {
+  // When the credits run out against the reset. Stale usage from a past cycle has no outlook, and an unlimited plan
+  // or a cycle with no burn has no run-out.
+  private enum RunOutOutlook {
+    case pastReset
+    case beforeReset(runOutDate: Date, daysBeforeReset: Int)
+  }
+
+  private static func runOutOutlook(usage: CopilotUsage, now: Date) -> RunOutOutlook? {
     guard now < usage.resetDate, let estimatedRunOut = Runway.runOutDate(usage: usage, now: now) else { return nil }
     // Overage gives a run-out in the past, but the credits ran out by now at the latest.
     let runOutDate = max(estimatedRunOut, now)
-    let resetText = day(usage.resetDate, locale: locale)
-    guard runOutDate < usage.resetDate else {
-      return "At this pace your credits last past the reset on \(resetText)."
-    }
+    guard runOutDate < usage.resetDate else { return .pastReset }
     // Count calendar days in UTC so the number matches the two dates in the sentence.
     let calendar = Runway.utcCalendar
     let daysBeforeReset = calendar.dateComponents(
       [.day], from: calendar.startOfDay(for: runOutDate), to: calendar.startOfDay(for: usage.resetDate)
     ).day ?? 0
-    let daysText = daysBeforeReset == 1 ? "1 day" : "\(daysBeforeReset) days"
-    return "At this pace you run out on \(day(runOutDate, locale: locale)), \(daysText) before the reset on \(resetText)."
+    return .beforeReset(runOutDate: runOutDate, daysBeforeReset: daysBeforeReset)
+  }
+
+  public static func runOutSentence(usage: CopilotUsage, now: Date, locale: Locale = .current) -> String? {
+    let resetText = day(usage.resetDate, locale: locale)
+    switch runOutOutlook(usage: usage, now: now) {
+    case nil: return nil
+    case .pastReset?: return "At this pace your credits last past the reset on \(resetText)."
+    case .beforeReset(let runOutDate, let daysBeforeReset)?:
+      let daysText = daysBeforeReset == 1 ? "1 day" : "\(daysBeforeReset) days"
+      return "At this pace you run out on \(day(runOutDate, locale: locale)), \(daysText) before the reset on \(resetText)."
+    }
   }
 
   public static func limitSentence(usage: CopilotUsage, locale: Locale = .current) -> String {
@@ -30,20 +43,21 @@ public enum RunwayInsight {
     return max(usage.creditsRemaining, 0) / daysUntilReset
   }
 
-  // The share of GitHub credits that no local session explains. nil when it rounds to 0% or local sessions
-  // show more than GitHub, for example after a price table overestimate.
-  public static func percentNotInLocalSessions(creditsUsed: Double, localCredits: Double) -> Int? {
-    guard creditsUsed > 0, localCredits < creditsUsed else { return nil }
-    let percent = Int(((creditsUsed - localCredits) / creditsUsed * 100).rounded())
-    return percent > 0 ? percent : nil
-  }
-
   // Copilot code review bills the PR author, but no local session records it. nil when no review ran.
   public static func copilotReviewSentence(count: Int) -> String? {
     switch count {
     case ..<1: nil
     case 1: "1 Copilot code review ran on your PRs this cycle. It uses credits that local sessions do not show."
     default: "\(count) Copilot code reviews ran on your PRs this cycle. They use credits that local sessions do not show."
+    }
+  }
+
+  // The popover caption under the By model legend. nil when no review ran.
+  public static func copilotReviewCaption(count: Int) -> String? {
+    switch count {
+    case ..<1: nil
+    case 1: "1 Copilot code review ran on your PRs this cycle."
+    default: "\(count) Copilot code reviews ran on your PRs this cycle."
     }
   }
 
@@ -90,11 +104,18 @@ public enum RunwayInsight {
     return (headline, detailSentences.joined(separator: " "))
   }
 
-  // The one sentence under the popover runway figure. nil when there is nothing useful to say.
+  // The one line under the popover runway figure. It must fit about 30 characters next to the ring.
+  // nil when there is nothing useful to say.
   public static func popoverSentence(usage: CopilotUsage, now: Date, locale: Locale = .current) -> String? {
-    if let runOutSentence = runOutSentence(usage: usage, now: now, locale: locale) { return runOutSentence }
-    if usage.isUnlimited { return "Unlimited plan. Credits do not run out." }
-    if usage.creditsUsed == 0 { return "No credits used yet this cycle." }
+    switch runOutOutlook(usage: usage, now: now) {
+    case .pastReset?: return "Lasts past the \(day(usage.resetDate, locale: locale)) reset."
+    case .beforeReset(let runOutDate, let daysBeforeReset)?:
+      let daysText = daysBeforeReset == 1 ? "1 day" : "\(daysBeforeReset) days"
+      return "Runs out \(day(runOutDate, locale: locale)), \(daysText) early."
+    case nil: break
+    }
+    if usage.isUnlimited { return "Unlimited plan, no run-out." }
+    if usage.creditsUsed == 0 { return "No credits used yet." }
     return nil
   }
 

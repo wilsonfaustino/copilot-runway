@@ -73,18 +73,6 @@ let usLocale = Locale(identifier: "en_US")
   #expect(sentence == "At this pace you run out on Oct 21, 11 days before the reset on Nov 1.")
 }
 
-@Test func gapIsTheShareOfGitHubCreditsNotInLocalSessions() {
-  #expect(RunwayInsight.percentNotInLocalSessions(creditsUsed: 8857, localCredits: 7703) == 13)
-}
-
-@Test func gapIsHiddenWhenItIsNotMeaningful() {
-  #expect(RunwayInsight.percentNotInLocalSessions(creditsUsed: 0, localCredits: 0) == nil)
-  #expect(RunwayInsight.percentNotInLocalSessions(creditsUsed: 1000, localCredits: 1200) == nil)
-  #expect(RunwayInsight.percentNotInLocalSessions(creditsUsed: 1000, localCredits: 1000) == nil)
-  // 0.4% rounds to 0%.
-  #expect(RunwayInsight.percentNotInLocalSessions(creditsUsed: 1000, localCredits: 996) == nil)
-}
-
 @Test func topCategoryShareIsTheLargestCategory() {
   let categoryCredits = [
     CategoryCredits(category: .investigation, credits: 420),
@@ -177,19 +165,62 @@ let usLocale = Locale(identifier: "en_US")
   let sentence = RunwayInsight.popoverSentence(
     usage: makeUsage(creditsUsed: 6000), now: utcDate("2026-10-11T00:00:00Z"), locale: usLocale
   )
-  #expect(sentence == "At this pace you run out on Oct 21, 11 days before the reset on Nov 1.")
+  #expect(sentence == "Runs out Oct 21, 11 days early.")
+}
+
+@Test func popoverSentenceRunOutOneDayBeforeResetUsesSingularDay() {
+  let sentence = RunwayInsight.popoverSentence(
+    usage: makeUsage(creditsUsed: 4000), now: utcDate("2026-10-11T00:00:00Z"), locale: usLocale
+  )
+  #expect(sentence == "Runs out Oct 31, 1 day early.")
+}
+
+@Test func popoverSentenceForHealthyRunway() {
+  let sentence = RunwayInsight.popoverSentence(
+    usage: makeUsage(creditsUsed: 1000), now: utcDate("2026-10-11T00:00:00Z"), locale: usLocale
+  )
+  #expect(sentence == "Lasts past the Nov 1 reset.")
+}
+
+@Test func popoverSentenceDatesFollowLocale() {
+  let sentence = RunwayInsight.popoverSentence(
+    usage: makeUsage(creditsUsed: 1000), now: utcDate("2026-10-11T00:00:00Z"), locale: Locale(identifier: "en_GB")
+  )
+  #expect(sentence == "Lasts past the 1 Nov reset.")
 }
 
 @Test func popoverSentenceForUnlimitedPlan() {
   let usage = makeUsage(creditsUsed: 500, entitlement: 0, isUnlimited: true)
-  #expect(RunwayInsight.popoverSentence(usage: usage, now: utcDate("2026-10-11T00:00:00Z")) == "Unlimited plan. Credits do not run out.")
+  #expect(RunwayInsight.popoverSentence(usage: usage, now: utcDate("2026-10-11T00:00:00Z")) == "Unlimited plan, no run-out.")
 }
 
 @Test func popoverSentenceWithNoBurn() {
   let usage = makeUsage(creditsUsed: 0)
-  #expect(RunwayInsight.popoverSentence(usage: usage, now: utcDate("2026-10-11T00:00:00Z")) == "No credits used yet this cycle.")
+  #expect(RunwayInsight.popoverSentence(usage: usage, now: utcDate("2026-10-11T00:00:00Z")) == "No credits used yet.")
 }
 
 @Test func popoverSentenceAfterResetIsNil() {
   #expect(RunwayInsight.popoverSentence(usage: makeUsage(creditsUsed: 6000), now: utcDate("2026-11-02T00:00:00Z")) == nil)
+}
+
+// 360 pt popover, 16 pt padding, 116 pt ring and 18 pt gap leave 194 pt. At 12.5 pt that is about 30 characters.
+@Test func popoverSentencesFitOneLine() {
+  let now = utcDate("2026-10-11T00:00:00Z")
+  let usages = [
+    makeUsage(creditsUsed: 6000), makeUsage(creditsUsed: 4000), makeUsage(creditsUsed: 1000), makeUsage(creditsUsed: 0),
+    makeUsage(creditsUsed: 500, entitlement: 0, isUnlimited: true),
+  ]
+  for usage in usages {
+    let sentence = RunwayInsight.popoverSentence(usage: usage, now: now, locale: usLocale)
+    #expect((sentence?.count ?? 0) <= 31)
+  }
+}
+
+@Test func copilotReviewCaptionCountsReviews() {
+  #expect(RunwayInsight.copilotReviewCaption(count: 14) == "14 Copilot code reviews ran on your PRs this cycle.")
+  #expect(RunwayInsight.copilotReviewCaption(count: 1) == "1 Copilot code review ran on your PRs this cycle.")
+}
+
+@Test func copilotReviewCaptionIsNilWithoutReviews() {
+  #expect(RunwayInsight.copilotReviewCaption(count: 0) == nil)
 }

@@ -1,0 +1,123 @@
+import Core
+import Testing
+
+private func itemCreditsTotal(_ breakdown: ShareBreakdown) -> Double {
+  breakdown.items.reduce(0) { $0 + $1.credits }
+}
+
+@Test func localBreakdownKeepsOrderAndSharesOfLocalTotal() {
+  let breakdown = ShareBreakdown.local(entries: [("Investigation", 600), ("Debugging", 300), ("Planning", 100)])
+  #expect(breakdown.shareTotal == 1000)
+  #expect(breakdown.items.map(\.name) == ["Investigation", "Debugging", "Planning"])
+  #expect(breakdown.items.map(\.share) == [60, 30, 10])
+  #expect(breakdown.items.allSatisfy { $0.kind == .entry })
+  #expect(breakdown.unit == "local credits")
+}
+
+@Test func localBreakdownWithNoCreditsHasZeroShares() {
+  #expect(ShareBreakdown.local(entries: []) == ShareBreakdown(shareTotal: 0, items: []))
+  let breakdown = ShareBreakdown.local(entries: [("Pi", 0)])
+  #expect(breakdown.shareTotal == 0)
+  #expect(breakdown.items.map(\.share) == [0])
+}
+
+@Test func modelBreakdownAddsGapItemWhenGitHubShowsMore() {
+  let modelCredits = [ModelCredits(model: "gpt-6.1-sol", credits: 620), ModelCredits(model: "gpt-6-luna", credits: 250)]
+  let breakdown = ShareBreakdown.models(modelCredits, githubCredits: 1000)
+  #expect(breakdown.shareTotal == 1000)
+  #expect(breakdown.unit == "GitHub credits")
+  #expect(breakdown.items.map(\.name) == ["gpt-6.1-sol", "gpt-6-luna", "Not in local sessions"])
+  #expect(breakdown.items.map(\.credits) == [620, 250, 130])
+  #expect(breakdown.items.map(\.share) == [62, 25, 13])
+  #expect(breakdown.items.last?.kind == .notInLocalSessions)
+  #expect(itemCreditsTotal(breakdown) == breakdown.shareTotal)
+}
+
+@Test func modelBreakdownHasNoGapWhenLocalEqualsGitHub() {
+  let breakdown = ShareBreakdown.models([ModelCredits(model: "gpt-6.1-sol", credits: 500)], githubCredits: 500)
+  #expect(breakdown.unit == "GitHub credits")
+  #expect(breakdown.items.map(\.name) == ["gpt-6.1-sol"])
+  #expect(breakdown.items.map(\.share) == [100])
+}
+
+@Test func modelBreakdownUsesLocalTotalWhenLocalShowsMore() {
+  let modelCredits = [ModelCredits(model: "gpt-6.1-sol", credits: 900), ModelCredits(model: "gpt-6-luna", credits: 300)]
+  let breakdown = ShareBreakdown.models(modelCredits, githubCredits: 1000)
+  #expect(breakdown.shareTotal == 1200)
+  #expect(breakdown.unit == "local credits")
+  #expect(breakdown.items.map(\.name) == ["gpt-6.1-sol", "gpt-6-luna"])
+  #expect(breakdown.items.map(\.share) == [75, 25])
+  #expect(itemCreditsTotal(breakdown) == breakdown.shareTotal)
+}
+
+@Test func modelBreakdownFoldsModelsAfterTheTopThree() {
+  let modelCredits = [
+    ModelCredits(model: "model-e", credits: 50),
+    ModelCredits(model: "model-a", credits: 400),
+    ModelCredits(model: "model-d", credits: 100),
+    ModelCredits(model: "model-b", credits: 250),
+    ModelCredits(model: "model-c", credits: 200),
+  ]
+  let breakdown = ShareBreakdown.models(modelCredits, githubCredits: 1000)
+  #expect(breakdown.items.map(\.name) == ["model-a", "model-b", "model-c", "Other models"])
+  #expect(breakdown.items.map(\.kind) == [.entry, .entry, .entry, .otherModels])
+  #expect(breakdown.items.map(\.credits) == [400, 250, 200, 150])
+  #expect(breakdown.items.map(\.share) == [40, 25, 20, 15])
+}
+
+@Test func modelBreakdownFoldsBeforeTheGapItem() {
+  let modelCredits = (1...4).map { ModelCredits(model: "model-\($0)", credits: Double(100 * $0)) }
+  let breakdown = ShareBreakdown.models(modelCredits, githubCredits: 1200)
+  #expect(breakdown.items.map(\.name) == ["model-4", "model-3", "model-2", "Other models", "Not in local sessions"])
+  #expect(breakdown.items.map(\.credits) == [400, 300, 200, 100, 200])
+  #expect(itemCreditsTotal(breakdown) == breakdown.shareTotal)
+}
+
+@Test func modelBreakdownDoesNotFoldThreeModels() {
+  let modelCredits = (1...3).map { ModelCredits(model: "model-\($0)", credits: Double(100 * $0)) }
+  let breakdown = ShareBreakdown.models(modelCredits, githubCredits: 600)
+  #expect(breakdown.items.map(\.name) == ["model-3", "model-2", "model-1"])
+}
+
+@Test func modelBreakdownSkipsUnpricedModels() {
+  let modelCredits = (1...3).map { ModelCredits(model: "model-\($0)", credits: Double(100 * $0)) }
+    + [ModelCredits(model: "unpriced-model", credits: nil)]
+  let breakdown = ShareBreakdown.models(modelCredits, githubCredits: 600)
+  #expect(breakdown.items.map(\.name) == ["model-3", "model-2", "model-1"])
+}
+
+@Test func modelBreakdownHidesAGapThatRoundsToZeroPercent() {
+  // The gap is 2 of 1000 credits, 0.2%.
+  let breakdown = ShareBreakdown.models([ModelCredits(model: "gpt-6.1-sol", credits: 998)], githubCredits: 1000)
+  #expect(breakdown.shareTotal == 1000)
+  #expect(breakdown.items.map(\.name) == ["gpt-6.1-sol"])
+  #expect(breakdown.items.map(\.share) == [100])
+}
+
+@Test func modelBreakdownKeepsAGapOfOnePercent() {
+  let breakdown = ShareBreakdown.models([ModelCredits(model: "gpt-6.1-sol", credits: 990)], githubCredits: 1000)
+  #expect(breakdown.items.map(\.name) == ["gpt-6.1-sol", "Not in local sessions"])
+  #expect(breakdown.items.map(\.share) == [99, 1])
+}
+
+@Test func modelBreakdownWithNoLocalSessionsHasNoItems() {
+  let breakdown = ShareBreakdown.models([], githubCredits: 800)
+  #expect(breakdown == ShareBreakdown(shareTotal: 800, items: [], unit: "GitHub credits"))
+  #expect(breakdown.isEmpty)
+}
+
+@Test func modelBreakdownWithOnlyUnpricedModelsHasNoItems() {
+  let breakdown = ShareBreakdown.models([ModelCredits(model: "unpriced-model", credits: nil)], githubCredits: 800)
+  #expect(breakdown.items.isEmpty)
+  #expect(breakdown.shareTotal == 800)
+}
+
+@Test func modelBreakdownWithNoCreditsIsEmpty() {
+  #expect(ShareBreakdown.models([], githubCredits: 0) == ShareBreakdown(shareTotal: 0, items: [], unit: "GitHub credits"))
+}
+
+@Test func breakdownIsEmptyWithoutItemsOrCredits() {
+  #expect(ShareBreakdown.local(entries: []).isEmpty)
+  #expect(ShareBreakdown.local(entries: [("Pi", 0)]).isEmpty)
+  #expect(!ShareBreakdown.local(entries: [("Pi", 5)]).isEmpty)
+}

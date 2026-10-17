@@ -5,7 +5,9 @@ import SwiftUI
 
 struct DashboardView: View {
   static let windowId = "dashboard"
-  static let barColor = Theme.accent(.healthy)
+  // Neutral, because the chart is the total over every dimension and blue marks the task card.
+  static let barColor = Color.primary.opacity(0.5)
+  static let cardTitleFont = Font.system(size: 13, weight: .semibold)
   // Days are UTC days (see Core/README.md), so their labels are formatted in UTC too.
   static let dayLabelStyle = Date.FormatStyle(timeZone: TimeZone(identifier: "UTC")!).month(.abbreviated).day()
 
@@ -36,7 +38,7 @@ struct DashboardView: View {
             health: health
           )
           HStack(alignment: .top, spacing: Theme.Spacing.regular) {
-            shareCard(title: "By task", entries: usageStore.categoryCredits.map { ($0.category.displayName, $0.credits) })
+            taskCard
             modelCard(usage: usage)
             agentCard(usage: usage)
           }
@@ -183,10 +185,14 @@ struct DashboardView: View {
           Text(outcomes.creditsPerOutcome(creditsUsed: usage.creditsUsed).map { Credits.formatted($0) } ?? "No PRs yet")
             .bigFigureStyle(size: 34)
           kpiDetail(
-            "\(GitHubOutcomes.countText(outcomes.prsOpened)) PRs opened · \(GitHubOutcomes.countText(outcomes.prsReviewed)) reviewed"
-              + " · \(GitHubOutcomes.countText(outcomes.commits)) commits"
+            "\(GitHubOutcomes.countText(outcomes.prsMerged)) merged · \(GitHubOutcomes.countText(outcomes.prsOpen)) open"
+              + " · \(GitHubOutcomes.countText(outcomes.prsReviewed)) reviewed · \(GitHubOutcomes.countText(outcomes.commits)) commits"
           )
-          .help("Outcomes are PRs opened plus PRs reviewed this cycle. Commits are not counted as outcomes.")
+          .lineLimit(1)
+          .minimumScaleFactor(0.85)
+          .help(
+            "Outcomes are merged and open PRs you created plus PRs you reviewed this cycle. Closed PRs that were not merged and commits are not counted."
+          )
         } else {
           Text("--").bigFigureStyle(size: 34)
           if usageStore.outcomesError == nil {
@@ -206,65 +212,95 @@ struct DashboardView: View {
 
   // MARK: Share cards
 
+  private var taskCard: some View {
+    let categoryCredits = usageStore.categoryCredits
+    let breakdown = ShareBreakdown.local(entries: categoryCredits.map { ($0.category.displayName, $0.credits) })
+    return shareCard(
+      title: "By task",
+      breakdown: breakdown,
+      colors: Dictionary(uniqueKeysWithValues: categoryCredits.map { ($0.category.displayName, Theme.taskColor($0.category)) })
+    )
+  }
+
   private func modelCard(usage: CopilotUsage) -> some View {
-    let pricedModels = usageStore.modelCredits.compactMap { model in model.credits.map { (model.model, $0) } }
-    let localTotal = pricedModels.reduce(0) { $0 + $1.1 }
+    let breakdown = ShareBreakdown.models(usageStore.modelCredits, githubCredits: usage.creditsUsed)
     let unpricedModelCount = usageStore.modelCredits.filter { $0.credits == nil }.count
     var footnotes: [String] = []
-    if let percentNotInLocalSessions = RunwayInsight.percentNotInLocalSessions(
-      creditsUsed: usage.creditsUsed, localCredits: localTotal
-    ) {
-      footnotes.append("\(percentNotInLocalSessions)% of GitHub credits are not in local sessions.")
-    }
     if unpricedModelCount > 0 {
       footnotes.append("\(unpricedModelCount) model(s) have no price and are not counted.")
-    }
-    if let copilotReviewSentence = usageStore.copilotReviewCount.flatMap(RunwayInsight.copilotReviewSentence(count:)) {
-      footnotes.append(copilotReviewSentence)
     }
     if !usageStore.lowCacheSentences.isEmpty {
       footnotes.append(usageStore.lowCacheSentences.joined(separator: " "))
     }
-    return shareCard(title: "By model", entries: pricedModels, footnotes: footnotes)
+    return shareCard(
+      title: "By model",
+      breakdown: breakdown,
+      colors: Theme.modelColors(for: breakdown),
+      githubNote: usageStore.copilotReviewCount.flatMap(RunwayInsight.copilotReviewSentence(count:)),
+      footnotes: footnotes
+    )
   }
 
   private func agentCard(usage: CopilotUsage) -> some View {
     let sourceCredits = usageStore.sourceCredits
+    let breakdown = ShareBreakdown.local(entries: sourceCredits.map { ($0.source.displayName, $0.credits) })
     let creditsPerDay = sourceCredits.map { source in
       "\(source.source.displayName): \(Credits.formatted(Runway.averageDailyBurn(credits: source.credits, resetDate: usage.resetDate, now: .now))) credits/day."
     }
     return shareCard(
       title: "By agent",
-      entries: sourceCredits.map { ($0.source.displayName, $0.credits) },
+      breakdown: breakdown,
+      colors: Dictionary(uniqueKeysWithValues: sourceCredits.map { ($0.source.displayName, Theme.agentColor($0.source)) }),
       footnotes: creditsPerDay.isEmpty ? [] : [creditsPerDay.joined(separator: " ")]
     )
   }
 
-  private func shareCard(title: String, entries: [(name: String, credits: Double)], footnotes: [String] = []) -> some View {
-    let total = entries.reduce(0) { $0 + $1.credits }
-    return VStack(alignment: .leading, spacing: Theme.Spacing.regular) {
-      Text(title)
-        .font(.system(size: 14, weight: .semibold))
-      if total > 0 {
-        ForEach(entries, id: \.name) { entry in
-          VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-            HStack {
-              Text(entry.name)
-              Spacer()
-              Text("\(Credits.formatted(entry.credits)) · \(Credits.sharePercent(entry.credits, of: total))%")
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
-            }
-            .font(.system(size: 12))
-            .lineLimit(1)
-            shareBar(fraction: entry.credits / total, color: Self.barColor)
-          }
-        }
+  // Items without a color in colors are the folded "Other models" item.
+  private func shareCard(
+    title: String,
+    breakdown: ShareBreakdown,
+    colors: [String: Color],
+    githubNote: String? = nil,
+    footnotes: [String] = []
+  ) -> some View {
+    VStack(alignment: .leading, spacing: Theme.Spacing.regular) {
+      HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
+        Text(title)
+          .font(Self.cardTitleFont)
+        Spacer()
+        Text(Credits.formatted(breakdown.shareTotal))
+          .bigFigureStyle(size: 26)
+        Text(breakdown.unit)
+          .captionStyle()
+      }
+      .lineLimit(1)
+      .minimumScaleFactor(0.6)
+      if !breakdown.isEmpty {
+        ShareBreakdownView(breakdown: breakdown, colors: colors)
       } else {
         Text("No local sessions in this cycle.")
           .captionStyle()
       }
       Spacer(minLength: 0)
+      if let githubNote {
+        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+          Text("RUNS ON GITHUB")
+            .font(.system(size: 10, weight: .semibold))
+            .tracking(0.6)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+            .background(Color.primary.opacity(0.08), in: Capsule())
+          Text(githubNote)
+            .font(.system(size: 12))
+            .lineSpacing(2)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(Theme.Spacing.section)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: Theme.Radius.control))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.control).strokeBorder(Color.primary.opacity(0.06)))
+      }
       ForEach(footnotes, id: \.self) { footnote in
         Text(footnote)
           .captionStyle()
@@ -302,14 +338,13 @@ private struct DailyBurnChart: View {
 
   var body: some View {
     let localTotal = dailyCredits.reduce(0) { $0 + $1.credits }
-    // A healthy rule in the bar blue would blend into the bars.
-    let averageColor = health == .healthy ? Color.secondary : Theme.accent(health)
+    let averageColor = Theme.accent(health)
     let dayLabels = dailyCredits.map { $0.day.formatted(DashboardView.dayLabelStyle) }
     let selectedDay = dailyCredits.first { $0.day.formatted(DashboardView.dayLabelStyle) == selectedDayLabel }
     VStack(alignment: .leading, spacing: 12) {
       HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.regular) {
         Text("Daily burn")
-          .font(.system(size: 14, weight: .semibold))
+          .font(DashboardView.cardTitleFont)
         Text("Days are UTC.")
           .captionStyle()
         Spacer()

@@ -146,7 +146,7 @@ struct PopoverView: View {
           Text(insight)
             .font(.system(size: 12.5))
             .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
+            .lineLimit(1)
         }
       }
       .accessibilityElement(children: .combine)
@@ -215,27 +215,30 @@ struct PopoverView: View {
   private var modelBars: some View {
     let modelCredits = usageStore.modelCredits
     if !modelCredits.isEmpty {
-      // Models without a price are listed but left out of the total.
-      let pricedTotal = modelCredits.compactMap(\.credits).reduce(0, +)
+      let breakdown = ShareBreakdown.models(modelCredits, githubCredits: usageStore.usage?.creditsUsed ?? 0)
       VStack(alignment: .leading, spacing: Theme.Spacing.regular) {
         HStack(alignment: .firstTextBaseline) {
           Text("By model")
             .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(.secondary)
           Spacer()
-          Text("local sessions, \(Credits.formatted(pricedTotal))")
+          Text("\(breakdown.unit), \(Credits.formatted(breakdown.shareTotal))")
             .captionStyle()
             .monospacedDigit()
         }
-        ForEach(modelCredits, id: \.model) { model in
-          ModelBar(
-            name: model.model,
-            valueText: model.credits.map { modelCredits in
-              "\(Credits.formatted(modelCredits)) · \(Credits.sharePercent(modelCredits, of: pricedTotal))%"
-            } ?? "no price",
-            share: model.credits.map { pricedTotal > 0 ? $0 / pricedTotal : 0 },
-            lowCachePercent: usageStore.cacheHits.first { $0.model == model.model && $0.isLow }?.wholePercent
-          )
+        ShareBreakdownView(
+          breakdown: breakdown,
+          colors: Theme.modelColors(for: breakdown),
+          lowCachePercents: Dictionary(
+            usageStore.cacheHits.filter(\.isLow).compactMap { cacheHit in cacheHit.wholePercent.map { (cacheHit.model, $0) } },
+            uniquingKeysWith: { first, _ in first }
+          ),
+          unpricedModels: modelCredits.filter { $0.credits == nil }.map(\.model)
+        )
+        if let reviewCaption = usageStore.copilotReviewCount.flatMap(RunwayInsight.copilotReviewCaption(count:)) {
+          Text(reviewCaption)
+            .captionStyle()
+            .fixedSize(horizontal: false, vertical: true)
         }
       }
     }
@@ -355,8 +358,7 @@ private struct StatCard: View {
       Text(title)
         .captionStyle()
       Text(value)
-        .font(.system(size: 15, weight: .semibold))
-        .monospacedDigit()
+        .bigFigureStyle(size: 15)
       Text(detail)
         .captionStyle()
         .monospacedDigit()
@@ -364,50 +366,6 @@ private struct StatCard: View {
     .lineLimit(1)
     .frame(maxWidth: .infinity, alignment: .leading)
     .cardStyle()
-    .accessibilityElement(children: .combine)
-  }
-}
-
-private struct ModelBar: View {
-  let name: String
-  let valueText: String
-  // nil when the model has no price, so it has no bar.
-  let share: Double?
-  // nil unless the model's cache hit rate is low.
-  let lowCachePercent: Int?
-
-  private static let height: CGFloat = 6
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-      HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
-        Text(name)
-        if let lowCachePercent {
-          HStack(alignment: .firstTextBaseline, spacing: 3) {
-            Image(systemName: "exclamationmark.circle")
-              .accessibilityHidden(true)
-            Text("cache hit \(lowCachePercent)%")
-          }
-          .font(.system(size: 11, weight: .semibold))
-          .foregroundStyle(Theme.accent(.short))
-        }
-        Spacer()
-        Text(valueText)
-          .monospacedDigit()
-          .foregroundStyle(.secondary)
-      }
-      .font(.system(size: 12))
-      RoundedRectangle(cornerRadius: Theme.Radius.bar)
-        .fill(Color.primary.opacity(0.07))
-        .frame(height: Self.height)
-        .overlay(alignment: .leading) {
-          GeometryReader { geometry in
-            RoundedRectangle(cornerRadius: Theme.Radius.bar)
-              .fill(Theme.accent(.healthy))
-              .frame(width: geometry.size.width * min(max(share ?? 0, 0), 1))
-          }
-        }
-    }
     .accessibilityElement(children: .combine)
   }
 }
