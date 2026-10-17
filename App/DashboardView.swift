@@ -57,6 +57,13 @@ struct DashboardView: View {
     .background(.regularMaterial)
     .frame(minWidth: 720, minHeight: 560)
     .navigationSubtitle(cycleSubtitle)
+    .onAppear {
+      NSApp.setActivationPolicy(.regular)
+      NSApp.activate()
+    }
+    .onDisappear {
+      NSApp.setActivationPolicy(.accessory)
+    }
     .toolbar {
       ToolbarItem(placement: .primaryAction) {
         Button {
