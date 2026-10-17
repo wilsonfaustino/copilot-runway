@@ -3,6 +3,7 @@ import SwiftUI
 
 struct PopoverView: View {
   let usageStore: UsageStore
+  let closePopover: () -> Void
   @AppStorage("localOnlyNoticeDismissed") private var localOnlyNoticeDismissed = false
   @AppStorage("popoverGlass") private var popoverGlass = false
   @Environment(\.openWindow) private var openWindow
@@ -63,13 +64,10 @@ struct PopoverView: View {
     }
     // Glass sits outside the animator because its opacity wrapper stops the glass from sampling the backdrop.
     .modifier(PopoverGlass(useGlass: popoverGlass))
-    // onAppear may fire only once for window-style content, so a key window change counts each open.
-    // onAppear also shows the content if the window name below ever stops matching.
+    // NSPopover keeps this view between shows, so onAppear fires only on the first show.
+    // That first show may also post willShow, and a second bump only restarts the ring sweep.
     .onAppear { openCount += 1 }
-    .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { notification in
-      // Settings and the dashboard also become key, so only the menu bar window counts.
-      if (notification.object as? NSWindow)?.className.contains("MenuBarExtraWindow") == true { openCount += 1 }
-    }
+    .onReceive(NotificationCenter.default.publisher(for: NSPopover.willShowNotification)) { _ in openCount += 1 }
   }
 
   // applicationIconImage follows the system icon style (Clear renders a low-contrast grey glass). The asset catalog keeps the full-colour icon.
@@ -198,6 +196,7 @@ struct PopoverView: View {
       Button {
         openSettings()
         NSApplication.shared.activate()
+        closePopover()
       } label: {
         card
       }
@@ -268,6 +267,7 @@ struct PopoverView: View {
         openWindow(id: DashboardView.windowId)
         // The app has no Dock icon, so it must come forward or the window opens behind other apps.
         NSApplication.shared.activate()
+        closePopover()
       } label: {
         Label("Open dashboard", systemImage: "chart.bar.xaxis")
           .frame(maxWidth: .infinity)
@@ -277,6 +277,7 @@ struct PopoverView: View {
       Button {
         openSettings()
         NSApplication.shared.activate()
+        closePopover()
       } label: {
         Image(systemName: "gearshape")
           .frame(width: 16)
