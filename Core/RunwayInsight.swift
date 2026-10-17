@@ -50,24 +50,6 @@ public enum RunwayInsight {
     return headroom >= 0 ? "\(creditsText) credits/day of headroom" : "\(creditsText) credits/day over budget"
   }
 
-  // Copilot code review bills the PR author, but no local session records it. nil when no review ran.
-  public static func copilotReviewSentence(count: Int) -> String? {
-    switch count {
-    case ..<1: nil
-    case 1: "1 Copilot code review ran on your PRs this cycle. It uses credits that local sessions do not show."
-    default: "\(count) Copilot code reviews ran on your PRs this cycle. They use credits that local sessions do not show."
-    }
-  }
-
-  // The popover caption under the By model legend. nil when no review ran.
-  public static func copilotReviewCaption(count: Int) -> String? {
-    switch count {
-    case ..<1: nil
-    case 1: "1 Copilot code review ran on your PRs this cycle."
-    default: "\(count) Copilot code reviews ran on your PRs this cycle."
-    }
-  }
-
   // The category with the most local credits and its rounded share of them. nil when no category has credits.
   public static func topCategoryShare(categoryCredits: [CategoryCredits]) -> (category: TaskCategory, percent: Int)? {
     let total = categoryCredits.reduce(0) { $0 + $1.credits }

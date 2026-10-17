@@ -141,6 +141,8 @@ Messages from models without a price add 0, as in `Credits.byCategory`.
     shares are of the GitHub total. A gap under 1% is left out. When local credits are more than GitHub
     credits, shares and `shareTotal` are of the local total and `unit` is "local credits". With no local
     credits there are no items, `shareTotal` is the GitHub total and the card shows its empty text.
+  - `copilotReviewNote(reviewCount:modelCredits:)` is the line under the "Not in local sessions" item.
+    See Copilot code reviews.
   - `unpricedModelsNote(_:)` is the dashboard By model note: "1 model has no price: <id>" or
     "2 models have no price: <id1>, <id2>", ids sorted. `nil` when every model has a price.
   - `unit` names what `shareTotal` counts ("local credits" or "GitHub credits"). `isEmpty` is true when
@@ -306,7 +308,10 @@ This count is separate from PRs reviewed. It counts Copilot code reviews on your
 - Only the reviewer login and `submittedAt` are decoded. No PR title, repo name or review text is kept.
 - The app refreshes this count in the same request as the outcomes, on the 30 minute schedule. An error
   hides the count, and the count is nil until the first request succeeds.
-- The dashboard By model card shows the count in a "Runs on GitHub" box under the "Not in local sessions" item.
+- The popover and the dashboard By model card show the count in a line under the "Not in local sessions"
+  item (`ShareBreakdown.copilotReviewNote`), for example "Likely 14 Copilot reviews, ~95 each". The
+  credits per review are that item's credits divided by the count. The line is hidden without reviews,
+  without that item, and when a local model has no price, because the item then holds that model's use too.
 - Limits:
   - It does not count reviews that you requested on other people's PRs. Those reviews also bill you.
   - It counts reviews on PRs where the organization pays. Those reviews do not use your credits.

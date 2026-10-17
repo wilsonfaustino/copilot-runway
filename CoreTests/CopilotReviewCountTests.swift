@@ -108,21 +108,3 @@ let copilotLogin = "copilot-pull-request-reviewer"
     try GitHubOutcomesClient.copilotReviewPage(from: Data("[]".utf8), since: outcomesCycleStart)
   }
 }
-
-@Test func copilotReviewSentenceIsNilWithoutReviews() {
-  #expect(RunwayInsight.copilotReviewSentence(count: 0) == nil)
-}
-
-@Test func copilotReviewSentenceUsesSingularForOneReview() {
-  #expect(
-    RunwayInsight.copilotReviewSentence(count: 1)
-      == "1 Copilot code review ran on your PRs this cycle. It uses credits that local sessions do not show."
-  )
-}
-
-@Test func copilotReviewSentenceUsesPluralForManyReviews() {
-  #expect(
-    RunwayInsight.copilotReviewSentence(count: 14)
-      == "14 Copilot code reviews ran on your PRs this cycle. They use credits that local sessions do not show."
-  )
-}

@@ -1,4 +1,5 @@
 import Core
+import Foundation
 import Testing
 
 private func itemCreditsTotal(_ breakdown: ShareBreakdown) -> Double {
@@ -160,4 +161,35 @@ private func itemCreditsTotal(_ breakdown: ShareBreakdown) -> Double {
 
 @Test func taskBreakdownWithoutLocalCreditsIsEmpty() {
   #expect(ShareBreakdown.tasks([]).isEmpty)
+}
+
+// October 2026: 10,052 GitHub credits, 8,728 in local sessions, 14 Copilot reviews.
+private let octoberModelCredits = [ModelCredits(model: "gpt-6.1-sol", credits: 6000), ModelCredits(model: "gpt-6-luna", credits: 2728)]
+private let octoberBreakdown = ShareBreakdown.models(octoberModelCredits, githubCredits: 10_052)
+
+@Test func copilotReviewNoteSplitsTheRemainderPerReview() {
+  // 1,324 credits not in local sessions over 14 reviews is 94.6 each.
+  let note = octoberBreakdown.copilotReviewNote(reviewCount: 14, modelCredits: octoberModelCredits, locale: Locale(identifier: "en_US"))
+  #expect(note == "Likely 14 Copilot reviews, ~95 each")
+}
+
+@Test func copilotReviewNoteUsesSingularForOneReview() {
+  let note = octoberBreakdown.copilotReviewNote(reviewCount: 1, modelCredits: octoberModelCredits, locale: Locale(identifier: "en_US"))
+  #expect(note == "Likely 1 Copilot review, ~1,324 credits")
+}
+
+@Test func copilotReviewNoteIsNilWithoutReviews() {
+  #expect(octoberBreakdown.copilotReviewNote(reviewCount: 0, modelCredits: octoberModelCredits) == nil)
+}
+
+@Test func copilotReviewNoteIsNilWithoutNotInLocalSessionsItem() {
+  let breakdown = ShareBreakdown.models(octoberModelCredits, githubCredits: 8728)
+  #expect(!breakdown.items.contains { $0.kind == .notInLocalSessions })
+  #expect(breakdown.copilotReviewNote(reviewCount: 14, modelCredits: octoberModelCredits) == nil)
+}
+
+@Test func copilotReviewNoteIsNilWhenALocalModelHasNoPrice() {
+  let modelCredits = octoberModelCredits + [ModelCredits(model: "grok-5", credits: nil)]
+  let breakdown = ShareBreakdown.models(modelCredits, githubCredits: 10_052)
+  #expect(breakdown.copilotReviewNote(reviewCount: 14, modelCredits: modelCredits) == nil)
 }

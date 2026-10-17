@@ -241,8 +241,10 @@ struct DashboardView: View {
       title: "By model",
       breakdown: breakdown,
       colors: Theme.modelColors(for: breakdown),
-      githubNote: usageStore.copilotReviewCount.flatMap(RunwayInsight.copilotReviewSentence(count:)),
-      footnotes: footnotes
+      footnotes: footnotes,
+      notInLocalSessionsNote: usageStore.copilotReviewCount.flatMap { reviewCount in
+        breakdown.copilotReviewNote(reviewCount: reviewCount, modelCredits: usageStore.modelCredits)
+      }
     )
   }
 
@@ -265,9 +267,9 @@ struct DashboardView: View {
     title: String,
     breakdown: ShareBreakdown,
     colors: [String: Color],
-    githubNote: String? = nil,
     footnotes: [String] = [],
-    marksSmallShares: Bool = false
+    marksSmallShares: Bool = false,
+    notInLocalSessionsNote: String? = nil
   ) -> some View {
     VStack(alignment: .leading, spacing: Theme.Spacing.regular) {
       HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
@@ -282,31 +284,14 @@ struct DashboardView: View {
       .lineLimit(1)
       .minimumScaleFactor(0.6)
       if !breakdown.isEmpty {
-        ShareBreakdownView(breakdown: breakdown, colors: colors, marksSmallShares: marksSmallShares)
+        ShareBreakdownView(
+          breakdown: breakdown, colors: colors, marksSmallShares: marksSmallShares, notInLocalSessionsNote: notInLocalSessionsNote
+        )
       } else {
         Text("No local sessions in this cycle.")
           .captionStyle()
       }
       Spacer(minLength: 0)
-      if let githubNote {
-        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-          Text("RUNS ON GITHUB")
-            .font(.system(size: 10, weight: .semibold))
-            .tracking(0.6)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 2)
-            .background(Color.primary.opacity(0.08), in: Capsule())
-          Text(githubNote)
-            .font(.system(size: 12))
-            .lineSpacing(2)
-            .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(Theme.Spacing.section)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: Theme.Radius.control))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.control).strokeBorder(Color.primary.opacity(0.06)))
-      }
       ForEach(footnotes, id: \.self) { footnote in
         Text(footnote)
           .captionStyle()

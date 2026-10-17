@@ -95,6 +95,18 @@ public struct ShareBreakdown: Equatable, Sendable {
     )
   }
 
+  // The line under the "Not in local sessions" item: Copilot code reviews are the likely source of the remainder.
+  // nil without reviews or that item, and when a local model has no price, because the remainder then holds
+  // that model's use too.
+  public func copilotReviewNote(reviewCount: Int, modelCredits: [ModelCredits], locale: Locale = .current) -> String? {
+    guard reviewCount > 0, !modelCredits.contains(where: { $0.credits == nil }),
+      let remainder = items.first(where: { $0.kind == .notInLocalSessions })
+    else { return nil }
+    let creditsPerReview = Credits.formatted(remainder.credits / Double(reviewCount), locale: locale)
+    if reviewCount == 1 { return "Likely 1 Copilot review, ~\(creditsPerReview) credits" }
+    return "Likely \(reviewCount) Copilot reviews, ~\(creditsPerReview) each"
+  }
+
   // The dashboard By model note that names the models without a price. nil when every model has one.
   public static func unpricedModelsNote(_ modelCredits: [ModelCredits]) -> String? {
     let unpricedModels = modelCredits.filter { $0.credits == nil }.map(\.model).sorted()

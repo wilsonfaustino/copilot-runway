@@ -254,12 +254,3 @@ let usLocale = Locale(identifier: "en_US")
   #expect(Runway.allowedDailyBurn(usage: usage, now: now) == 6000)
   #expect(RunwayInsight.headroomText(usage: usage, now: now, locale: usLocale) == "5,803 credits/day of headroom")
 }
-
-@Test func copilotReviewCaptionCountsReviews() {
-  #expect(RunwayInsight.copilotReviewCaption(count: 14) == "14 Copilot code reviews ran on your PRs this cycle.")
-  #expect(RunwayInsight.copilotReviewCaption(count: 1) == "1 Copilot code review ran on your PRs this cycle.")
-}
-
-@Test func copilotReviewCaptionIsNilWithoutReviews() {
-  #expect(RunwayInsight.copilotReviewCaption(count: 0) == nil)
-}

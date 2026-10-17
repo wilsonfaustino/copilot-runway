@@ -219,13 +219,11 @@ struct PopoverView: View {
             usageStore.cacheHits.filter(\.isLow).compactMap { cacheHit in cacheHit.wholePercent.map { (cacheHit.model, $0) } },
             uniquingKeysWith: { first, _ in first }
           ),
-          unpricedModels: modelCredits.filter { $0.credits == nil }.map(\.model)
+          unpricedModels: modelCredits.filter { $0.credits == nil }.map(\.model),
+          notInLocalSessionsNote: usageStore.copilotReviewCount.flatMap { reviewCount in
+            breakdown.copilotReviewNote(reviewCount: reviewCount, modelCredits: modelCredits)
+          }
         )
-        if let reviewCaption = usageStore.copilotReviewCount.flatMap(RunwayInsight.copilotReviewCaption(count:)) {
-          Text(reviewCaption)
-            .captionStyle()
-            .fixedSize(horizontal: false, vertical: true)
-        }
       }
     }
   }
