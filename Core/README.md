@@ -105,8 +105,9 @@ Rules, checked in this order. The first match wins.
 | Debugging | An edit, then a shell call, then an edit of the same file path |
 | Implementation | Any edit. Every edited file counts as a source file, docs included |
 | Review | A shell command that contains `gh pr diff` or `gh pr view`, no edits. Substring match, so `rtk gh pr view` also counts |
+| Planning | The OpenCode `plan` agent, no edits and no review command. Read and shell calls do not change this |
 | Investigation | Any read or shell call, no edits |
-| Planning | No read, shell or edit calls, and the OpenCode `plan` agent or at least 1,000 output tokens (reasoning included) |
+| Planning | No read, shell or edit calls, and at least 1,000 output tokens (reasoning included) |
 | Uncategorized | None of the above |
 
 ## Dashboard aggregates
@@ -124,14 +125,27 @@ Messages from models without a price add 0, as in `Credits.byCategory`.
 - `Credits.bySource`: priced credits per `Turn.source` (OpenCode, Pi). `UsageRecord` has no source.
 - `Runway.runOutDate`: now plus `daysLeft` days. It can fall after the reset date.
   `nil` for unlimited plans and when no credits are used.
+- `Runway.dailyHeadroom`: `allowedDailyBurn` minus `averageDailyBurn`. `allowedDailyBurn` is the credits
+  remaining divided by the real fractional days until the reset, with no minimum, so the sign always
+  agrees with `runOutDate` against the reset date. `nil` for unlimited plans, with no credits used or
+  left, and at or after the reset. `RunwayInsight.headroomText` shows it as "N credits/day of
+  headroom" or "N credits/day over budget", on the second line under the popover runway figure and at
+  the end of the dashboard banner run-out sentences.
 - `ShareBreakdown`: the items of the By task, By model and By agent split bars, with rounded shares.
   - `local(entries:)` keeps the order of the entries. Shares are of the local total.
+  - `tasks(_:)` is `local(entries:)` for the By task card. It always has an Uncategorized item, at 0
+    credits when no turn falls in it. The card shows a share above 0 that rounds to 0% as "<1%"
+    (`Credits.shareLabel(_:of:)`). The other cards show the rounded share.
   - `models(_:githubCredits:)` skips models without a price and sorts by credits. With more than 3
     models, the top 3 keep their names and the rest fold into one "Other models" item. When GitHub
     credits are more than local credits, a last "Not in local sessions" item holds the difference and
     shares are of the GitHub total. A gap under 1% is left out. When local credits are more than GitHub
     credits, shares and `shareTotal` are of the local total and `unit` is "local credits". With no local
     credits there are no items, `shareTotal` is the GitHub total and the card shows its empty text.
+  - `copilotReviewNote(reviewCount:modelCredits:)` is the line under the "Not in local sessions" item.
+    See Copilot code reviews.
+  - `unpricedModelsNote(_:)` is the dashboard By model note: "1 model has no price: <id>" or
+    "2 models have no price: <id1>, <id2>", ids sorted. `nil` when every model has a price.
   - `unit` names what `shareTotal` counts ("local credits" or "GitHub credits"). `isEmpty` is true when
     there is no bar to draw.
 
@@ -175,7 +189,7 @@ GitHub Copilot AI credits, cycle 2026-10-01 to 2026-10-31 (UTC)
 Used: 6,000 of 12,000 credits (50% remaining)
 Average daily burn: 600 credits/day
 Projected run-out: 2026-10-21, before the reset on 2026-11-01
-Outcomes: 10 PRs, 20 PRs reviewed, 45 commits; 200 credits per outcome (PRs plus PRs reviewed)
+Outcomes: 10 PRs (8 merged, 2 open), 20 PRs reviewed; 600 credits per PR authored
 Top models (share of 1,300 credits in local sessions):
 - gpt-6.1-sol: 900 credits (69%)
 - gpt-6-luna: 300 credits (23%)
@@ -192,10 +206,10 @@ Top categories (same local sessions):
   local session total. Models without a price are left out.
 - When the run-out falls on or after the reset, the line says "after the reset on <date>".
   Unlimited plans have no limit and no run-out line. Sections with no local credits are left out.
-- The outcomes line holds only the three counts and credits per outcome, no organization or repo name.
-  It is left out until an organization is set and the first search succeeds. "PRs" is open plus merged
-  PRs (see GitHub outcomes). With no PRs and no PRs reviewed it says "credits per outcome: none, no PRs
-  or PRs reviewed yet".
+- The outcomes line holds only the PR and PR reviewed counts and credits per PR authored, no
+  organization or repo name. It has no commits. It is left out until an organization is set and the
+  first search succeeds. "PRs" is open plus merged PRs (see GitHub outcomes). With no PRs it says
+  "credits per PR authored: none, no PRs yet".
 
 ## GitHub outcomes (`GitHubOutcomesClient`)
 
@@ -249,7 +263,7 @@ The commit search is `author:@me author-date:>=<cycle start> user:<org>`. These 
 - PRs: the PRs created in the cycle that are open or merged, so PRs = `openPullRequests` +
   `mergedPullRequests`. A PR closed without a merge does not count. A draft is open, so it counts. The
   values are in `GitHubOutcomes.prsMerged` and `GitHubOutcomes.prsOpen`, and `prs` is their sum.
-  `outcomeCount` is `prs` plus `prsReviewed`. `issueCount` is the exact total, also above 1,000. In October 2026 one account
+  `issueCount` is the exact total, also above 1,000. In October 2026 one account
   had 2 open and 17 merged PRs, the same 19 as the old list search.
 - PRs reviewed: search has no review date qualifier. `reviewed-by:@me` matches a PR that you reviewed
   at any time, and `updated:` filters on any PR activity. So the search
@@ -277,8 +291,8 @@ The commit search is `author:@me author-date:>=<cycle start> user:<org>`. These 
 - Commits: commit search covers only the default branch of each repo, so commits on branches that are
   not merged do not count. `author-date` is the date the commit was written, not pushed.
   `total_count` is the exact total, also above 1,000.
-- Credits per outcome = `credits_used` from the usage API / (PRs + PRs reviewed). Commits are
-  shown but are not outcomes. With 0 outcomes there is no value. `credits_used` is all Copilot use on
+- Credits per PR authored = `credits_used` from the usage API / PRs. PRs reviewed and commits are
+  shown as counts but are not in the divisor. With 0 PRs there is no value. `credits_used` is all Copilot use on
   the account, also outside the organization.
 
 ### Copilot code reviews
@@ -295,7 +309,10 @@ This count is separate from PRs reviewed. It counts Copilot code reviews on your
 - Only the reviewer login and `submittedAt` are decoded. No PR title, repo name or review text is kept.
 - The app refreshes this count in the same request as the outcomes, on the 30 minute schedule. An error
   hides the count, and the count is nil until the first request succeeds.
-- The dashboard By model card shows the count in a "Runs on GitHub" box under the "Not in local sessions" item.
+- The popover and the dashboard By model card show the count in a line under the "Not in local sessions"
+  item (`ShareBreakdown.copilotReviewNote`), for example "Likely 14 Copilot reviews, ~95 each". The
+  credits per review are that item's credits divided by the count. The line is hidden without reviews,
+  without that item, and when a local model has no price, because the item then holds that model's use too.
 - Limits:
   - It does not count reviews that you requested on other people's PRs. Those reviews also bill you.
   - It counts reviews on PRs where the organization pays. Those reviews do not use your credits.

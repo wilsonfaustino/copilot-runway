@@ -120,16 +120,16 @@ let usLocale = Locale(identifier: "en_US")
     now: utcDate("2026-10-11T00:00:00Z"), locale: usLocale
   )
   #expect(banner.headline == "At this pace you run out on Oct 21, 11 days before the reset on Nov 1.")
-  #expect(banner.detail == "To reach Nov 1, keep the burn under 285 credits/day. Implementation turns use 58% of local credits.")
+  #expect(banner.detail == "To reach Nov 1, keep the burn under 285 credits/day. 314 credits/day over budget. Implementation turns use 58% of local credits.")
 }
 
-@Test func bannerForHealthyRunwayHasNoTargetBurn() {
+@Test func bannerForHealthyRunwayHasNoTargetBurnButHeadroom() {
   let banner = RunwayInsight.banner(
     usage: makeUsage(creditsUsed: 1000), errorMessage: nil, categoryCredits: [],
     now: utcDate("2026-10-11T00:00:00Z"), locale: usLocale
   )
   #expect(banner.headline == "At this pace your credits last past the reset on Nov 1.")
-  #expect(banner.detail == "")
+  #expect(banner.detail == "424 credits/day of headroom.")
 }
 
 @Test func bannerInOverageHasNoTargetBurn() {
@@ -165,28 +165,28 @@ let usLocale = Locale(identifier: "en_US")
   let sentence = RunwayInsight.popoverSentence(
     usage: makeUsage(creditsUsed: 6000), now: utcDate("2026-10-11T00:00:00Z"), locale: usLocale
   )
-  #expect(sentence == "Runs out Oct 21, 11 days early.")
+  #expect(sentence == "Runs out Oct 21, 11 days early.\n314 credits/day over budget.")
 }
 
 @Test func popoverSentenceRunOutOneDayBeforeResetUsesSingularDay() {
   let sentence = RunwayInsight.popoverSentence(
     usage: makeUsage(creditsUsed: 4000), now: utcDate("2026-10-11T00:00:00Z"), locale: usLocale
   )
-  #expect(sentence == "Runs out Oct 31, 1 day early.")
+  #expect(sentence == "Runs out Oct 31, 1 day early.\n19 credits/day over budget.")
 }
 
 @Test func popoverSentenceForHealthyRunway() {
   let sentence = RunwayInsight.popoverSentence(
     usage: makeUsage(creditsUsed: 1000), now: utcDate("2026-10-11T00:00:00Z"), locale: usLocale
   )
-  #expect(sentence == "Lasts past the Nov 1 reset.")
+  #expect(sentence == "Lasts past the Nov 1 reset.\n424 credits/day of headroom.")
 }
 
 @Test func popoverSentenceDatesFollowLocale() {
   let sentence = RunwayInsight.popoverSentence(
     usage: makeUsage(creditsUsed: 1000), now: utcDate("2026-10-11T00:00:00Z"), locale: Locale(identifier: "en_GB")
   )
-  #expect(sentence == "Lasts past the 1 Nov reset.")
+  #expect(sentence == "Lasts past the 1 Nov reset.\n424 credits/day of headroom.")
 }
 
 @Test func popoverSentenceForUnlimitedPlan() {
@@ -204,23 +204,90 @@ let usLocale = Locale(identifier: "en_US")
 }
 
 // 360 pt popover, 16 pt padding, 116 pt ring and 18 pt gap leave 194 pt. At 12.5 pt that is about 30 characters.
-@Test func popoverSentencesFitOneLine() {
+@Test func popoverSentenceLinesFitNextToTheRing() {
   let now = utcDate("2026-10-11T00:00:00Z")
   let usages = [
     makeUsage(creditsUsed: 6000), makeUsage(creditsUsed: 4000), makeUsage(creditsUsed: 1000), makeUsage(creditsUsed: 0),
     makeUsage(creditsUsed: 500, entitlement: 0, isUnlimited: true),
   ]
   for usage in usages {
-    let sentence = RunwayInsight.popoverSentence(usage: usage, now: now, locale: usLocale)
-    #expect((sentence?.count ?? 0) <= 31)
+    let lines = RunwayInsight.popoverSentence(usage: usage, now: now, locale: usLocale)?.split(separator: "\n") ?? []
+    #expect(lines.count <= 2)
+    #expect(lines.allSatisfy { $0.count <= 31 })
   }
 }
 
-@Test func copilotReviewCaptionCountsReviews() {
-  #expect(RunwayInsight.copilotReviewCaption(count: 14) == "14 Copilot code reviews ran on your PRs this cycle.")
-  #expect(RunwayInsight.copilotReviewCaption(count: 1) == "1 Copilot code review ran on your PRs this cycle.")
+@Test func headroomTextIsNilWithoutALimit() {
+  let usage = makeUsage(creditsUsed: 500, entitlement: 0, isUnlimited: true)
+  #expect(RunwayInsight.headroomText(usage: usage, now: utcDate("2026-10-11T00:00:00Z"), locale: usLocale) == nil)
 }
 
-@Test func copilotReviewCaptionIsNilWithoutReviews() {
-  #expect(RunwayInsight.copilotReviewCaption(count: 0) == nil)
+@Test func headroomTextIsNilWithoutUsage() {
+  #expect(RunwayInsight.headroomText(usage: makeUsage(creditsUsed: 0), now: utcDate("2026-10-11T00:00:00Z"), locale: usLocale) == nil)
+}
+
+@Test func headroomTextIsNilWhenAlreadyOver() {
+  #expect(RunwayInsight.headroomText(usage: makeUsage(creditsUsed: 12000), now: utcDate("2026-10-21T00:00:00Z"), locale: usLocale) == nil)
+  #expect(RunwayInsight.headroomText(usage: makeUsage(creditsUsed: 12500), now: utcDate("2026-10-21T00:00:00Z"), locale: usLocale) == nil)
+}
+
+@Test func headroomTextIsNilAfterTheReset() {
+  #expect(RunwayInsight.headroomText(usage: makeUsage(creditsUsed: 6000), now: utcDate("2026-11-02T00:00:00Z"), locale: usLocale) == nil)
+}
+
+@Test func headroomTextIsPositiveBelowTheAllowedBurn() {
+  // 11,000 left over 21 days is 523.8 a day. The average burn is 1,000 over 10 days, 100 a day.
+  let text = RunwayInsight.headroomText(usage: makeUsage(creditsUsed: 1000), now: utcDate("2026-10-11T00:00:00Z"), locale: usLocale)
+  #expect(text == "424 credits/day of headroom")
+}
+
+@Test func headroomTextIsNegativeAboveTheAllowedBurn() {
+  // 6,000 left over 21 days is 285.7 a day. The average burn is 6,000 over 10 days, 600 a day.
+  let text = RunwayInsight.headroomText(usage: makeUsage(creditsUsed: 6000), now: utcDate("2026-10-11T00:00:00Z"), locale: usLocale)
+  #expect(text == "314 credits/day over budget")
+}
+
+@Test func headroomOnResetDayUsesTheRealDaysUntilTheReset() {
+  // 6,000 left over the 0.5 days to the reset is 12,000 a day. The average burn is 6,000 over 30.5 days, 196.7 a day.
+  let usage = makeUsage(creditsUsed: 6000)
+  let now = utcDate("2026-10-31T12:00:00Z")
+  #expect(Runway.allowedDailyBurn(usage: usage, now: now) == 12000)
+  #expect(RunwayInsight.headroomText(usage: usage, now: now, locale: usLocale) == "11,803 credits/day of headroom")
+}
+
+@Test func headroomOnResetDayIsPositiveWhenRunOutFallsAfterTheReset() throws {
+  // 200 left, burn 300 a day, 0.5 days to the reset: the allowance is 400 a day, so 100 a day of headroom.
+  let usage = makeUsage(creditsUsed: 9150, entitlement: 9350)
+  let now = utcDate("2026-10-31T12:00:00Z")
+  let headroom = try #require(Runway.dailyHeadroom(usage: usage, now: now))
+  #expect(abs(headroom - 100) < 0.0001)
+  #expect(RunwayInsight.headroomText(usage: usage, now: now, locale: usLocale) == "100 credits/day of headroom")
+}
+
+@Test func headroomOnResetDayIsNegativeWhenRunOutFallsBeforeTheReset() throws {
+  // 100 left, burn 300 a day, 0.5 days to the reset: the allowance is 200 a day, so 100 a day over budget.
+  let usage = makeUsage(creditsUsed: 9150, entitlement: 9250)
+  let now = utcDate("2026-10-31T12:00:00Z")
+  let headroom = try #require(Runway.dailyHeadroom(usage: usage, now: now))
+  #expect(abs(headroom + 100) < 0.0001)
+  #expect(RunwayInsight.headroomText(usage: usage, now: now, locale: usLocale) == "100 credits/day over budget")
+}
+
+@Test func headroomSignAgreesWithRunOutDateAgainstTheReset() throws {
+  let nowValues = ["2026-10-02T06:00:00Z", "2026-10-11T00:00:00Z", "2026-10-25T18:00:00Z", "2026-10-31T12:00:00Z", "2026-10-31T23:00:00Z"]
+  for creditsUsed in [100.0, 3000, 6000, 9000, 11_000, 11_900] {
+    for nowValue in nowValues {
+      let usage = makeUsage(creditsUsed: creditsUsed)
+      let now = utcDate(nowValue)
+      let headroom = try #require(Runway.dailyHeadroom(usage: usage, now: now))
+      let runOutDate = try #require(Runway.runOutDate(usage: usage, now: now))
+      #expect((headroom > 0) == (runOutDate > usage.resetDate), "used \(creditsUsed) at \(nowValue)")
+    }
+  }
+}
+
+@Test func headroomIsNilAtTheExactReset() {
+  let usage = makeUsage(creditsUsed: 6000)
+  #expect(Runway.dailyHeadroom(usage: usage, now: usage.resetDate) == nil)
+  #expect(RunwayInsight.headroomText(usage: usage, now: usage.resetDate, locale: usLocale) == nil)
 }

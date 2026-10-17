@@ -1,4 +1,5 @@
 import Core
+import Foundation
 import Testing
 
 private func itemCreditsTotal(_ breakdown: ShareBreakdown) -> Double {
@@ -120,4 +121,75 @@ private func itemCreditsTotal(_ breakdown: ShareBreakdown) -> Double {
   #expect(ShareBreakdown.local(entries: []).isEmpty)
   #expect(ShareBreakdown.local(entries: [("Pi", 0)]).isEmpty)
   #expect(!ShareBreakdown.local(entries: [("Pi", 5)]).isEmpty)
+}
+
+@Test func unpricedModelsNoteIsNilWhenEveryModelHasAPrice() {
+  #expect(ShareBreakdown.unpricedModelsNote([ModelCredits(model: "gpt-6.1-sol", credits: 620)]) == nil)
+  #expect(ShareBreakdown.unpricedModelsNote([]) == nil)
+}
+
+@Test func unpricedModelsNoteNamesOneModel() {
+  let modelCredits = [ModelCredits(model: "gpt-6.1-sol", credits: 620), ModelCredits(model: "grok-5", credits: nil)]
+  #expect(ShareBreakdown.unpricedModelsNote(modelCredits) == "1 model has no price: grok-5")
+}
+
+@Test func unpricedModelsNoteSortsSeveralModels() {
+  let modelCredits = [
+    ModelCredits(model: "grok-5", credits: nil),
+    ModelCredits(model: "gpt-6.1-sol", credits: 620),
+    ModelCredits(model: "claude-haiku-5-5", credits: nil),
+  ]
+  #expect(ShareBreakdown.unpricedModelsNote(modelCredits) == "2 models have no price: claude-haiku-5-5, grok-5")
+}
+
+@Test func taskBreakdownAddsUncategorizedAtZero() {
+  let breakdown = ShareBreakdown.tasks([
+    CategoryCredits(category: .implementation, credits: 700), CategoryCredits(category: .investigation, credits: 300),
+  ])
+  #expect(breakdown.items.map(\.name) == ["Implementation", "Investigation", "Uncategorized"])
+  #expect(breakdown.items.map(\.credits) == [700, 300, 0])
+  #expect(breakdown.shareTotal == 1000)
+}
+
+@Test func taskBreakdownKeepsUncategorizedThatHasCredits() {
+  let breakdown = ShareBreakdown.tasks([
+    CategoryCredits(category: .implementation, credits: 700), CategoryCredits(category: .uncategorized, credits: 3),
+  ])
+  #expect(breakdown.items.map(\.name) == ["Implementation", "Uncategorized"])
+  #expect(breakdown.items.map(\.credits) == [700, 3])
+}
+
+@Test func taskBreakdownWithoutLocalCreditsIsEmpty() {
+  #expect(ShareBreakdown.tasks([]).isEmpty)
+}
+
+// October 2026: 10,052 GitHub credits, 8,728 in local sessions, 14 Copilot reviews.
+private let octoberModelCredits = [ModelCredits(model: "gpt-6.1-sol", credits: 6000), ModelCredits(model: "gpt-6-luna", credits: 2728)]
+private let octoberBreakdown = ShareBreakdown.models(octoberModelCredits, githubCredits: 10_052)
+
+@Test func copilotReviewNoteSplitsTheRemainderPerReview() {
+  // 1,324 credits not in local sessions over 14 reviews is 94.6 each.
+  let note = octoberBreakdown.copilotReviewNote(reviewCount: 14, modelCredits: octoberModelCredits, locale: Locale(identifier: "en_US"))
+  #expect(note == "Likely 14 Copilot reviews, ~95 each")
+}
+
+@Test func copilotReviewNoteUsesSingularForOneReview() {
+  let note = octoberBreakdown.copilotReviewNote(reviewCount: 1, modelCredits: octoberModelCredits, locale: Locale(identifier: "en_US"))
+  #expect(note == "Likely 1 Copilot review, ~1,324 credits")
+}
+
+@Test func copilotReviewNoteIsNilWithoutReviews() {
+  #expect(octoberBreakdown.copilotReviewNote(reviewCount: 0, modelCredits: octoberModelCredits) == nil)
+}
+
+@Test func copilotReviewNoteIsNilWithoutNotInLocalSessionsItem() {
+  let breakdown = ShareBreakdown.models(octoberModelCredits, githubCredits: 8728)
+  #expect(!breakdown.items.contains { $0.kind == .notInLocalSessions })
+  #expect(breakdown.copilotReviewNote(reviewCount: 14, modelCredits: octoberModelCredits) == nil)
+}
+
+@Test func copilotReviewNoteIsNilWhenALocalModelHasNoPrice() {
+  let modelCredits = octoberModelCredits + [ModelCredits(model: "grok-5", credits: nil)]
+  let breakdown = ShareBreakdown.models(modelCredits, githubCredits: 10_052)
+  #expect(breakdown.copilotReviewNote(reviewCount: 14, modelCredits: modelCredits) == nil)
 }

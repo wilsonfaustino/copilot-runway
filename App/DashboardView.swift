@@ -174,10 +174,10 @@ struct DashboardView: View {
   }
 
   private func outcomesCard(usage: CopilotUsage) -> some View {
-    kpiCard("Credits per outcome") {
+    kpiCard("Credits per PR authored") {
       if usageStore.organization == nil {
         Text("--").bigFigureStyle(size: 34)
-        Text("Set a GitHub organization in Settings to see credits per outcome.")
+        Text("Set a GitHub organization in Settings to see credits per PR authored.")
           .font(.system(size: 12))
           .lineLimit(3)
           .fixedSize(horizontal: false, vertical: true)
@@ -189,7 +189,7 @@ struct DashboardView: View {
         .controlSize(.small)
       } else {
         if let outcomes = usageStore.outcomes {
-          Text(outcomes.creditsPerOutcome(creditsUsed: usage.creditsUsed).map { Credits.formatted($0) } ?? "No PRs yet")
+          Text(outcomes.creditsPerPRAuthored(creditsUsed: usage.creditsUsed).map { Credits.formatted($0) } ?? "No PRs yet")
             .bigFigureStyle(size: 34)
           kpiDetail(
             "\(GitHubOutcomes.countText(outcomes.prsMerged)) merged · \(GitHubOutcomes.countText(outcomes.prsOpen)) open"
@@ -198,7 +198,7 @@ struct DashboardView: View {
           .lineLimit(1)
           .minimumScaleFactor(0.85)
           .help(
-            "Outcomes are merged and open PRs you created plus PRs you reviewed this cycle. Closed PRs that were not merged and commits are not counted."
+            "PRs authored are merged and open PRs you created this cycle. Closed PRs that were not merged, PRs reviewed and commits are not counted."
           )
         } else {
           Text("--").bigFigureStyle(size: 34)
@@ -220,21 +220,19 @@ struct DashboardView: View {
   // MARK: Share cards
 
   private var taskCard: some View {
-    let categoryCredits = usageStore.categoryCredits
-    let breakdown = ShareBreakdown.local(entries: categoryCredits.map { ($0.category.displayName, $0.credits) })
-    return shareCard(
+    shareCard(
       title: "By task",
-      breakdown: breakdown,
-      colors: Dictionary(uniqueKeysWithValues: categoryCredits.map { ($0.category.displayName, Theme.taskColor($0.category)) })
+      breakdown: ShareBreakdown.tasks(usageStore.categoryCredits),
+      colors: Dictionary(uniqueKeysWithValues: TaskCategory.allCases.map { ($0.displayName, Theme.taskColor($0)) }),
+      marksSmallShares: true
     )
   }
 
   private func modelCard(usage: CopilotUsage) -> some View {
     let breakdown = ShareBreakdown.models(usageStore.modelCredits, githubCredits: usage.creditsUsed)
-    let unpricedModelCount = usageStore.modelCredits.filter { $0.credits == nil }.count
     var footnotes: [String] = []
-    if unpricedModelCount > 0 {
-      footnotes.append("\(unpricedModelCount) model(s) have no price and are not counted.")
+    if let unpricedModelsNote = ShareBreakdown.unpricedModelsNote(usageStore.modelCredits) {
+      footnotes.append(unpricedModelsNote)
     }
     if !usageStore.lowCacheSentences.isEmpty {
       footnotes.append(usageStore.lowCacheSentences.joined(separator: " "))
@@ -243,8 +241,10 @@ struct DashboardView: View {
       title: "By model",
       breakdown: breakdown,
       colors: Theme.modelColors(for: breakdown),
-      githubNote: usageStore.copilotReviewCount.flatMap(RunwayInsight.copilotReviewSentence(count:)),
-      footnotes: footnotes
+      footnotes: footnotes,
+      notInLocalSessionsNote: usageStore.copilotReviewCount.flatMap { reviewCount in
+        breakdown.copilotReviewNote(reviewCount: reviewCount, modelCredits: usageStore.modelCredits)
+      }
     )
   }
 
@@ -267,8 +267,9 @@ struct DashboardView: View {
     title: String,
     breakdown: ShareBreakdown,
     colors: [String: Color],
-    githubNote: String? = nil,
-    footnotes: [String] = []
+    footnotes: [String] = [],
+    marksSmallShares: Bool = false,
+    notInLocalSessionsNote: String? = nil
   ) -> some View {
     VStack(alignment: .leading, spacing: Theme.Spacing.regular) {
       HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
@@ -283,31 +284,14 @@ struct DashboardView: View {
       .lineLimit(1)
       .minimumScaleFactor(0.6)
       if !breakdown.isEmpty {
-        ShareBreakdownView(breakdown: breakdown, colors: colors)
+        ShareBreakdownView(
+          breakdown: breakdown, colors: colors, marksSmallShares: marksSmallShares, notInLocalSessionsNote: notInLocalSessionsNote
+        )
       } else {
         Text("No local sessions in this cycle.")
           .captionStyle()
       }
       Spacer(minLength: 0)
-      if let githubNote {
-        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-          Text("RUNS ON GITHUB")
-            .font(.system(size: 10, weight: .semibold))
-            .tracking(0.6)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 2)
-            .background(Color.primary.opacity(0.08), in: Capsule())
-          Text(githubNote)
-            .font(.system(size: 12))
-            .lineSpacing(2)
-            .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(Theme.Spacing.section)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: Theme.Radius.control))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.control).strokeBorder(Color.primary.opacity(0.06)))
-      }
       ForEach(footnotes, id: \.self) { footnote in
         Text(footnote)
           .captionStyle()

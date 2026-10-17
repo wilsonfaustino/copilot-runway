@@ -1,6 +1,7 @@
 import Foundation
 
 // Declared in precedence order: when a turn matches several rules, the first one wins.
+// One exception: the plan agent rule for Planning comes before Investigation. See TaskCategorizer.category(of:).
 public enum TaskCategory: String, CaseIterable, Sendable {
   case debugging
   case implementation
@@ -47,10 +48,11 @@ public enum TaskCategorizer {
     if isDebugging(turn) { return .debugging }
     if kinds.contains(.edit) { return .implementation }
     if turn.toolCalls.contains(where: isReviewCommand) { return .review }
+    if turn.agent == planAgent { return .planning }
     if kinds.contains(.read) || kinds.contains(.shell) { return .investigation }
-    // The rules above leave only turns without read, shell or edit calls.
+    // The rules above leave only turns without read, shell or edit calls, outside the plan agent.
     let outputTokens = turn.records.reduce(0) { $0 + $1.tokens.output }
-    if turn.agent == planAgent || outputTokens >= planningOutputTokenThreshold { return .planning }
+    if outputTokens >= planningOutputTokenThreshold { return .planning }
     return .uncategorized
   }
 

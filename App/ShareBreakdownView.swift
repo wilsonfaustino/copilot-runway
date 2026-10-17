@@ -10,6 +10,10 @@ struct ShareBreakdownView: View {
   var lowCachePercents: [String: Int] = [:]
   // Models with no price get a legend row and no bar part.
   var unpricedModels: [String] = []
+  // Shows a share above 0 that rounds to 0% as "<1%".
+  var marksSmallShares = false
+  // A line under the "Not in local sessions" item.
+  var notInLocalSessionsNote: String?
 
   private static let partSpacing: CGFloat = 2
   private static let swatchSize: CGFloat = 10
@@ -25,9 +29,14 @@ struct ShareBreakdownView: View {
           legendRow(name: item.name, italic: item.kind == .notInLocalSessions, swatch: itemFill(item)) {
             Text(Credits.formatted(item.credits))
               .foregroundStyle(.secondary)
-            Text("\(item.share)%")
+            Text(marksSmallShares ? Credits.shareLabel(item.credits, of: breakdown.shareTotal) : "\(item.share)%")
               .foregroundStyle(.secondary)
               .frame(minWidth: 36, alignment: .trailing)
+          }
+          if item.kind == .notInLocalSessions, let notInLocalSessionsNote {
+            Text(notInLocalSessionsNote)
+              .captionStyle()
+              .padding(.leading, Self.swatchSize + Theme.Spacing.regular)
           }
         }
         ForEach(unpricedModels, id: \.self) { model in

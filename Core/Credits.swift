@@ -136,6 +136,12 @@ public enum Credits {
     return Int((part / total * 100).rounded())
   }
 
+  // The By task share text. A share above 0 that rounds to 0% shows "<1%".
+  public static func shareLabel(_ part: Double, of total: Double) -> String {
+    let percent = sharePercent(part, of: total)
+    return percent == 0 && part > 0 && total > 0 ? "<1%" : "\(percent)%"
+  }
+
   static func pricedTotal(records: [UsageRecord], prices: [String: ModelPrice]) -> Double {
     records.reduce(0) { total, record in
       total + (prices[record.model].map { credits(for: record.tokens, price: $0) } ?? 0)

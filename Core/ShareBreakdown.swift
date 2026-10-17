@@ -55,6 +55,15 @@ public struct ShareBreakdown: Equatable, Sendable {
     )
   }
 
+  // Local credits per task, as local(entries:). Uncategorized always has an item, at 0 when no turn falls in it.
+  public static func tasks(_ categoryCredits: [CategoryCredits]) -> ShareBreakdown {
+    var entries = categoryCredits.map { (name: $0.category.displayName, credits: $0.credits) }
+    if !categoryCredits.contains(where: { $0.category == .uncategorized }) {
+      entries.append((TaskCategory.uncategorized.displayName, 0))
+    }
+    return local(entries: entries)
+  }
+
   // Priced models by credits, the top ones by name and the rest as "Other models". When GitHub reports more
   // credits than local sessions, a last item holds the difference and shares are of the GitHub total.
   // Otherwise shares are of the local total, for example after a price table overestimate, and the unit says so.
@@ -84,6 +93,28 @@ public struct ShareBreakdown: Equatable, Sendable {
     return ShareBreakdown(
       shareTotal: shareTotal, items: items, unit: githubCredits >= localTotal ? githubCreditsUnit : localCreditsUnit
     )
+  }
+
+  // The line under the "Not in local sessions" item: Copilot code reviews are the likely source of the remainder.
+  // nil without reviews or that item, and when a local model has no price, because the remainder then holds
+  // that model's use too.
+  public func copilotReviewNote(reviewCount: Int, modelCredits: [ModelCredits], locale: Locale = .current) -> String? {
+    guard reviewCount > 0, !modelCredits.contains(where: { $0.credits == nil }),
+      let remainder = items.first(where: { $0.kind == .notInLocalSessions })
+    else { return nil }
+    let creditsPerReview = Credits.formatted(remainder.credits / Double(reviewCount), locale: locale)
+    if reviewCount == 1 { return "Likely 1 Copilot review, ~\(creditsPerReview) credits" }
+    return "Likely \(reviewCount) Copilot reviews, ~\(creditsPerReview) each"
+  }
+
+  // The dashboard By model note that names the models without a price. nil when every model has one.
+  public static func unpricedModelsNote(_ modelCredits: [ModelCredits]) -> String? {
+    let unpricedModels = modelCredits.filter { $0.credits == nil }.map(\.model).sorted()
+    switch unpricedModels.count {
+    case 0: return nil
+    case 1: return "1 model has no price: \(unpricedModels[0])"
+    default: return "\(unpricedModels.count) models have no price: \(unpricedModels.joined(separator: ", "))"
+    }
   }
 
   private static func item(name: String, credits: Double, kind: ShareItem.Kind, of shareTotal: Double) -> ShareItem {

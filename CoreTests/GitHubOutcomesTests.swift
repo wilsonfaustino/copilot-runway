@@ -215,15 +215,21 @@ func reviewNode(_ submittedAt: String) -> String {
   }
 }
 
-@Test func creditsPerOutcomeCountsOnlyPullRequests() {
+@Test func creditsPerPRAuthoredDividesByMergedAndOpenPRsOnly() {
   let outcomes = GitHubOutcomes(prsMerged: 4, prsOpen: 2, prsReviewed: 14, commits: 40)
-  #expect(outcomes.outcomeCount == 20)
-  #expect(outcomes.creditsPerOutcome(creditsUsed: 3000) == 150)
+  #expect(outcomes.creditsPerPRAuthored(creditsUsed: 3000) == 500)
 }
 
-@Test func creditsPerOutcomeIsNilWithoutPullRequests() {
-  let outcomes = GitHubOutcomes(prsMerged: 0, prsOpen: 0, prsReviewed: 0, commits: 5)
-  #expect(outcomes.creditsPerOutcome(creditsUsed: 3000) == nil)
+@Test func creditsPerPRAuthoredForOctober() throws {
+  // October 2026: 10,052 credits used, 19 PRs (17 merged, 2 open), 24 PRs reviewed.
+  let outcomes = GitHubOutcomes(prsMerged: 17, prsOpen: 2, prsReviewed: 24, commits: 0)
+  let creditsPerPRAuthored = try #require(outcomes.creditsPerPRAuthored(creditsUsed: 10_052))
+  #expect(Credits.formatted(creditsPerPRAuthored, locale: Locale(identifier: "en_US")) == "529")
+}
+
+@Test func creditsPerPRAuthoredIsNilWithoutPRs() {
+  let outcomes = GitHubOutcomes(prsMerged: 0, prsOpen: 0, prsReviewed: 6, commits: 5)
+  #expect(outcomes.creditsPerPRAuthored(creditsUsed: 3000) == nil)
 }
 
 @Test func countTextIsExactAboveTheSearchLimit() {

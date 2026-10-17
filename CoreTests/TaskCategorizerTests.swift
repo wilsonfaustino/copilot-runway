@@ -75,14 +75,23 @@ func openCodeFixtureCategories() throws -> [Int: TaskCategory] {
   #expect(piCategories[10] != .uncategorized, "neutral tools with a long answer")
 }
 
-@Test func precedenceIsDebuggingImplementationReviewInvestigationPlanning() throws {
+@Test func precedenceIsDebuggingImplementationReviewPlanAgentInvestigationPlanning() throws {
   let piCategories = piFixtureCategories()
   let openCodeCategories = try openCodeFixtureCategories()
   #expect(piCategories[3] == .debugging, "Debugging wins over Implementation")
   #expect(piCategories[7] == .implementation, "Implementation wins over Review")
   #expect(piCategories[6] == .review, "Review wins over Investigation")
-  #expect(openCodeCategories[1] == .investigation, "Investigation wins over the plan agent")
+  #expect(openCodeCategories[1] == .planning, "the plan agent wins over Investigation")
   #expect(TaskCategory.allCases == [.debugging, .implementation, .review, .investigation, .planning, .uncategorized])
+}
+
+@Test func planAgentTurnWithReadsIsPlanning() {
+  let timestamp = utcDate("2026-10-07T01:00:00Z")
+  let reads = [ToolCall(name: "read", filePath: "a.swift"), ToolCall(name: "grep")]
+  let planTurn = Turn(timestamp: timestamp, source: .opencode, agent: "plan", toolCalls: reads)
+  let buildTurn = Turn(timestamp: timestamp, source: .opencode, agent: "build", toolCalls: reads)
+  #expect(TaskCategorizer.category(of: planTurn) == .planning)
+  #expect(TaskCategorizer.category(of: buildTurn) == .investigation)
 }
 
 @Test func toolNamesMapPerSource() {

@@ -83,6 +83,23 @@ let millionSolInputTokens = TokenUsage(input: 1_000_000, cachedInput: 0, cacheWr
   #expect(isClose(bySource[1].credits, 400))
 }
 
+@Test func unpricedModelHasNoCreditsByModelAndAddsZeroByCategory() {
+  let timestamp = utcDate("2026-10-05T10:00:00Z")
+  let turns = [
+    Turn(timestamp: timestamp, source: .pi, toolCalls: [ToolCall(name: "read")], records: [
+      UsageRecord(model: "gpt-6.1-sol", timestamp: timestamp, tokens: millionSolInputTokens),
+      UsageRecord(model: "unpriced-model", timestamp: timestamp, tokens: millionSolInputTokens),
+    ]),
+  ]
+  let byModel = Credits.byModel(records: turns.flatMap(\.records), prices: PriceTable.bundled)
+  #expect(byModel.map(\.model) == ["gpt-6.1-sol", "unpriced-model"])
+  #expect(byModel[1].credits == nil)
+  // Only the Sol message counts: 1M Sol input tokens are 400 credits.
+  let byCategory = Credits.byCategory(turns: turns, prices: PriceTable.bundled)
+  #expect(byCategory.map(\.category) == [.investigation])
+  #expect(isClose(byCategory[0].credits, 400))
+}
+
 @Test func creditsByDayFillsEveryCycleDayThroughNow() {
   let records = [
     UsageRecord(model: "gpt-6.1-sol", timestamp: utcDate("2026-10-01T09:00:00Z"), tokens: millionSolInputTokens),
@@ -129,6 +146,13 @@ let millionSolInputTokens = TokenUsage(input: 1_000_000, cachedInput: 0, cacheWr
   #expect(Credits.sharePercent(1, of: 3) == 33)
   #expect(Credits.sharePercent(2, of: 3) == 67)
   #expect(Credits.sharePercent(5, of: 0) == 0)
+}
+
+@Test func shareLabelMarksSharesThatRoundToZero() {
+  #expect(Credits.shareLabel(0, of: 1000) == "0%")
+  #expect(Credits.shareLabel(3, of: 1000) == "<1%")
+  #expect(Credits.shareLabel(124, of: 1000) == "12%")
+  #expect(Credits.shareLabel(0, of: 0) == "0%")
 }
 
 @Test func formattedCreditsHaveNoFraction() {

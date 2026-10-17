@@ -43,22 +43,11 @@ public enum RunwayInsight {
     return max(usage.creditsRemaining, 0) / daysUntilReset
   }
 
-  // Copilot code review bills the PR author, but no local session records it. nil when no review ran.
-  public static func copilotReviewSentence(count: Int) -> String? {
-    switch count {
-    case ..<1: nil
-    case 1: "1 Copilot code review ran on your PRs this cycle. It uses credits that local sessions do not show."
-    default: "\(count) Copilot code reviews ran on your PRs this cycle. They use credits that local sessions do not show."
-    }
-  }
-
-  // The popover caption under the By model legend. nil when no review ran.
-  public static func copilotReviewCaption(count: Int) -> String? {
-    switch count {
-    case ..<1: nil
-    case 1: "1 Copilot code review ran on your PRs this cycle."
-    default: "\(count) Copilot code reviews ran on your PRs this cycle."
-    }
+  // "N credits/day of headroom" or "N credits/day over budget". nil when Runway.dailyHeadroom is nil.
+  public static func headroomText(usage: CopilotUsage, now: Date, locale: Locale = .current) -> String? {
+    guard let headroom = Runway.dailyHeadroom(usage: usage, now: now) else { return nil }
+    let creditsText = Credits.formatted(abs(headroom), locale: locale)
+    return headroom >= 0 ? "\(creditsText) credits/day of headroom" : "\(creditsText) credits/day over budget"
   }
 
   // The category with the most local credits and its rounded share of them. nil when no category has credits.
@@ -94,6 +83,9 @@ public enum RunwayInsight {
           "To reach \(day(usage.resetDate, locale: locale)), keep the burn under \(targetBurn.formatted(.number.locale(locale))) credits/day."
         )
       }
+      if let headroomText = headroomText(usage: usage, now: now, locale: locale) {
+        detailSentences.append("\(headroomText).")
+      }
     } else {
       headline = "No credits used yet this cycle."
       detailSentences.append("Resets \(day(usage.resetDate, locale: locale)).")
@@ -104,14 +96,15 @@ public enum RunwayInsight {
     return (headline, detailSentences.joined(separator: " "))
   }
 
-  // The one line under the popover runway figure. It must fit about 30 characters next to the ring.
-  // nil when there is nothing useful to say.
+  // The lines under the popover runway figure. Each line must fit about 30 characters next to the ring,
+  // so the headroom text goes on a second line. nil when there is nothing useful to say.
   public static func popoverSentence(usage: CopilotUsage, now: Date, locale: Locale = .current) -> String? {
+    let headroomLine = headroomText(usage: usage, now: now, locale: locale).map { "\n\($0)." } ?? ""
     switch runOutOutlook(usage: usage, now: now) {
-    case .pastReset?: return "Lasts past the \(day(usage.resetDate, locale: locale)) reset."
+    case .pastReset?: return "Lasts past the \(day(usage.resetDate, locale: locale)) reset.\(headroomLine)"
     case .beforeReset(let runOutDate, let daysBeforeReset)?:
       let daysText = daysBeforeReset == 1 ? "1 day" : "\(daysBeforeReset) days"
-      return "Runs out \(day(runOutDate, locale: locale)), \(daysText) early."
+      return "Runs out \(day(runOutDate, locale: locale)), \(daysText) early.\(headroomLine)"
     case nil: break
     }
     if usage.isUnlimited { return "Unlimited plan, no run-out." }

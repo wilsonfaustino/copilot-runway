@@ -130,7 +130,8 @@ struct PopoverView: View {
           Text(insight)
             .font(.system(size: 12.5))
             .foregroundStyle(.secondary)
-            .lineLimit(1)
+            .lineLimit(2)
+            .fixedSize(horizontal: false, vertical: true)
         }
       }
       .accessibilityElement(children: .combine)
@@ -163,16 +164,16 @@ struct PopoverView: View {
         value: usage.map { Credits.formatted(Runway.averageDailyBurn(usage: $0, now: now)) } ?? "--",
         detail: "credits/day"
       )
-      perOutcomeCard
+      perPRCard
     }
   }
 
   // Without an organization the tile opens Settings, where the organization is set.
   @ViewBuilder
-  private var perOutcomeCard: some View {
+  private var perPRCard: some View {
     let card = StatCard(
-      title: "Per outcome",
-      value: creditsPerOutcome.map { Credits.formatted($0) } ?? "-",
+      title: "Per PR",
+      value: creditsPerPRAuthored.map { Credits.formatted($0) } ?? "-",
       detail: usageStore.organization == nil ? "no org set" : "credits each"
     )
     if usageStore.organization == nil {
@@ -191,9 +192,9 @@ struct PopoverView: View {
     }
   }
 
-  private var creditsPerOutcome: Double? {
+  private var creditsPerPRAuthored: Double? {
     guard usageStore.organization != nil, let usage = usageStore.usage else { return nil }
-    return usageStore.outcomes?.creditsPerOutcome(creditsUsed: usage.creditsUsed)
+    return usageStore.outcomes?.creditsPerPRAuthored(creditsUsed: usage.creditsUsed)
   }
 
   @ViewBuilder
@@ -218,13 +219,11 @@ struct PopoverView: View {
             usageStore.cacheHits.filter(\.isLow).compactMap { cacheHit in cacheHit.wholePercent.map { (cacheHit.model, $0) } },
             uniquingKeysWith: { first, _ in first }
           ),
-          unpricedModels: modelCredits.filter { $0.credits == nil }.map(\.model)
+          unpricedModels: modelCredits.filter { $0.credits == nil }.map(\.model),
+          notInLocalSessionsNote: usageStore.copilotReviewCount.flatMap { reviewCount in
+            breakdown.copilotReviewNote(reviewCount: reviewCount, modelCredits: modelCredits)
+          }
         )
-        if let reviewCaption = usageStore.copilotReviewCount.flatMap(RunwayInsight.copilotReviewCaption(count:)) {
-          Text(reviewCaption)
-            .captionStyle()
-            .fixedSize(horizontal: false, vertical: true)
-        }
       }
     }
   }
