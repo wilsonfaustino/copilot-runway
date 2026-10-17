@@ -51,12 +51,13 @@ public enum QuotaSummary {
   }
 
   static func outcomesLine(outcomes: GitHubOutcomes, creditsUsed: Double) -> String {
-    let countsText = "\(GitHubOutcomes.countText(outcomes.prsOpened)) PRs opened, "
+    let countsText = "\(GitHubOutcomes.countText(outcomes.prs)) PRs "
+      + "(\(GitHubOutcomes.countText(outcomes.prsMerged)) merged, \(GitHubOutcomes.countText(outcomes.prsOpen)) open), "
       + "\(GitHubOutcomes.countText(outcomes.prsReviewed)) PRs reviewed, \(GitHubOutcomes.countText(outcomes.commits)) commits"
     guard let creditsPerOutcome = outcomes.creditsPerOutcome(creditsUsed: creditsUsed) else {
-      return "Outcomes: \(countsText); credits per outcome: none, no PRs opened or reviewed yet"
+      return "Outcomes: \(countsText); credits per outcome: none, no PRs or PRs reviewed yet"
     }
-    return "Outcomes: \(countsText); \(number(creditsPerOutcome)) credits per outcome (PRs opened plus reviewed)"
+    return "Outcomes: \(countsText); \(number(creditsPerOutcome)) credits per outcome (PRs plus PRs reviewed)"
   }
 
   // Expects entries sorted by credits, highest first, as Credits returns them.

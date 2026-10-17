@@ -34,7 +34,8 @@ final class UsageStore {
 
   @ObservationIgnored private var pollingTask: Task<Void, Never>?
   @ObservationIgnored private var lastOutcomesFetch: OutcomesFetch?
-  @ObservationIgnored private var lastCopilotReviewCountFetch: CopilotReviewCountFetch?
+  // reviews(author:) needs the login. It is fetched once and kept in memory only, until the app quits.
+  @ObservationIgnored private var login: String?
   @ObservationIgnored private var lastReleaseCheck: Date?
   // The poll and the wake observer can both call refresh() at wake.
   @ObservationIgnored private var isRefreshing = false
@@ -77,7 +78,6 @@ final class UsageStore {
     // The cycle start comes from the API, so session credits wait for at least one good response.
     guard let usage else { return }
     Task { await refreshOutcomesIfDue() }
-    Task { await refreshCopilotReviewCountIfDue() }
     let cycleStart = Runway.cycleStart(resetDate: usage.resetDate)
     let sessionCredits = await Task.detached(priority: .utility) {
       SessionCredits.load(since: cycleStart, now: .now)
@@ -110,45 +110,47 @@ final class UsageStore {
 
   // Runs on launch, on an organization change, and at most every 30 minutes, because the search
   // rate limit is low. The cycle start comes from the usage API, so it waits for a good response.
+  // One fetch loads the outcomes and the Copilot review count. The review count needs no organization:
+  // Copilot code review bills the PR author on any repo. An error hides the review count and keeps the
+  // last outcomes, and gh stderr never reaches the UI.
   private func refreshOutcomesIfDue() async {
-    guard let organization, let usage else { return }
+    guard let usage else { return }
     let cycleStart = Runway.cycleStart(resetDate: usage.resetDate)
     guard OutcomesFetch.isDue(lastFetch: lastOutcomesFetch, organization: organization, cycleStart: cycleStart, now: .now) else {
       return
     }
     let fetch = OutcomesFetch(organization: organization, cycleStart: cycleStart, startDate: .now)
     lastOutcomesFetch = fetch
-    let result = await Task.detached(priority: .utility) { () -> Result<GitHubOutcomes, GitHubOutcomesError> in
+    let organization = organization
+    let login = login
+    let result = await Task.detached(priority: .utility) { () -> Result<GitHubActivity, GitHubOutcomesError> in
       do throws(GitHubOutcomesError) {
-        return .success(try await GitHubOutcomesClient.fetchOutcomes(organization: organization, since: cycleStart))
+        return .success(try await GitHubOutcomesClient.fetchActivity(organization: organization, login: login, since: cycleStart))
       } catch {
         return .failure(error)
       }
     }.value
     // The organization changed or a newer fetch started, so this result is stale.
     guard lastOutcomesFetch == fetch else { return }
+    let outcomesResult: Result<GitHubOutcomes, GitHubOutcomesError>?
     switch result {
-    case .success(let newOutcomes):
+    case .success(let activity):
+      self.login = activity.login ?? self.login
+      copilotReviewCount = activity.copilotReviewCount
+      outcomesResult = activity.outcomes
+    case .failure(let fetchFailure):
+      copilotReviewCount = nil
+      outcomesResult = organization == nil ? nil : .failure(fetchFailure)
+    }
+    switch outcomesResult {
+    case .success(let newOutcomes)?:
       outcomes = newOutcomes
       outcomesErrorKind = nil
-    case .failure(let outcomesFailure):
+    case .failure(let outcomesFailure)?:
       outcomesErrorKind = outcomesFailure
+    case nil:
+      break
     }
-  }
-
-  // Needs no organization: Copilot code review bills the PR author on any repo. Same 30 minute schedule as outcomes.
-  // An error hides the count, and gh stderr never reaches the UI.
-  private func refreshCopilotReviewCountIfDue() async {
-    guard let usage else { return }
-    let cycleStart = Runway.cycleStart(resetDate: usage.resetDate)
-    guard CopilotReviewCountFetch.isDue(lastFetch: lastCopilotReviewCountFetch, cycleStart: cycleStart, now: .now) else { return }
-    let fetch = CopilotReviewCountFetch(cycleStart: cycleStart, startDate: .now)
-    lastCopilotReviewCountFetch = fetch
-    let reviewCount = await Task.detached(priority: .utility) {
-      try? await GitHubOutcomesClient.fetchCopilotReviewCount(since: cycleStart)
-    }.value
-    guard lastCopilotReviewCountFetch == fetch else { return }
-    copilotReviewCount = reviewCount
   }
 
   // Runs on launch and then at most once a day. A failure keeps the last result and shows nothing.

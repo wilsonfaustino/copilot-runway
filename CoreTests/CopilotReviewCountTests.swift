@@ -109,16 +109,6 @@ let copilotLogin = "copilot-pull-request-reviewer"
   }
 }
 
-@Test func copilotReviewCountFetchIsDueOnLaunchAfterThirtyMinutesAndInANewCycle() {
-  let startDate = utcDate("2026-10-10T12:00:00Z")
-  let lastFetch = CopilotReviewCountFetch(cycleStart: outcomesCycleStart, startDate: startDate)
-  #expect(CopilotReviewCountFetch.isDue(lastFetch: nil, cycleStart: outcomesCycleStart, now: startDate))
-  #expect(!CopilotReviewCountFetch.isDue(lastFetch: lastFetch, cycleStart: outcomesCycleStart, now: startDate.addingTimeInterval(5 * 60)))
-  #expect(CopilotReviewCountFetch.isDue(lastFetch: lastFetch, cycleStart: outcomesCycleStart, now: startDate.addingTimeInterval(30 * 60)))
-  let nextCycleStart = utcDate("2026-11-01T00:00:00Z")
-  #expect(CopilotReviewCountFetch.isDue(lastFetch: lastFetch, cycleStart: nextCycleStart, now: startDate))
-}
-
 @Test func copilotReviewSentenceIsNilWithoutReviews() {
   #expect(RunwayInsight.copilotReviewSentence(count: 0) == nil)
 }

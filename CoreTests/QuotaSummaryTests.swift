@@ -48,10 +48,10 @@ let summaryCategoryCredits = [
     now: summaryNow,
     modelCredits: summaryModelCredits,
     categoryCredits: summaryCategoryCredits,
-    outcomes: GitHubOutcomes(prsOpened: 10, prsReviewed: 20, commits: 45)
+    outcomes: GitHubOutcomes(prsMerged: 8, prsOpen: 2, prsReviewed: 20, commits: 45)
   )
   let lines = text.split(separator: "\n")
-  #expect(lines[4] == "Outcomes: 10 PRs opened, 20 PRs reviewed, 45 commits; 200 credits per outcome (PRs opened plus reviewed)")
+  #expect(lines[4] == "Outcomes: 10 PRs (8 merged, 2 open), 20 PRs reviewed, 45 commits; 200 credits per outcome (PRs plus PRs reviewed)")
   #expect(lines.count == 13)
 }
 
@@ -61,9 +61,9 @@ let summaryCategoryCredits = [
     now: summaryNow,
     modelCredits: [],
     categoryCredits: [],
-    outcomes: GitHubOutcomes(prsOpened: 0, prsReviewed: 0, commits: 3)
+    outcomes: GitHubOutcomes(prsMerged: 0, prsOpen: 0, prsReviewed: 0, commits: 3)
   )
-  #expect(text.hasSuffix("Outcomes: 0 PRs opened, 0 PRs reviewed, 3 commits; credits per outcome: none, no PRs opened or reviewed yet"))
+  #expect(text.hasSuffix("Outcomes: 0 PRs (0 merged, 0 open), 0 PRs reviewed, 3 commits; credits per outcome: none, no PRs or PRs reviewed yet"))
 }
 
 @Test func summarySaysWhenRunOutFallsAfterReset() {

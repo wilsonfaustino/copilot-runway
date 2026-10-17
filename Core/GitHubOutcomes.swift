@@ -2,27 +2,46 @@ import Foundation
 
 // Counts only. No PR title, repo name or commit message leaves Core.
 public struct GitHubOutcomes: Equatable, Sendable {
-  public let prsOpened: Int
+  // PRs created in the cycle that are merged or open. A PR closed without a merge does not count.
+  public let prsMerged: Int
+  public let prsOpen: Int
   public let prsReviewed: Int
   public let commits: Int
 
-  public init(prsOpened: Int, prsReviewed: Int, commits: Int) {
-    self.prsOpened = prsOpened
+  public init(prsMerged: Int, prsOpen: Int, prsReviewed: Int, commits: Int) {
+    self.prsMerged = prsMerged
+    self.prsOpen = prsOpen
     self.prsReviewed = prsReviewed
     self.commits = commits
   }
 
+  public var prs: Int { prsMerged + prsOpen }
+
   // Commits are shown but are not outcomes.
-  public var outcomeCount: Int { prsOpened + prsReviewed }
+  public var outcomeCount: Int { prs + prsReviewed }
 
   public func creditsPerOutcome(creditsUsed: Double) -> Double? {
     outcomeCount > 0 ? creditsUsed / Double(outcomeCount) : nil
   }
 
-  // Search results stop at GitHubOutcomesClient.resultLimit, so a count at the limit can be higher.
+  // PR and commit counts are exact totals from search, also above GitHubOutcomesClient.resultLimit.
   public static func countText(_ count: Int) -> String {
-    let countText = count.formatted(.number.locale(Locale(identifier: "en_US")))
-    return count >= GitHubOutcomesClient.resultLimit ? "\(countText)+" : countText
+    count.formatted(.number.locale(Locale(identifier: "en_US")))
+  }
+}
+
+// What one GitHub refresh returns.
+public struct GitHubActivity: Equatable, Sendable {
+  // nil when no organization is set.
+  public let outcomes: Result<GitHubOutcomes, GitHubOutcomesError>?
+  public let copilotReviewCount: Int
+  // The login from the request, for the next refresh. nil until a refresh with an organization fetches it.
+  public let login: String?
+
+  public init(outcomes: Result<GitHubOutcomes, GitHubOutcomesError>?, copilotReviewCount: Int, login: String?) {
+    self.outcomes = outcomes
+    self.copilotReviewCount = copilotReviewCount
+    self.login = login
   }
 }
 
@@ -44,13 +63,13 @@ public enum GitHubOutcomesError: Error, Equatable, Sendable {
   }
 }
 
-// The organization and cycle a fetch ran for, and when it started.
+// The organization and cycle a fetch ran for, and when it started. organization is nil when none is set.
 public struct OutcomesFetch: Equatable, Sendable {
-  public let organization: String
+  public let organization: String?
   public let cycleStart: Date
   public let startDate: Date
 
-  public init(organization: String, cycleStart: Date, startDate: Date) {
+  public init(organization: String?, cycleStart: Date, startDate: Date) {
     self.organization = organization
     self.cycleStart = cycleStart
     self.startDate = startDate
@@ -59,7 +78,7 @@ public struct OutcomesFetch: Equatable, Sendable {
   // The search API has a low rate limit, so outcomes refresh much less often than credits.
   public static let refreshInterval: TimeInterval = 30 * 60
 
-  public static func isDue(lastFetch: OutcomesFetch?, organization: String, cycleStart: Date, now: Date) -> Bool {
+  public static func isDue(lastFetch: OutcomesFetch?, organization: String?, cycleStart: Date, now: Date) -> Bool {
     guard let lastFetch else { return true }
     return lastFetch.organization != organization
       || lastFetch.cycleStart != cycleStart

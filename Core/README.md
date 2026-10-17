@@ -124,6 +124,16 @@ Messages from models without a price add 0, as in `Credits.byCategory`.
 - `Credits.bySource`: priced credits per `Turn.source` (OpenCode, Pi). `UsageRecord` has no source.
 - `Runway.runOutDate`: now plus `daysLeft` days. It can fall after the reset date.
   `nil` for unlimited plans and when no credits are used.
+- `ShareBreakdown`: the items of the By task, By model and By agent split bars, with rounded shares.
+  - `local(entries:)` keeps the order of the entries. Shares are of the local total.
+  - `models(_:githubCredits:)` skips models without a price and sorts by credits. With more than 3
+    models, the top 3 keep their names and the rest fold into one "Other models" item. When GitHub
+    credits are more than local credits, a last "Not in local sessions" item holds the difference and
+    shares are of the GitHub total. A gap under 1% is left out. When local credits are more than GitHub
+    credits, shares and `shareTotal` are of the local total and `unit` is "local credits". With no local
+    credits there are no items, `shareTotal` is the GitHub total and the card shows its empty text.
+  - `unit` names what `shareTotal` counts ("local credits" or "GitHub credits"). `isEmpty` is true when
+    there is no bar to draw.
 
 ## Cache hit and run-out notices
 
@@ -165,7 +175,7 @@ GitHub Copilot AI credits, cycle 2026-10-01 to 2026-10-31 (UTC)
 Used: 6,000 of 12,000 credits (50% remaining)
 Average daily burn: 600 credits/day
 Projected run-out: 2026-10-21, before the reset on 2026-11-01
-Outcomes: 10 PRs opened, 20 PRs reviewed, 45 commits; 200 credits per outcome (PRs opened plus reviewed)
+Outcomes: 10 PRs, 20 PRs reviewed, 45 commits; 200 credits per outcome (PRs plus PRs reviewed)
 Top models (share of 1,300 credits in local sessions):
 - gpt-6.1-sol: 900 credits (69%)
 - gpt-6-luna: 300 credits (23%)
@@ -183,8 +193,9 @@ Top categories (same local sessions):
 - When the run-out falls on or after the reset, the line says "after the reset on <date>".
   Unlimited plans have no limit and no run-out line. Sections with no local credits are left out.
 - The outcomes line holds only the three counts and credits per outcome, no organization or repo name.
-  It is left out until an organization is set and the first search succeeds. With no PRs opened or
-  reviewed it says "credits per outcome: none, no PRs opened or reviewed yet".
+  It is left out until an organization is set and the first search succeeds. "PRs" is open plus merged
+  PRs (see GitHub outcomes). With no PRs and no PRs reviewed it says "credits per outcome: none, no PRs
+  or PRs reviewed yet".
 
 ## GitHub outcomes (`GitHubOutcomesClient`)
 
@@ -192,23 +203,54 @@ Outcomes are counted for the `gh` user (`@me`) in one organization, set in Setti
 `UserDefaults` under `githubOrganization`. With no organization the app works as before and the
 dashboard asks for one.
 
-The client runs `gh search` and `gh api graphql` through `Process`, with gh found the same way as for
-`gh auth token`. gh reads its own login, so the app never reads or passes the token for these calls.
-`<cycle start>` is `Runway.cycleStart` in ISO 8601 UTC, for example `2026-10-01T00:00:00Z`.
+The client runs `gh api graphql` and `gh api search/commits` through `Process`, with gh found the same
+way as for `gh auth token`. gh reads its own login, so the app never reads or passes the token for these
+calls. `<cycle start>` is `Runway.cycleStart` in ISO 8601 UTC, for example `2026-10-01T00:00:00Z`.
 
-| Count | Command |
-|---|---|
-| PRs opened | `gh search prs --owner=<org> --author=@me --created=>=<cycle start> --json=number --limit=1000` |
-| PRs reviewed | `gh api graphql -f query={ viewer { login } }`, then `gh api graphql -f query=<document> -f q=<search> -f login=<login> [-f after=<cursor>]` |
-| Commits | `gh search commits --owner=<org> --author=@me --author-date=>=<cycle start> --json=sha --limit=1000` |
+One refresh (`GitHubOutcomesClient.fetchActivity`) runs these gh processes, in this order:
 
-- Only the length of each JSON list leaves Core. Each result decodes no fields, so no PR title,
-  repo name or commit message is kept. PR numbers repeat across repos, so results are not deduplicated.
-- Every value uses the `--flag=value` form, so an organization that starts with `-` stays a value.
+| Request | Runs | Command |
+|---|---|---|
+| Commits | Organization set | `gh api --method=GET search/commits -f q=<commit search> -f per_page=1` |
+| Login | Organization set, first refresh of the app session | `gh api graphql -f query={ viewer { login } }` |
+| First page of every search | Every refresh | `gh api graphql -f query=<document> -f openQuery=<search> -f mergedQuery=<search> -f reviewedQuery=<search> -f login=<login> -f copilotQuery=<search>` |
+| Later pages | Only for a search that has more pages, one search per request | `gh api graphql -f query=<document> -f q=<search> [-f login=<login>] -f after=<cursor>` |
+
+The searches in the GraphQL request, one alias each:
+
+| Alias | Search | Reads |
+|---|---|---|
+| `openPullRequests` | `org:<org> is:pr author:@me is:open created:>=<cycle start>` | `issueCount`, with `first: 0` |
+| `mergedPullRequests` | `org:<org> is:pr author:@me is:merged created:>=<cycle start>` | `issueCount`, with `first: 0` |
+| `reviewed` | `org:<org> is:pr reviewed-by:@me -author:@me updated:>=<cycle start>` | Your last review on each PR, 100 PRs per page |
+| `copilotReviews` | `author:@me is:pr updated:>=<cycle start>` | The reviews on each PR, 100 PRs per page |
+
+The commit search is `author:@me author-date:>=<cycle start> user:<org>`. These are the qualifiers that
+`gh search commits --owner` sent before. GraphQL search has no commit type, so commits use REST.
+
+- Without an organization the GraphQL request holds only `copilotReviews`, and the commits and login
+  requests do not run. GraphQL rejects a declared variable that the document does not use, so
+  `outcomesDocument(includesOrganization:)` gives one document for each case.
+- Request count: 1 gh process per refresh without an organization. With an organization, 2 per refresh,
+  and 3 on the first refresh, which also gets the login. Each later page adds 1. Before, a refresh with
+  an organization ran at least 5 (`gh search prs`, the login, the reviewed pages, `gh search commits`
+  and the Copilot review pages), and `gh search prs` and `gh search commits` downloaded up to 1,000
+  results each. In October 2026 one account had 33 candidates in each paged search, so a refresh went
+  from 5 processes to 2.
+- Only counts leave Core. The PR counts read only `issueCount`, the commit count reads only
+  `total_count`, and the paged searches decode only review dates and reviewer logins. No PR title, repo
+  name or commit message is kept.
+- Each value goes in as a `-f` field (a GraphQL string variable, or a REST query field), never into the
+  query document. A `-f` value has the form `name=value`, so an organization that starts with `-` stays
+  a value. `--method=GET` puts the REST fields in the URL query. Without it gh sends a POST.
 - The organization must be a GitHub login (ASCII letters, digits and hyphens, not starting with a
-  hyphen). Any other value gives "Organization not found" before gh runs, because the reviewed count
-  puts the organization in a search string, where a space or `:` could add qualifiers.
-- PRs opened counts every PR created in the cycle: open, closed, merged and draft.
+  hyphen). Any other value gives "Organization not found" before an organization request runs, because
+  the organization goes into search strings, where a space or `:` could add qualifiers.
+- PRs: the PRs created in the cycle that are open or merged, so PRs = `openPullRequests` +
+  `mergedPullRequests`. A PR closed without a merge does not count. A draft is open, so it counts. The
+  values are in `GitHubOutcomes.prsMerged` and `GitHubOutcomes.prsOpen`, and `prs` is their sum.
+  `outcomeCount` is `prs` plus `prsReviewed`. `issueCount` is the exact total, also above 1,000. In October 2026 one account
+  had 2 open and 17 merged PRs, the same 19 as the old list search.
 - PRs reviewed: search has no review date qualifier. `reviewed-by:@me` matches a PR that you reviewed
   at any time, and `updated:` filters on any PR activity. So the search
   `org:<org> is:pr reviewed-by:@me -author:@me updated:>=<cycle start>` only finds candidates. For each
@@ -218,18 +260,24 @@ The client runs `gh search` and `gh api graphql` through `Process`, with gh foun
   it out. Search gives one node per PR, so each PR counts once. In October 2026 this changed one
   account's count from 32 to 23: 9 PRs had their last review before the cycle and only changed in it.
 - `reviews(author:)` needs the login, and GraphQL cannot pass `viewer.login` into it in the same query,
-  so the login comes from a separate call first. `viewerLatestReview` needs no login, but it has no
-  states filter and its behavior with a pending review is not documented, so it is not used. The search string, login and page cursor go in as `-f`
-  string variables, never into the query document.
+  so the login comes from a separate call. `UsageStore` gets it on the first refresh with an
+  organization and keeps it in memory until the app quits. It is not written to disk. A `gh auth switch`
+  to another account takes effect after the app restarts. `viewerLatestReview` needs no login, but it
+  has no states filter and its behavior with a pending review is not documented, so it is not used.
 - `-author:@me` removes your own PRs: without it, `reviewed-by:@me` also matches your PRs where you
   replied to a review.
 - gh exits with 1 when the response has an `errors` list, and stderr is classified as for search. The
   parser also rejects an `errors` list, so a response with exit 0 never counts as 0. The messages are
-  classified like stderr and never go to the UI. An unknown organization gives 0 results here, not an
-  error, but the PRs opened search runs first and reports it.
+  classified like stderr and never go to the UI.
+- An unknown organization gives 0 results in GraphQL search, not an error. REST search gives HTTP 422
+  with "cannot be searched", so the commits request runs first and reports it.
+- A failed organization request (an invalid name, the commits request or the login request) fails only
+  the outcomes. The GraphQL request then runs without the organization searches, so the Copilot review
+  count still loads. A failed GraphQL request fails both.
 - Commits: commit search covers only the default branch of each repo, so commits on branches that are
-  not merged do not count. `--author-date` is the date the commit was written, not pushed.
-- Credits per outcome = `credits_used` from the usage API / (PRs opened + PRs reviewed). Commits are
+  not merged do not count. `author-date` is the date the commit was written, not pushed.
+  `total_count` is the exact total, also above 1,000.
+- Credits per outcome = `credits_used` from the usage API / (PRs + PRs reviewed). Commits are
   shown but are not outcomes. With 0 outcomes there is no value. `credits_used` is all Copilot use on
   the account, also outside the organization.
 
@@ -239,13 +287,15 @@ This count is separate from PRs reviewed. It counts Copilot code reviews on your
 
 - What it counts: reviews by `copilot-pull-request-reviewer` with `submittedAt` at or after the cycle
   start, on PRs where you are the author.
-- The query: `gh api graphql` with search type `ISSUE` and the search `author:@me is:pr updated:>=<cycle start>`.
-  The client follows the pages and reads `reviews(first: 100)` for each PR. There is no organization
+- The query: the `copilotReviews` alias in the outcomes request, with search type `ISSUE` and the search
+  `author:@me is:pr updated:>=<cycle start>`. It reads `reviews(first: 100)` for each PR. Later pages
+  use `copilotReviewDocument` with `-f q=<search> -f after=<cursor>`. There is no organization
   qualifier, because automatic reviews bill the PR author on any repo. The count does not need the
-  organization setting.
+  organization setting: without one, the request holds only this search.
 - Only the reviewer login and `submittedAt` are decoded. No PR title, repo name or review text is kept.
-- The app refreshes this count on the outcomes 30 minute schedule. An error hides the count.
-- The dashboard By model card shows the count as a footnote next to the "not in local sessions" gap.
+- The app refreshes this count in the same request as the outcomes, on the 30 minute schedule. An error
+  hides the count, and the count is nil until the first request succeeds.
+- The dashboard By model card shows the count in a "Runs on GitHub" box under the "Not in local sessions" item.
 - Limits:
   - It does not count reviews that you requested on other people's PRs. Those reviews also bill you.
   - It counts reviews on PRs where the organization pays. Those reviews do not use your credits.
@@ -257,11 +307,9 @@ This count is separate from PRs reviewed. It counts Copilot code reviews on your
 
 - The search API allows 30 requests per minute, and GitHub also has a secondary rate limit.
   In October 2026, 8 fast searches after a few others hit the secondary limit.
-- gh fetches 100 results per request. The reviewed count uses 1 GraphQL call for the login and 1 per
-  100 candidate PRs. So one refresh costs 4 requests, and up to 31 at the cap.
-- Search returns at most 1,000 results per query. A count at 1,000 shows as `1,000+`. The reviewed
-  count stops after 1,000 candidates, and it shows the PRs among them with a review in the cycle. That
-  count is then a lower bound, but it shows no `+`.
+- Search returns at most 1,000 results per query. The PR and commit counts are totals, so they are
+  exact. The reviewed and Copilot review counts stop after 1,000 candidates, and show the matches among
+  them. Such a count is then a lower bound, but it shows no `+`.
 - So outcomes refresh on launch (after the first good usage response, which gives the cycle start),
   when the organization changes, and when a credits refresh finds the last search 30 minutes old or
   more (`OutcomesFetch.isDue`). A new cycle start also refreshes. The organization saves on Return or
@@ -270,17 +318,20 @@ This count is separate from PRs reviewed. It counts Copilot code reviews on your
 ### Errors
 
 gh stderr can hold the organization and the query, so it never reaches the UI. `GitHubOutcomesClient.error`
-maps it to one short line. The samples are what gh 2.102 printed in October 2026.
+maps it to one short line. For a REST error gh writes only the status, for example
+`gh: Validation Failed (HTTP 422)`, to stderr, and the response body to stdout. So after a failed exit
+the client classifies stderr and stdout together. The samples are what gh 2.102 printed in October 2026.
 
 | Error | Signal |
 |---|---|
 | gh missing | No gh in the install folders, or it does not start |
-| Not logged in | Exit status 4 ("please run: gh auth login"), or `401` / `Bad credentials` in stderr |
+| Not logged in | Exit status 4 ("please run: gh auth login"), or `401` / `Bad credentials` in the output |
 | Organization not found or no access | "cannot be searched either because the resources do not exist or you do not have permission" |
-| Rate limited | "rate limit" in stderr, for example "HTTP 403: You have exceeded a secondary rate limit" |
-| Other | Any other failure, gh still running after 30 seconds, output that is not a JSON list, or a GraphQL response that does not decode |
+| Rate limited | "rate limit" in the output, for example "HTTP 403: You have exceeded a secondary rate limit" |
+| Other | Any other failure, gh still running after 30 seconds, a commit response without `total_count`, or a GraphQL response that does not decode |
 
-After an error the app keeps the last counts and tries again after 30 minutes.
+After an error the app keeps the last outcome counts, hides the Copilot review count, and tries again
+after 30 minutes.
 
 ## Release check (`ReleaseCheck`)
 

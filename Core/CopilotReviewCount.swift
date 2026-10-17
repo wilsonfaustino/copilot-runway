@@ -6,17 +6,21 @@ extension GitHubOutcomesClient {
   static let copilotReviewerLogin = "copilot-pull-request-reviewer"
 
   // updated filters on any PR activity, so the search finds candidates and the page keeps reviews submitted in the cycle.
+  static let copilotReviewSelection = """
+    pageInfo { hasNextPage endCursor }
+    nodes {
+      ... on PullRequest {
+        reviews(first: 100) {
+          nodes { author { login } submittedAt }
+        }
+      }
+    }
+    """
+
   static let copilotReviewDocument = """
     query($q: String!, $after: String) {
       search(query: $q, type: ISSUE, first: 100, after: $after) {
-        pageInfo { hasNextPage endCursor }
-        nodes {
-          ... on PullRequest {
-            reviews(first: 100) {
-              nodes { author { login } submittedAt }
-            }
-          }
-        }
+        \(copilotReviewSelection)
       }
     }
     """
@@ -39,6 +43,10 @@ extension GitHubOutcomesClient {
 
   public static func copilotReviewPage(from data: Data, since cycleStart: Date) throws(GitHubOutcomesError) -> CopilotReviewPage {
     guard let search = try decodeGraphQL(CopilotReviewData.self, from: data).search else { throw GitHubOutcomesError.searchFailed }
+    return copilotReviewPage(search, since: cycleStart)
+  }
+
+  static func copilotReviewPage(_ search: CopilotReviewData.Search, since cycleStart: Date) -> CopilotReviewPage {
     let reviews = search.nodes.flatMap { $0.reviews?.nodes ?? [] }
     let reviewCount = reviews.count { review in
       guard review.author?.login == copilotReviewerLogin, let submittedAt = review.submittedAt else { return false }
@@ -47,45 +55,10 @@ extension GitHubOutcomesClient {
     let nextCursor = search.pageInfo.hasNextPage ? search.pageInfo.endCursor : nil
     return CopilotReviewPage(reviewCount: reviewCount, resultCount: search.nodes.count, nextCursor: nextCursor)
   }
-
-  public static func fetchCopilotReviewCount(since cycleStart: Date) async throws(GitHubOutcomesError) -> Int {
-    guard let ghPath = CopilotUsageClient.ghPaths.first(where: FileManager.default.isExecutableFile(atPath:)) else {
-      throw GitHubOutcomesError.ghNotFound
-    }
-    var reviewCount = 0
-    var resultCount = 0
-    var cursor: String?
-    repeat {
-      let page = try copilotReviewPage(
-        from: await runGh(ghPath: ghPath, arguments: copilotReviewArguments(since: cycleStart, after: cursor)),
-        since: cycleStart
-      )
-      reviewCount += page.reviewCount
-      resultCount += page.resultCount
-      cursor = page.nextCursor
-    } while cursor != nil && resultCount < resultLimit
-    return reviewCount
-  }
-}
-
-// The cycle a review count fetch ran for, and when it started. Same refresh interval as outcomes.
-public struct CopilotReviewCountFetch: Equatable, Sendable {
-  public let cycleStart: Date
-  public let startDate: Date
-
-  public init(cycleStart: Date, startDate: Date) {
-    self.cycleStart = cycleStart
-    self.startDate = startDate
-  }
-
-  public static func isDue(lastFetch: CopilotReviewCountFetch?, cycleStart: Date, now: Date) -> Bool {
-    guard let lastFetch else { return true }
-    return lastFetch.cycleStart != cycleStart || now.timeIntervalSince(lastFetch.startDate) >= OutcomesFetch.refreshInterval
-  }
 }
 
 // Decodes only the reviewer login and review date: no PR title, repo name or review text is kept.
-private struct CopilotReviewData: Decodable {
+struct CopilotReviewData: Decodable {
   struct Search: Decodable {
     let pageInfo: PageInfo
     let nodes: [Node]
