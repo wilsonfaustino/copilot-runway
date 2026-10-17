@@ -148,6 +148,13 @@ let millionSolInputTokens = TokenUsage(input: 1_000_000, cachedInput: 0, cacheWr
   #expect(Credits.sharePercent(5, of: 0) == 0)
 }
 
+@Test func shareLabelMarksSharesThatRoundToZero() {
+  #expect(Credits.shareLabel(0, of: 1000) == "0%")
+  #expect(Credits.shareLabel(3, of: 1000) == "<1%")
+  #expect(Credits.shareLabel(124, of: 1000) == "12%")
+  #expect(Credits.shareLabel(0, of: 0) == "0%")
+}
+
 @Test func formattedCreditsHaveNoFraction() {
   #expect(Credits.formatted(1234.6, locale: Locale(identifier: "en_US")) == "1,235")
 }

@@ -127,6 +127,9 @@ Messages from models without a price add 0, as in `Credits.byCategory`.
   `nil` for unlimited plans and when no credits are used.
 - `ShareBreakdown`: the items of the By task, By model and By agent split bars, with rounded shares.
   - `local(entries:)` keeps the order of the entries. Shares are of the local total.
+  - `tasks(_:)` is `local(entries:)` for the By task card. It always has an Uncategorized item, at 0
+    credits when no turn falls in it. The card shows a share above 0 that rounds to 0% as "<1%"
+    (`Credits.shareLabel(_:of:)`). The other cards show the rounded share.
   - `models(_:githubCredits:)` skips models without a price and sorts by credits. With more than 3
     models, the top 3 keep their names and the rest fold into one "Other models" item. When GitHub
     credits are more than local credits, a last "Not in local sessions" item holds the difference and

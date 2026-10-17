@@ -55,6 +55,15 @@ public struct ShareBreakdown: Equatable, Sendable {
     )
   }
 
+  // Local credits per task, as local(entries:). Uncategorized always has an item, at 0 when no turn falls in it.
+  public static func tasks(_ categoryCredits: [CategoryCredits]) -> ShareBreakdown {
+    var entries = categoryCredits.map { (name: $0.category.displayName, credits: $0.credits) }
+    if !categoryCredits.contains(where: { $0.category == .uncategorized }) {
+      entries.append((TaskCategory.uncategorized.displayName, 0))
+    }
+    return local(entries: entries)
+  }
+
   // Priced models by credits, the top ones by name and the rest as "Other models". When GitHub reports more
   // credits than local sessions, a last item holds the difference and shares are of the GitHub total.
   // Otherwise shares are of the local total, for example after a price table overestimate, and the unit says so.

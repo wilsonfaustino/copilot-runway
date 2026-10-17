@@ -220,12 +220,11 @@ struct DashboardView: View {
   // MARK: Share cards
 
   private var taskCard: some View {
-    let categoryCredits = usageStore.categoryCredits
-    let breakdown = ShareBreakdown.local(entries: categoryCredits.map { ($0.category.displayName, $0.credits) })
-    return shareCard(
+    shareCard(
       title: "By task",
-      breakdown: breakdown,
-      colors: Dictionary(uniqueKeysWithValues: categoryCredits.map { ($0.category.displayName, Theme.taskColor($0.category)) })
+      breakdown: ShareBreakdown.tasks(usageStore.categoryCredits),
+      colors: Dictionary(uniqueKeysWithValues: TaskCategory.allCases.map { ($0.displayName, Theme.taskColor($0)) }),
+      marksSmallShares: true
     )
   }
 
@@ -267,7 +266,8 @@ struct DashboardView: View {
     breakdown: ShareBreakdown,
     colors: [String: Color],
     githubNote: String? = nil,
-    footnotes: [String] = []
+    footnotes: [String] = [],
+    marksSmallShares: Bool = false
   ) -> some View {
     VStack(alignment: .leading, spacing: Theme.Spacing.regular) {
       HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
@@ -282,7 +282,7 @@ struct DashboardView: View {
       .lineLimit(1)
       .minimumScaleFactor(0.6)
       if !breakdown.isEmpty {
-        ShareBreakdownView(breakdown: breakdown, colors: colors)
+        ShareBreakdownView(breakdown: breakdown, colors: colors, marksSmallShares: marksSmallShares)
       } else {
         Text("No local sessions in this cycle.")
           .captionStyle()

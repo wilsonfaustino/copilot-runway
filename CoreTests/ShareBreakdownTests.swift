@@ -140,3 +140,24 @@ private func itemCreditsTotal(_ breakdown: ShareBreakdown) -> Double {
   ]
   #expect(ShareBreakdown.unpricedModelsNote(modelCredits) == "2 models have no price: claude-haiku-5-5, grok-5")
 }
+
+@Test func taskBreakdownAddsUncategorizedAtZero() {
+  let breakdown = ShareBreakdown.tasks([
+    CategoryCredits(category: .implementation, credits: 700), CategoryCredits(category: .investigation, credits: 300),
+  ])
+  #expect(breakdown.items.map(\.name) == ["Implementation", "Investigation", "Uncategorized"])
+  #expect(breakdown.items.map(\.credits) == [700, 300, 0])
+  #expect(breakdown.shareTotal == 1000)
+}
+
+@Test func taskBreakdownKeepsUncategorizedThatHasCredits() {
+  let breakdown = ShareBreakdown.tasks([
+    CategoryCredits(category: .implementation, credits: 700), CategoryCredits(category: .uncategorized, credits: 3),
+  ])
+  #expect(breakdown.items.map(\.name) == ["Implementation", "Uncategorized"])
+  #expect(breakdown.items.map(\.credits) == [700, 3])
+}
+
+@Test func taskBreakdownWithoutLocalCreditsIsEmpty() {
+  #expect(ShareBreakdown.tasks([]).isEmpty)
+}
