@@ -5,6 +5,7 @@ struct SettingsView: View {
   let usageStore: UsageStore
   @State private var organizationText = ""
   @AppStorage(RunwayNotifier.enabledKey) private var runwayNotificationsEnabled = true
+  @AppStorage("popoverGlass") private var popoverGlass = false
 
   private var organizationStatus: SettingsOrganizationStatus {
     SettingsOrganizationStatus(usageStore: usageStore, enteredText: organizationText)
@@ -40,6 +41,7 @@ struct SettingsView: View {
           .padding(.top, Theme.Spacing.small)
       }
       notificationsSection
+      appearanceSection
       Section {
         LabeledContent("GitHub account") {
           Label("From gh auth. No token stored.", systemImage: "text.alignleft")
@@ -85,6 +87,16 @@ struct SettingsView: View {
       )
       .captionStyle()
       .padding(.top, Theme.Spacing.small)
+    }
+  }
+
+  @ViewBuilder
+  private var appearanceSection: some View {
+    if #available(macOS 26, *) {
+      Section("Appearance") {
+        Toggle("Glass popover", isOn: $popoverGlass)
+          .toggleStyle(.switch)
+      }
     }
   }
 

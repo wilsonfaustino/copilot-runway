@@ -4,6 +4,7 @@ import SwiftUI
 struct PopoverView: View {
   let usageStore: UsageStore
   @AppStorage("localOnlyNoticeDismissed") private var localOnlyNoticeDismissed = false
+  @AppStorage("popoverGlass") private var popoverGlass = false
   @Environment(\.openWindow) private var openWindow
   @Environment(\.openSettings) private var openSettings
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -50,7 +51,7 @@ struct PopoverView: View {
     }
     .padding(Theme.Spacing.panel)
     .frame(width: 360)
-    .background(.regularMaterial)
+    .modifier(PopoverMaterial(useGlass: popoverGlass))
     // Each trigger change replays the entrance from progress 0, so every open animates.
     // With Reduce Motion on, the popover only fades.
     .keyframeAnimator(initialValue: 0.0, trigger: openCount) { content, progress in
@@ -60,6 +61,8 @@ struct PopoverView: View {
     } keyframes: { _ in
       LinearKeyframe(1.0, duration: Self.entranceDuration, timingCurve: .easeOut)
     }
+    // Glass sits outside the animator because its opacity wrapper stops the glass from sampling the backdrop.
+    .modifier(PopoverGlass(useGlass: popoverGlass))
     // onAppear may fire only once for window-style content, so a key window change counts each open.
     // onAppear also shows the content if the window name below ever stops matching.
     .onAppear { openCount += 1 }
@@ -288,6 +291,36 @@ struct PopoverView: View {
       }
       .buttonStyle(FooterButtonStyle(fillOpacity: 0.06))
       .accessibilityLabel("Quit Copilot Runway")
+    }
+  }
+}
+
+private struct PopoverMaterial: ViewModifier {
+  let useGlass: Bool
+
+  @ViewBuilder
+  func body(content: Content) -> some View {
+    if #available(macOS 26, *), useGlass {
+      content
+    } else {
+      content.background(.regularMaterial)
+    }
+  }
+}
+
+private struct PopoverGlass: ViewModifier {
+  let useGlass: Bool
+  // Glass layer opacity chosen by eye; content stays fully opaque.
+  private let glassLayerOpacity = 0.5
+
+  @ViewBuilder
+  func body(content: Content) -> some View {
+    if #available(macOS 26, *), useGlass {
+      content.background {
+        Color.clear.glassEffect(.clear, in: .rect).opacity(glassLayerOpacity)
+      }
+    } else {
+      content
     }
   }
 }
