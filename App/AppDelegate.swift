@@ -20,7 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     updateLabel()
 
     let hostingController = NSHostingController(
-      rootView: PopoverView(usageStore: usageStore, closePopover: { [popover] in popover.performClose(nil) }))
+      rootView: PopoverView(usageStore: usageStore, closePopover: { [weak popover] in popover?.performClose(nil) }))
     hostingController.sizingOptions = [.preferredContentSize]
     popover.behavior = .transient
     popover.contentViewController = hostingController
