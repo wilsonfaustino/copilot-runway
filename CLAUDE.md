@@ -95,7 +95,7 @@ Each rule gets unit tests with fixture sessions in `CoreTests/Fixtures/`.
 
 ### M5. GitHub outcomes
 - PRs opened, PRs reviewed, commits for `@me` in a configured org
-- Headline metric: credits per outcome (PRs plus reviews), not credits per PR
+- Headline metric: credits per PR authored, with PRs reviewed shown as a count
 
 ### M6. Distribution
 - Homebrew tap with a cask, signed and notarized build.

@@ -174,10 +174,10 @@ struct DashboardView: View {
   }
 
   private func outcomesCard(usage: CopilotUsage) -> some View {
-    kpiCard("Credits per outcome") {
+    kpiCard("Credits per PR authored") {
       if usageStore.organization == nil {
         Text("--").bigFigureStyle(size: 34)
-        Text("Set a GitHub organization in Settings to see credits per outcome.")
+        Text("Set a GitHub organization in Settings to see credits per PR authored.")
           .font(.system(size: 12))
           .lineLimit(3)
           .fixedSize(horizontal: false, vertical: true)
@@ -189,7 +189,7 @@ struct DashboardView: View {
         .controlSize(.small)
       } else {
         if let outcomes = usageStore.outcomes {
-          Text(outcomes.creditsPerOutcome(creditsUsed: usage.creditsUsed).map { Credits.formatted($0) } ?? "No PRs yet")
+          Text(outcomes.creditsPerPRAuthored(creditsUsed: usage.creditsUsed).map { Credits.formatted($0) } ?? "No PRs yet")
             .bigFigureStyle(size: 34)
           kpiDetail(
             "\(GitHubOutcomes.countText(outcomes.prsMerged)) merged · \(GitHubOutcomes.countText(outcomes.prsOpen)) open"
@@ -198,7 +198,7 @@ struct DashboardView: View {
           .lineLimit(1)
           .minimumScaleFactor(0.85)
           .help(
-            "Outcomes are merged and open PRs you created plus PRs you reviewed this cycle. Closed PRs that were not merged and commits are not counted."
+            "PRs authored are merged and open PRs you created this cycle. Closed PRs that were not merged, PRs reviewed and commits are not counted."
           )
         } else {
           Text("--").bigFigureStyle(size: 34)

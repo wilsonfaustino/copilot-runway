@@ -181,7 +181,7 @@ GitHub Copilot AI credits, cycle 2026-10-01 to 2026-10-31 (UTC)
 Used: 6,000 of 12,000 credits (50% remaining)
 Average daily burn: 600 credits/day
 Projected run-out: 2026-10-21, before the reset on 2026-11-01
-Outcomes: 10 PRs, 20 PRs reviewed, 45 commits; 200 credits per outcome (PRs plus PRs reviewed)
+Outcomes: 10 PRs (8 merged, 2 open), 20 PRs reviewed; 600 credits per PR authored
 Top models (share of 1,300 credits in local sessions):
 - gpt-6.1-sol: 900 credits (69%)
 - gpt-6-luna: 300 credits (23%)
@@ -198,10 +198,10 @@ Top categories (same local sessions):
   local session total. Models without a price are left out.
 - When the run-out falls on or after the reset, the line says "after the reset on <date>".
   Unlimited plans have no limit and no run-out line. Sections with no local credits are left out.
-- The outcomes line holds only the three counts and credits per outcome, no organization or repo name.
-  It is left out until an organization is set and the first search succeeds. "PRs" is open plus merged
-  PRs (see GitHub outcomes). With no PRs and no PRs reviewed it says "credits per outcome: none, no PRs
-  or PRs reviewed yet".
+- The outcomes line holds only the PR and PR reviewed counts and credits per PR authored, no
+  organization or repo name. It has no commits. It is left out until an organization is set and the
+  first search succeeds. "PRs" is open plus merged PRs (see GitHub outcomes). With no PRs it says
+  "credits per PR authored: none, no PRs yet".
 
 ## GitHub outcomes (`GitHubOutcomesClient`)
 
@@ -255,7 +255,7 @@ The commit search is `author:@me author-date:>=<cycle start> user:<org>`. These 
 - PRs: the PRs created in the cycle that are open or merged, so PRs = `openPullRequests` +
   `mergedPullRequests`. A PR closed without a merge does not count. A draft is open, so it counts. The
   values are in `GitHubOutcomes.prsMerged` and `GitHubOutcomes.prsOpen`, and `prs` is their sum.
-  `outcomeCount` is `prs` plus `prsReviewed`. `issueCount` is the exact total, also above 1,000. In October 2026 one account
+  `issueCount` is the exact total, also above 1,000. In October 2026 one account
   had 2 open and 17 merged PRs, the same 19 as the old list search.
 - PRs reviewed: search has no review date qualifier. `reviewed-by:@me` matches a PR that you reviewed
   at any time, and `updated:` filters on any PR activity. So the search
@@ -283,8 +283,8 @@ The commit search is `author:@me author-date:>=<cycle start> user:<org>`. These 
 - Commits: commit search covers only the default branch of each repo, so commits on branches that are
   not merged do not count. `author-date` is the date the commit was written, not pushed.
   `total_count` is the exact total, also above 1,000.
-- Credits per outcome = `credits_used` from the usage API / (PRs + PRs reviewed). Commits are
-  shown but are not outcomes. With 0 outcomes there is no value. `credits_used` is all Copilot use on
+- Credits per PR authored = `credits_used` from the usage API / PRs. PRs reviewed and commits are
+  shown as counts but are not in the divisor. With 0 PRs there is no value. `credits_used` is all Copilot use on
   the account, also outside the organization.
 
 ### Copilot code reviews

@@ -17,11 +17,9 @@ public struct GitHubOutcomes: Equatable, Sendable {
 
   public var prs: Int { prsMerged + prsOpen }
 
-  // Commits are shown but are not outcomes.
-  public var outcomeCount: Int { prs + prsReviewed }
-
-  public func creditsPerOutcome(creditsUsed: Double) -> Double? {
-    outcomeCount > 0 ? creditsUsed / Double(outcomeCount) : nil
+  // PRs reviewed and commits are shown as counts but are not in the divisor.
+  public func creditsPerPRAuthored(creditsUsed: Double) -> Double? {
+    prs > 0 ? creditsUsed / Double(prs) : nil
   }
 
   // PR and commit counts are exact totals from search, also above GitHubOutcomesClient.resultLimit.

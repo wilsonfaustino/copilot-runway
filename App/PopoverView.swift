@@ -163,16 +163,16 @@ struct PopoverView: View {
         value: usage.map { Credits.formatted(Runway.averageDailyBurn(usage: $0, now: now)) } ?? "--",
         detail: "credits/day"
       )
-      perOutcomeCard
+      perPRCard
     }
   }
 
   // Without an organization the tile opens Settings, where the organization is set.
   @ViewBuilder
-  private var perOutcomeCard: some View {
+  private var perPRCard: some View {
     let card = StatCard(
-      title: "Per outcome",
-      value: creditsPerOutcome.map { Credits.formatted($0) } ?? "-",
+      title: "Per PR",
+      value: creditsPerPRAuthored.map { Credits.formatted($0) } ?? "-",
       detail: usageStore.organization == nil ? "no org set" : "credits each"
     )
     if usageStore.organization == nil {
@@ -191,9 +191,9 @@ struct PopoverView: View {
     }
   }
 
-  private var creditsPerOutcome: Double? {
+  private var creditsPerPRAuthored: Double? {
     guard usageStore.organization != nil, let usage = usageStore.usage else { return nil }
-    return usageStore.outcomes?.creditsPerOutcome(creditsUsed: usage.creditsUsed)
+    return usageStore.outcomes?.creditsPerPRAuthored(creditsUsed: usage.creditsUsed)
   }
 
   @ViewBuilder
