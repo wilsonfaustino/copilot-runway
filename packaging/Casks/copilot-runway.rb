@@ -1,7 +1,7 @@
 cask "copilot-runway" do
-  version "0.3.0"
+  version "0.4.0"
   # Matches the zip from scripts/release.sh. Update it with each release.
-  sha256 "2b28d006b575aa8411bd9e7991619c6421239067617e82399b19eb13201687d2"
+  sha256 "c5435d809ee70bb3486197564575afe3ec992d7d99bccce29955c18fb914fc5e"
 
   url "https://github.com/wilsonfaustino/copilot-runway/releases/download/v#{version}/CopilotRunway-#{version}.zip"
   name "Copilot Runway"
