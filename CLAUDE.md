@@ -21,7 +21,7 @@ credits spent per kind of task.
 
 ## Stack
 
-- Swift 6, SwiftUI, macOS 14+
+- Swift 6, SwiftUI, macOS 15+
 - `MenuBarExtra` with `.menuBarExtraStyle(.window)` for the popover, a `Window` scene for the dashboard
 - Swift Charts for the dashboard charts
 - XcodeGen (`project.yml`) so the project is plain text. Never hand-edit `.pbxproj`.
