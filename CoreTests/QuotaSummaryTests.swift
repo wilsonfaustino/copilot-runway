@@ -31,9 +31,9 @@ let summaryCategoryCredits = [
     Average daily burn: 600 credits/day
     Projected run-out: 2026-10-21, before the reset on 2026-11-01
     Top models (share of 1,300 credits in local sessions):
-    - gpt-6.1-sol: 900 credits (69%)
-    - gpt-6-luna: 300 credits (23%)
-    - gemini-3.8-flash: 60 credits (5%)
+    - GPT-6.1 Sol: 900 credits (69%)
+    - GPT-6 Luna: 300 credits (23%)
+    - Gemini 3.8 Flash: 60 credits (5%)
     Top categories (same local sessions):
     - Implementation: 700 credits (54%)
     - Investigation: 400 credits (31%)

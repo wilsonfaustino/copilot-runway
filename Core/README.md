@@ -144,10 +144,36 @@ Messages from models without a price add 0, as in `Credits.byCategory`.
     credits there are no items, `shareTotal` is the GitHub total and the card shows its empty text.
   - `copilotReviewNote(reviewCount:modelCredits:)` is the line under the "Not in local sessions" item.
     See Copilot code reviews.
-  - `unpricedModelsNote(_:)` is the dashboard By model note: "1 model has no price: <id>" or
-    "2 models have no price: <id1>, <id2>", ids sorted. `nil` when every model has a price.
+  - `unpricedModelsNote(_:)` is the dashboard By model note: "1 model has no price: <name>" or
+    "2 models have no price: <name1>, <name2>", sorted by id. `nil` when every model has a price.
   - `unit` names what `shareTotal` counts ("local credits" or "GitHub credits"). `isEmpty` is true when
     there is no bar to draw.
+
+## Model display names (`ModelDisplayName`)
+
+`ModelDisplayName.bundled` maps each id in `PriceTable.bundled` to the name GitHub writes on the
+[models and pricing page](https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing),
+for example `gpt-6.1-sol` to "GPT-6.1 Sol". `name(for:)` returns the id itself for an id not in the map.
+Display names appear in text and legends: the By model rows, the unpriced models note, the low cache hit
+note, the model efficiency note and "Copy summary". Keys, sorting, pricing and grouping use raw ids. The map
+has no override file. A new price table entry needs a new name, and a test checks that the two have the same ids.
+
+## Model efficiency (`ModelEfficiency`)
+
+- An edit turn is a turn that `TaskCategorizer` puts in Implementation or Debugging. A retry is a
+  Debugging turn. Retry rate is retries divided by edit turns.
+- The model of a turn is the model of its records. Turns with no records, turns with records from 2 or
+  more models, and models without a price are left out.
+- Credits per edit turn is `Credits.byModel` over the model's edit turn records, divided by its edit turns.
+- A model needs at least `ModelEfficiency.minimumEditTurns` (10) edit turns. Under that, one turn moves
+  the retry rate by 10 or more points.
+- `note(_:locale:)` is the dashboard By model note. With 2 or more models, it compares the 2 with the
+  most edit turns (ties by model id), the cheaper one first: "GPT-6 Luna costs 40% less per edit turn
+  than GPT-6.1 Sol. Retry rate 22% against 18%." A difference that rounds to 0% gives "cost the same".
+  With 1 model, it gives its credits per edit turn and retry rate. Under 1 credit, the credits show 2
+  significant digits, so a cheap model does not show 0. With no model, there is no note.
+- The codeburn "One-shot rate" (docs/how-it-works.md in github.com/getagentseal/codeburn, MIT) gave the
+  idea. No code or thresholds come from it.
 
 ## Cache hit and run-out notices
 
@@ -181,7 +207,7 @@ Messages from models without a price add 0, as in `Credits.byCategory`.
 
 ## Quota summary (`QuotaSummary`)
 
-"Copy summary" puts this plain text on the clipboard. It holds only numbers, dates, model ids and
+"Copy summary" puts this plain text on the clipboard. It holds only numbers, dates, model names and
 category names: no login, org, token, file path, prompt or command. At most 13 lines.
 
 ```
@@ -191,9 +217,9 @@ Average daily burn: 600 credits/day
 Projected run-out: 2026-10-21, before the reset on 2026-11-01
 Outcomes: 10 PRs (8 merged, 2 open), 20 PRs reviewed; 600 credits per PR authored
 Top models (share of 1,300 credits in local sessions):
-- gpt-6.1-sol: 900 credits (69%)
-- gpt-6-luna: 300 credits (23%)
-- gemini-3.8-flash: 60 credits (5%)
+- GPT-6.1 Sol: 900 credits (69%)
+- GPT-6 Luna: 300 credits (23%)
+- Gemini 3.8 Flash: 60 credits (5%)
 Top categories (same local sessions):
 - Implementation: 700 credits (54%)
 - Investigation: 400 credits (31%)

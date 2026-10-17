@@ -215,11 +215,8 @@ struct PopoverView: View {
         ShareBreakdownView(
           breakdown: breakdown,
           colors: Theme.modelColors(for: breakdown),
-          lowCachePercents: Dictionary(
-            usageStore.cacheHits.filter(\.isLow).compactMap { cacheHit in cacheHit.wholePercent.map { (cacheHit.model, $0) } },
-            uniquingKeysWith: { first, _ in first }
-          ),
-          unpricedModels: modelCredits.filter { $0.credits == nil }.map(\.model),
+          lowCachePercents: ShareBreakdown.lowCachePercents(usageStore.cacheHits),
+          unpricedModels: ShareBreakdown.unpricedModels(modelCredits),
           notInLocalSessionsNote: usageStore.copilotReviewCount.flatMap { reviewCount in
             breakdown.copilotReviewNote(reviewCount: reviewCount, modelCredits: modelCredits)
           }

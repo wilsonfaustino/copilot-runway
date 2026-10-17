@@ -5,11 +5,11 @@ import SwiftUI
 struct ShareBreakdownView: View {
   let breakdown: ShareBreakdown
   // Items without a color are the folded "Other models" item.
-  let colors: [String: Color]
-  // Low cache hit percent by model name.
-  var lowCachePercents: [String: Int] = [:]
+  let colors: [ShareItem.ID: Color]
+  // Low cache hit percent by model item.
+  var lowCachePercents: [ShareItem.ID: Int] = [:]
   // Models with no price get a legend row and no bar part.
-  var unpricedModels: [String] = []
+  var unpricedModels: [(id: String, name: String)] = []
   // Shows a share above 0 that rounds to 0% as "<1%".
   var marksSmallShares = false
   // A line under the "Not in local sessions" item.
@@ -25,8 +25,8 @@ struct ShareBreakdownView: View {
         splitBar
       }
       VStack(alignment: .leading, spacing: 7) {
-        ForEach(breakdown.items, id: \.name) { item in
-          legendRow(name: item.name, italic: item.kind == .notInLocalSessions, swatch: itemFill(item)) {
+        ForEach(breakdown.items) { item in
+          legendRow(id: item.id, name: item.name, italic: item.kind == .notInLocalSessions, swatch: itemFill(item)) {
             Text(Credits.formatted(item.credits))
               .foregroundStyle(.secondary)
             Text(marksSmallShares ? Credits.shareLabel(item.credits, of: breakdown.shareTotal) : "\(item.share)%")
@@ -39,9 +39,9 @@ struct ShareBreakdownView: View {
               .padding(.leading, Self.swatchSize + Theme.Spacing.regular)
           }
         }
-        ForEach(unpricedModels, id: \.self) { model in
+        ForEach(unpricedModels, id: \.id) { model in
           legendRow(
-            name: model, italic: false,
+            id: .entry(model.id), name: model.name, italic: false,
             swatch: RoundedRectangle(cornerRadius: Self.swatchRadius).strokeBorder(Color.secondary)
           ) {
             Text("no price")
@@ -58,7 +58,7 @@ struct ShareBreakdownView: View {
     return GeometryReader { proxy in
       let partsWidth = max(proxy.size.width - Self.partSpacing * CGFloat(barItems.count - 1), 0)
       HStack(spacing: Self.partSpacing) {
-        ForEach(barItems, id: \.name) { item in
+        ForEach(barItems) { item in
           itemFill(item)
             .frame(width: partsWidth * CGFloat(item.credits / breakdown.shareTotal))
         }
@@ -74,12 +74,12 @@ struct ShareBreakdownView: View {
       DiagonalStripes(color: Theme.notInLocalSessionsStripe)
         .clipShape(shape)
     } else {
-      shape.fill(colors[item.name] ?? Theme.otherModelsColor)
+      shape.fill(colors[item.id] ?? Theme.otherModelsColor)
     }
   }
 
   private func legendRow<Swatch: View, Values: View>(
-    name: String, italic: Bool, swatch: Swatch, @ViewBuilder values: () -> Values
+    id: ShareItem.ID, name: String, italic: Bool, swatch: Swatch, @ViewBuilder values: () -> Values
   ) -> some View {
     HStack(spacing: Theme.Spacing.regular) {
       swatch
@@ -87,7 +87,7 @@ struct ShareBreakdownView: View {
       Text(name)
         .italic(italic)
         .foregroundStyle(italic ? .secondary : .primary)
-      if let lowCachePercent = lowCachePercents[name] {
+      if let lowCachePercent = lowCachePercents[id] {
         HStack(alignment: .firstTextBaseline, spacing: 3) {
           Image(systemName: "exclamationmark.circle")
             .accessibilityHidden(true)

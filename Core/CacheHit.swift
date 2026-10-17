@@ -54,7 +54,7 @@ public enum CacheHit {
   }
 
   static func sentence(model: String, percent: Int, price: ModelPrice?) -> String {
-    let rateSentence = "\(model) cache hit is \(percent)%."
+    let rateSentence = "\(ModelDisplayName.name(for: model)) cache hit is \(percent)%."
     guard let price, price.standard.input > 0, price.standard.cachedInput > 0 else { return rateSentence }
     let priceRatio = price.standard.cachedInput / price.standard.input
     let priceWords = ratioWords.first { abs($0.ratio - priceRatio) < ratioTolerance }?.words

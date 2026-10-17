@@ -223,7 +223,7 @@ struct DashboardView: View {
     shareCard(
       title: "By task",
       breakdown: ShareBreakdown.tasks(usageStore.categoryCredits),
-      colors: Dictionary(uniqueKeysWithValues: TaskCategory.allCases.map { ($0.displayName, Theme.taskColor($0)) }),
+      colors: Dictionary(uniqueKeysWithValues: TaskCategory.allCases.map { (.entry($0.displayName), Theme.taskColor($0)) }),
       marksSmallShares: true
     )
   }
@@ -236,6 +236,9 @@ struct DashboardView: View {
     }
     if !usageStore.lowCacheSentences.isEmpty {
       footnotes.append(usageStore.lowCacheSentences.joined(separator: " "))
+    }
+    if let modelEfficiencyNote = usageStore.modelEfficiencyNote {
+      footnotes.append(modelEfficiencyNote)
     }
     return shareCard(
       title: "By model",
@@ -257,7 +260,7 @@ struct DashboardView: View {
     return shareCard(
       title: "By agent",
       breakdown: breakdown,
-      colors: Dictionary(uniqueKeysWithValues: sourceCredits.map { ($0.source.displayName, Theme.agentColor($0.source)) }),
+      colors: Dictionary(uniqueKeysWithValues: sourceCredits.map { (.entry($0.source.displayName), Theme.agentColor($0.source)) }),
       footnotes: creditsPerDay.isEmpty ? [] : [creditsPerDay.joined(separator: " ")]
     )
   }
@@ -266,7 +269,7 @@ struct DashboardView: View {
   private func shareCard(
     title: String,
     breakdown: ShareBreakdown,
-    colors: [String: Color],
+    colors: [ShareItem.ID: Color],
     footnotes: [String] = [],
     marksSmallShares: Bool = false,
     notInLocalSessionsNote: String? = nil

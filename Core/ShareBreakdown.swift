@@ -1,23 +1,40 @@
 import Foundation
 
-public struct ShareItem: Equatable, Sendable {
+public struct ShareItem: Equatable, Sendable, Identifiable {
+  // An entry is keyed by its raw model id, or by its name for a task or an agent. A model id can read
+  // "Other models", so the folded and gap items have their own cases.
+  public enum ID: Hashable, Sendable {
+    case entry(String)
+    case otherModels
+    case notInLocalSessions
+  }
+
   public enum Kind: Equatable, Sendable {
     case entry
     case otherModels
     case notInLocalSessions
   }
 
+  public let id: ID
+  // The label to draw. Not unique, because a raw model id can equal the display name of another.
   public let name: String
   public let credits: Double
   // Rounded percent of the breakdown's share total.
   public let share: Int
-  public let kind: Kind
 
-  public init(name: String, credits: Double, share: Int, kind: Kind) {
+  public init(id: ID, name: String, credits: Double, share: Int) {
+    self.id = id
     self.name = name
     self.credits = credits
     self.share = share
-    self.kind = kind
+  }
+
+  public var kind: Kind {
+    switch id {
+    case .entry: .entry
+    case .otherModels: .otherModels
+    case .notInLocalSessions: .notInLocalSessions
+    }
   }
 }
 
@@ -51,7 +68,7 @@ public struct ShareBreakdown: Equatable, Sendable {
     let localTotal = entries.reduce(0) { $0 + $1.credits }
     return ShareBreakdown(
       shareTotal: localTotal,
-      items: entries.map { item(name: $0.name, credits: $0.credits, kind: .entry, of: localTotal) }
+      items: entries.map { item(id: .entry($0.name), name: $0.name, credits: $0.credits, of: localTotal) }
     )
   }
 
@@ -69,24 +86,26 @@ public struct ShareBreakdown: Equatable, Sendable {
   // Otherwise shares are of the local total, for example after a price table overestimate, and the unit says so.
   // No local credits gives no items, so the card shows its empty text.
   public static func models(_ modelCredits: [ModelCredits], githubCredits: Double) -> ShareBreakdown {
-    let pricedModels: [(name: String, credits: Double)] = modelCredits.compactMap { model in
+    let pricedModels: [(model: String, credits: Double)] = modelCredits.compactMap { model in
       model.credits.map { (model.model, $0) }
     }
     .sorted { left, right in
       if left.credits != right.credits { return left.credits > right.credits }
-      return left.name < right.name
+      return left.model < right.model
     }
     let localTotal = pricedModels.reduce(0) { $0 + $1.credits }
     guard localTotal > 0 else { return ShareBreakdown(shareTotal: githubCredits, items: [], unit: githubCreditsUnit) }
     let shareTotal = max(githubCredits, localTotal)
-    var items = pricedModels.prefix(namedModelLimit).map { item(name: $0.name, credits: $0.credits, kind: .entry, of: shareTotal) }
+    var items = pricedModels.prefix(namedModelLimit).map {
+      item(id: .entry($0.model), name: ModelDisplayName.name(for: $0.model), credits: $0.credits, of: shareTotal)
+    }
     if pricedModels.count > namedModelLimit {
       let otherCredits = pricedModels.dropFirst(namedModelLimit).reduce(0) { $0 + $1.credits }
-      items.append(item(name: otherModelsName, credits: otherCredits, kind: .otherModels, of: shareTotal))
+      items.append(item(id: .otherModels, name: otherModelsName, credits: otherCredits, of: shareTotal))
     }
     if githubCredits > localTotal {
       let gapItem = item(
-        name: notInLocalSessionsName, credits: githubCredits - localTotal, kind: .notInLocalSessions, of: shareTotal
+        id: .notInLocalSessions, name: notInLocalSessionsName, credits: githubCredits - localTotal, of: shareTotal
       )
       if gapItem.share > 0 { items.append(gapItem) }
     }
@@ -109,7 +128,7 @@ public struct ShareBreakdown: Equatable, Sendable {
 
   // The dashboard By model note that names the models without a price. nil when every model has one.
   public static func unpricedModelsNote(_ modelCredits: [ModelCredits]) -> String? {
-    let unpricedModels = modelCredits.filter { $0.credits == nil }.map(\.model).sorted()
+    let unpricedModels = modelCredits.filter { $0.credits == nil }.map(\.model).sorted().map(ModelDisplayName.name(for:))
     switch unpricedModels.count {
     case 0: return nil
     case 1: return "1 model has no price: \(unpricedModels[0])"
@@ -117,7 +136,20 @@ public struct ShareBreakdown: Equatable, Sendable {
     }
   }
 
-  private static func item(name: String, credits: Double, kind: ShareItem.Kind, of shareTotal: Double) -> ShareItem {
-    ShareItem(name: name, credits: credits, share: Credits.sharePercent(credits, of: shareTotal), kind: kind)
+  // The models without a price, as raw id and label, in the order of modelCredits.
+  public static func unpricedModels(_ modelCredits: [ModelCredits]) -> [(id: String, name: String)] {
+    modelCredits.filter { $0.credits == nil }.map { ($0.model, ModelDisplayName.name(for: $0.model)) }
+  }
+
+  // The low cache hit percent of each model, keyed like the model items.
+  public static func lowCachePercents(_ cacheHits: [ModelCacheHit]) -> [ShareItem.ID: Int] {
+    Dictionary(
+      cacheHits.filter(\.isLow).compactMap { cacheHit in cacheHit.wholePercent.map { (.entry(cacheHit.model), $0) } },
+      uniquingKeysWith: { first, _ in first }
+    )
+  }
+
+  private static func item(id: ShareItem.ID, name: String, credits: Double, of shareTotal: Double) -> ShareItem {
+    ShareItem(id: id, name: name, credits: credits, share: Credits.sharePercent(credits, of: shareTotal))
   }
 }
