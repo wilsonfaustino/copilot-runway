@@ -135,7 +135,7 @@ Open Settings with the gear button in the popover:
 
 ## Requirements
 
-- macOS 14 (Sonoma) or later.
+- macOS 15 (Sequoia) or later.
 - The [GitHub CLI](https://cli.github.com) (`gh`), logged in with `gh auth login`. The app looks
   for gh in `/opt/homebrew/bin`, `/usr/local/bin` and `/usr/bin`, because apps opened from Finder
   do not get your shell `PATH`.

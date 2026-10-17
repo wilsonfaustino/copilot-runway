@@ -3,22 +3,18 @@ import SwiftUI
 
 struct PopoverView: View {
   let usageStore: UsageStore
+  let closePopover: () -> Void
   @AppStorage("localOnlyNoticeDismissed") private var localOnlyNoticeDismissed = false
-  @AppStorage("popoverGlass") private var popoverGlass = false
   @Environment(\.openWindow) private var openWindow
   @Environment(\.openSettings) private var openSettings
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var openCount = 0
 
   // Stale numbers stay visible after a fetch error, but faded.
   private static let staleOpacity = 0.45
-  private static let entranceOffset: CGFloat = -4
-  private static let entranceDuration = 0.15
 
   var body: some View {
     let now = Date.now
     let health = RunwayHealth(usage: usageStore.usage, hasError: usageStore.usageError != nil, now: now)
-    let entranceSlide = reduceMotion ? 0 : Self.entranceOffset
     VStack(alignment: .leading, spacing: Theme.Spacing.section) {
       header
       if !localOnlyNoticeDismissed {
@@ -51,25 +47,10 @@ struct PopoverView: View {
     }
     .padding(Theme.Spacing.panel)
     .frame(width: 360)
-    .modifier(PopoverMaterial(useGlass: popoverGlass))
-    // Each trigger change replays the entrance from progress 0, so every open animates.
-    // With Reduce Motion on, the popover only fades.
-    .keyframeAnimator(initialValue: 0.0, trigger: openCount) { content, progress in
-      content
-        .opacity(progress)
-        .offset(y: (1 - progress) * entranceSlide)
-    } keyframes: { _ in
-      LinearKeyframe(1.0, duration: Self.entranceDuration, timingCurve: .easeOut)
-    }
-    // Glass sits outside the animator because its opacity wrapper stops the glass from sampling the backdrop.
-    .modifier(PopoverGlass(useGlass: popoverGlass))
-    // onAppear may fire only once for window-style content, so a key window change counts each open.
-    // onAppear also shows the content if the window name below ever stops matching.
+    // NSPopover keeps this view between shows, so onAppear fires only on the first show.
+    // That first show may also post willShow, and a second bump only restarts the ring sweep.
     .onAppear { openCount += 1 }
-    .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { notification in
-      // Settings and the dashboard also become key, so only the menu bar window counts.
-      if (notification.object as? NSWindow)?.className.contains("MenuBarExtraWindow") == true { openCount += 1 }
-    }
+    .onReceive(NotificationCenter.default.publisher(for: NSPopover.willShowNotification)) { _ in openCount += 1 }
   }
 
   // applicationIconImage follows the system icon style (Clear renders a low-contrast grey glass). The asset catalog keeps the full-colour icon.
@@ -198,6 +179,7 @@ struct PopoverView: View {
       Button {
         openSettings()
         NSApplication.shared.activate()
+        closePopover()
       } label: {
         card
       }
@@ -268,6 +250,7 @@ struct PopoverView: View {
         openWindow(id: DashboardView.windowId)
         // The app has no Dock icon, so it must come forward or the window opens behind other apps.
         NSApplication.shared.activate()
+        closePopover()
       } label: {
         Label("Open dashboard", systemImage: "chart.bar.xaxis")
           .frame(maxWidth: .infinity)
@@ -277,6 +260,7 @@ struct PopoverView: View {
       Button {
         openSettings()
         NSApplication.shared.activate()
+        closePopover()
       } label: {
         Image(systemName: "gearshape")
           .frame(width: 16)
@@ -291,36 +275,6 @@ struct PopoverView: View {
       }
       .buttonStyle(FooterButtonStyle(fillOpacity: 0.06))
       .accessibilityLabel("Quit Copilot Runway")
-    }
-  }
-}
-
-private struct PopoverMaterial: ViewModifier {
-  let useGlass: Bool
-
-  @ViewBuilder
-  func body(content: Content) -> some View {
-    if #available(macOS 26, *), useGlass {
-      content
-    } else {
-      content.background(.regularMaterial)
-    }
-  }
-}
-
-private struct PopoverGlass: ViewModifier {
-  let useGlass: Bool
-  // Glass layer opacity chosen by eye; content stays fully opaque.
-  private let glassLayerOpacity = 0.5
-
-  @ViewBuilder
-  func body(content: Content) -> some View {
-    if #available(macOS 26, *), useGlass {
-      content.background {
-        Color.clear.glassEffect(.clear, in: .rect).opacity(glassLayerOpacity)
-      }
-    } else {
-      content
     }
   }
 }
