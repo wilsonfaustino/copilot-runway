@@ -47,9 +47,9 @@ func cachePrice(input: Double, cachedInput: Double) -> ModelPrice {
 @Test func cacheSentenceNamesBundledPriceRatios() {
   let cacheHits = ["gpt-6.1-sol", "gpt-6-luna", "gemini-3.8-flash"].map { ModelCacheHit(model: $0, rate: 0.41) }
   #expect(CacheHit.lowSentences(cacheHits: cacheHits, prices: PriceTable.bundled) == [
-    "gpt-6.1-sol cache hit is 41%. Cached input costs one twentieth of fresh input.",
-    "gpt-6-luna cache hit is 41%. Cached input costs one tenth of fresh input.",
-    "gemini-3.8-flash cache hit is 41%. Cached input costs one tenth of fresh input.",
+    "GPT-6.1 Sol cache hit is 41%. Cached input costs one twentieth of fresh input.",
+    "GPT-6 Luna cache hit is 41%. Cached input costs one tenth of fresh input.",
+    "Gemini 3.8 Flash cache hit is 41%. Cached input costs one tenth of fresh input.",
   ])
 }
 
@@ -86,8 +86,8 @@ func cachePrice(input: Double, cachedInput: Double) -> ModelPrice {
   let cacheHits = CacheHit.byModel(records: records, prices: PriceTable.bundled)
   #expect(cacheHits.map(\.model) == ["gpt-6.1-sol", "gemini-3.8-flash", "gpt-6-luna", "unknown-model"])
   #expect(CacheHit.lowSentences(cacheHits: cacheHits, prices: PriceTable.bundled) == [
-    "gpt-6.1-sol cache hit is 40%. Cached input costs one twentieth of fresh input.",
-    "gpt-6-luna cache hit is 30%. Cached input costs one tenth of fresh input.",
+    "GPT-6.1 Sol cache hit is 40%. Cached input costs one twentieth of fresh input.",
+    "GPT-6 Luna cache hit is 30%. Cached input costs one tenth of fresh input.",
     "unknown-model cache hit is 10%.",
   ])
 }

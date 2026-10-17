@@ -20,6 +20,7 @@ final class UsageStore {
   private(set) var dailyCredits: [DailyCredits] = []
   private(set) var cacheHits: [ModelCacheHit] = []
   private(set) var lowCacheSentences: [String] = []
+  private(set) var modelEfficiencyNote: String?
   private(set) var sessionsWarning: String?
   private(set) var organization = UserDefaults.standard.string(forKey: organizationKey)
     .flatMap(GitHubOutcomesClient.normalizedOrganization)
@@ -88,6 +89,7 @@ final class UsageStore {
     dailyCredits = sessionCredits.byDay
     cacheHits = sessionCredits.cacheHits
     lowCacheSentences = sessionCredits.lowCacheSentences
+    modelEfficiencyNote = sessionCredits.modelEfficiencyNote
     sessionsWarning = sessionCredits.warning
   }
 

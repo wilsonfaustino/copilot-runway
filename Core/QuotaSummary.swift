@@ -1,6 +1,6 @@
 import Foundation
 
-// Plain-text report for a quota request. It holds only numbers, dates, model ids and category names:
+// Plain-text report for a quota request. It holds only numbers, dates, model names and category names:
 // no login, org, file path, prompt or command.
 public enum QuotaSummary {
   static let topCount = 3
@@ -29,7 +29,7 @@ public enum QuotaSummary {
       lines.append(outcomesLine(outcomes: outcomes, creditsUsed: usage.creditsUsed))
     }
 
-    let pricedModels = modelCredits.compactMap { model in model.credits.map { (model.model, $0) } }
+    let pricedModels = modelCredits.compactMap { model in model.credits.map { (ModelDisplayName.name(for: model.model), $0) } }
     let localTotal = pricedModels.reduce(0) { $0 + $1.1 }
     if localTotal > 0 {
       lines.append("Top models (share of \(number(localTotal)) credits in local sessions):")

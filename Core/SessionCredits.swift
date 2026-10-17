@@ -9,6 +9,8 @@ public struct SessionCredits: Sendable {
   public let cacheHits: [ModelCacheHit]
   // One sentence per model with a low cache hit rate, for the dashboard note.
   public let lowCacheSentences: [String]
+  // Cost per edit turn and retry rate for the dashboard By model note. nil when no model qualifies.
+  public let modelEfficiencyNote: String?
   public let warning: String?
 
   // Every aggregate comes from the same turns, so all dashboard totals add up.
@@ -46,6 +48,7 @@ public struct SessionCredits: Sendable {
       byDay: Credits.byDay(records: records, prices: prices, cycleStart: cycleStart, now: now, calendar: Runway.utcCalendar),
       cacheHits: cacheHits,
       lowCacheSentences: CacheHit.lowSentences(cacheHits: cacheHits, prices: prices),
+      modelEfficiencyNote: ModelEfficiency.note(ModelEfficiency.byModel(turns: turns, prices: prices)),
       warning: warnings.isEmpty ? nil : warnings.joined(separator: " ")
     )
   }

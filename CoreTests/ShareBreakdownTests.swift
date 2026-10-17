@@ -27,7 +27,7 @@ private func itemCreditsTotal(_ breakdown: ShareBreakdown) -> Double {
   let breakdown = ShareBreakdown.models(modelCredits, githubCredits: 1000)
   #expect(breakdown.shareTotal == 1000)
   #expect(breakdown.unit == "GitHub credits")
-  #expect(breakdown.items.map(\.name) == ["gpt-6.1-sol", "gpt-6-luna", "Not in local sessions"])
+  #expect(breakdown.items.map(\.name) == ["GPT-6.1 Sol", "GPT-6 Luna", "Not in local sessions"])
   #expect(breakdown.items.map(\.credits) == [620, 250, 130])
   #expect(breakdown.items.map(\.share) == [62, 25, 13])
   #expect(breakdown.items.last?.kind == .notInLocalSessions)
@@ -37,7 +37,7 @@ private func itemCreditsTotal(_ breakdown: ShareBreakdown) -> Double {
 @Test func modelBreakdownHasNoGapWhenLocalEqualsGitHub() {
   let breakdown = ShareBreakdown.models([ModelCredits(model: "gpt-6.1-sol", credits: 500)], githubCredits: 500)
   #expect(breakdown.unit == "GitHub credits")
-  #expect(breakdown.items.map(\.name) == ["gpt-6.1-sol"])
+  #expect(breakdown.items.map(\.name) == ["GPT-6.1 Sol"])
   #expect(breakdown.items.map(\.share) == [100])
 }
 
@@ -46,7 +46,7 @@ private func itemCreditsTotal(_ breakdown: ShareBreakdown) -> Double {
   let breakdown = ShareBreakdown.models(modelCredits, githubCredits: 1000)
   #expect(breakdown.shareTotal == 1200)
   #expect(breakdown.unit == "local credits")
-  #expect(breakdown.items.map(\.name) == ["gpt-6.1-sol", "gpt-6-luna"])
+  #expect(breakdown.items.map(\.name) == ["GPT-6.1 Sol", "GPT-6 Luna"])
   #expect(breakdown.items.map(\.share) == [75, 25])
   #expect(itemCreditsTotal(breakdown) == breakdown.shareTotal)
 }
@@ -91,13 +91,13 @@ private func itemCreditsTotal(_ breakdown: ShareBreakdown) -> Double {
   // The gap is 2 of 1000 credits, 0.2%.
   let breakdown = ShareBreakdown.models([ModelCredits(model: "gpt-6.1-sol", credits: 998)], githubCredits: 1000)
   #expect(breakdown.shareTotal == 1000)
-  #expect(breakdown.items.map(\.name) == ["gpt-6.1-sol"])
+  #expect(breakdown.items.map(\.name) == ["GPT-6.1 Sol"])
   #expect(breakdown.items.map(\.share) == [100])
 }
 
 @Test func modelBreakdownKeepsAGapOfOnePercent() {
   let breakdown = ShareBreakdown.models([ModelCredits(model: "gpt-6.1-sol", credits: 990)], githubCredits: 1000)
-  #expect(breakdown.items.map(\.name) == ["gpt-6.1-sol", "Not in local sessions"])
+  #expect(breakdown.items.map(\.name) == ["GPT-6.1 Sol", "Not in local sessions"])
   #expect(breakdown.items.map(\.share) == [99, 1])
 }
 
@@ -192,4 +192,64 @@ private let octoberBreakdown = ShareBreakdown.models(octoberModelCredits, github
   let modelCredits = octoberModelCredits + [ModelCredits(model: "grok-5", credits: nil)]
   let breakdown = ShareBreakdown.models(modelCredits, githubCredits: 10_052)
   #expect(breakdown.copilotReviewNote(reviewCount: 14, modelCredits: modelCredits) == nil)
+}
+
+@Test func modelItemsKeepTheRawIdWhenALabelRepeats() {
+  let modelCredits = [ModelCredits(model: "gpt-6-luna", credits: 100), ModelCredits(model: "GPT-6 Luna", credits: 50)]
+  let breakdown = ShareBreakdown.models(modelCredits, githubCredits: 150)
+  #expect(breakdown.items.map(\.name) == ["GPT-6 Luna", "GPT-6 Luna"])
+  #expect(breakdown.items.map(\.id) == [.entry("gpt-6-luna"), .entry("GPT-6 Luna")])
+  #expect(Set(breakdown.items.map(\.id)).count == 2)
+}
+
+@Test func lowCachePercentsStayPerModelWhenALabelRepeats() {
+  let modelCredits = [ModelCredits(model: "gpt-6-luna", credits: 100), ModelCredits(model: "GPT-6 Luna", credits: 50)]
+  let breakdown = ShareBreakdown.models(modelCredits, githubCredits: 150)
+  let lowCachePercents = ShareBreakdown.lowCachePercents([
+    ModelCacheHit(model: "gpt-6-luna", rate: 0.9),
+    ModelCacheHit(model: "GPT-6 Luna", rate: 0.2),
+  ])
+  #expect(lowCachePercents == [.entry("GPT-6 Luna"): 20])
+  #expect(breakdown.items.map { lowCachePercents[$0.id] } == [nil, 20])
+}
+
+@Test func lowCachePercentsKeepOneEntryPerModelAndSkipHealthyOnes() {
+  let lowCachePercents = ShareBreakdown.lowCachePercents([
+    ModelCacheHit(model: "gpt-6-luna", rate: 0.3),
+    ModelCacheHit(model: "gpt-6.1-sol", rate: 0.5),
+    ModelCacheHit(model: "grok-5", rate: nil),
+  ])
+  #expect(lowCachePercents == [.entry("gpt-6-luna"): 30])
+}
+
+@Test func modelItemsWithEqualCreditsSortByRawIdNotByLabel() {
+  // "GPT-7 Alpha" sorts before "gpt-6-luna" as an id, and after "GPT-6 Luna" as a label.
+  let modelCredits = [ModelCredits(model: "gpt-6-luna", credits: 100), ModelCredits(model: "GPT-7 Alpha", credits: 100)]
+  let breakdown = ShareBreakdown.models(modelCredits, githubCredits: 200)
+  #expect(breakdown.items.map(\.id) == [.entry("GPT-7 Alpha"), .entry("gpt-6-luna")])
+  #expect(breakdown.items.map(\.name) == ["GPT-7 Alpha", "GPT-6 Luna"])
+}
+
+@Test func syntheticItemsDoNotShareAnIdWithAModelNamedLikeThem() {
+  let modelCredits = [
+    ModelCredits(model: "Other models", credits: 400),
+    ModelCredits(model: "Not in local sessions", credits: 300),
+    ModelCredits(model: "model-c", credits: 200),
+    ModelCredits(model: "model-d", credits: 50),
+  ]
+  let breakdown = ShareBreakdown.models(modelCredits, githubCredits: 1000)
+  #expect(breakdown.items.map(\.name) == ["Other models", "Not in local sessions", "model-c", "Other models", "Not in local sessions"])
+  #expect(Set(breakdown.items.map(\.id)).count == 5)
+  #expect(breakdown.items.map(\.kind) == [.entry, .entry, .entry, .otherModels, .notInLocalSessions])
+}
+
+@Test func unpricedModelsKeepTheRawIdAndLabelInInputOrder() {
+  let modelCredits = [
+    ModelCredits(model: "grok-5", credits: nil),
+    ModelCredits(model: "gpt-6-luna", credits: 10),
+    ModelCredits(model: "GPT-6 Luna", credits: nil),
+  ]
+  let unpricedModels = ShareBreakdown.unpricedModels(modelCredits)
+  #expect(unpricedModels.map(\.id) == ["grok-5", "GPT-6 Luna"])
+  #expect(unpricedModels.map(\.name) == ["grok-5", "GPT-6 Luna"])
 }

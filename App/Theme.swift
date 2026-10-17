@@ -58,9 +58,9 @@ enum Theme {
   ]
 
   // The dashboard and the popover both draw the model breakdown, so a model has one color in both.
-  static func modelColors(for breakdown: ShareBreakdown) -> [String: Color] {
-    let namedModels = breakdown.items.filter { $0.kind == .entry }.map(\.name)
-    return Dictionary(uniqueKeysWithValues: zip(namedModels, modelRamp))
+  static func modelColors(for breakdown: ShareBreakdown) -> [ShareItem.ID: Color] {
+    let namedModelIDs = breakdown.items.filter { $0.kind == .entry }.map(\.id)
+    return Dictionary(uniqueKeysWithValues: zip(namedModelIDs, modelRamp))
   }
 
   static func agentColor(_ source: SessionSource) -> Color {
