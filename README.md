@@ -59,7 +59,7 @@ Click the title to open the popover:
 - A ring with the percent of credits left, and the days of runway.
 - A sentence about the run-out date, for example "At this pace you run out on Oct 21,
   10 days before the reset on Nov 1."
-- Cards for credits used of the limit, the average daily burn, and credits per outcome.
+- Cards for credits used of the limit, the average daily burn, and credits per PR authored.
 - Credits per model from local sessions.
 - The time of the last refresh.
 - A one-line local-only notice on first launch. You can close it.
@@ -73,7 +73,7 @@ Click the title to open the popover:
 - A banner with the run-out sentence. When the credits run out before the reset, it gives the
   highest daily burn that still reaches the reset. It also gives the category with the largest
   share of local credits.
-- Cards for days of runway, percent remaining, average daily burn and credits per outcome.
+- Cards for days of runway, percent remaining, average daily burn and credits per PR authored.
 - A daily burn chart for the cycle, one bar per UTC day from local sessions, with a line at the
   GitHub average daily burn. Select a bar to see the credits for that day.
 - Local credits by task category, by model and by agent (OpenCode or Pi).
@@ -87,7 +87,7 @@ GitHub Copilot AI credits, cycle 2026-10-01 to 2026-10-31 (UTC)
 Used: 6,000 of 12,000 credits (50% remaining)
 Average daily burn: 600 credits/day
 Projected run-out: 2026-10-21, before the reset on 2026-11-01
-Outcomes: 10 PRs opened, 20 PRs reviewed, 45 commits; 200 credits per outcome (PRs opened plus reviewed)
+Outcomes: 10 PRs (8 merged, 2 open), 20 PRs reviewed; 600 credits per PR authored
 Top models (share of 1,300 credits in local sessions):
 - gpt-6.1-sol: 900 credits (69%)
 - gpt-6-luna: 300 credits (23%)
@@ -102,13 +102,15 @@ Top categories (same local sessions):
 
 The app puts each turn of each local session in one category: Debugging, Implementation,
 Review, Investigation, Planning or Uncategorized. Fixed rules on the tool calls of the turn
-decide the category. No model call is made. See [Category rules](#category-rules).
+decide the category, checked in this order: Debugging, Implementation, Review, Planning by agent,
+Investigation, Planning by output tokens, Uncategorized. No model call is made.
+See [Category rules](#category-rules).
 
-### Credits per outcome
+### Credits per PR authored
 
-When you set a GitHub organization, the app counts your PRs opened, PRs reviewed and commits in
-that organization for the current cycle, and divides the credits used by the outcomes.
-See [Credits per outcome](#credits-per-outcome-1).
+When you set a GitHub organization, the app counts your PRs merged and open, and your PRs
+reviewed, in that organization for the current cycle, and divides the credits used by the PRs
+you authored. See [Credits per PR authored](#credits-per-pr-authored-1).
 
 ### Settings
 
@@ -314,16 +316,17 @@ message. The app checks these rules in this order. The first match wins.
 | Debugging | An edit, then a shell call, then an edit of the same file path |
 | Implementation | Any edit. Every edited file counts, docs included |
 | Review | A shell command that contains `gh pr diff` or `gh pr view`, and no edits |
+| Planning | The OpenCode `plan` agent, no edits and no review command. Read and shell calls do not change this |
 | Investigation | Any read or shell call, and no edits |
-| Planning | No read, shell or edit calls, and the OpenCode `plan` agent or at least 1,000 output tokens |
+| Planning | No read, shell or edit calls, and at least 1,000 output tokens |
 | Uncategorized | None of the above |
 
 [Core/README.md](Core/README.md) lists which tool names count as read, shell and edit calls.
 
-### Credits per outcome
+### Credits per PR authored
 
-Credits per outcome = credits used (from GitHub) / (PRs opened + PRs reviewed). Commits show
-next to it but do not count as outcomes. With 0 outcomes there is no value.
+Credits per PR authored = credits used (from GitHub) / (PRs merged + PRs open). PRs reviewed show
+next to it as a count and are not in the divisor. With 0 PRs there is no value.
 
 The app counts these for your `gh` user in one organization since the cycle start, with
 `gh search`:
