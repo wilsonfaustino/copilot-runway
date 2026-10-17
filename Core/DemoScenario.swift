@@ -159,11 +159,17 @@ public struct DemoScenario: Sendable {
         // 0.6, 1.0 or 1.4, so days and models do not all cost the same.
         let variation = 0.6 + 0.4 * Double((turnIndex + 2 * dayIndex) % 3)
         let tokens = tokens(for: category, scale: shape.tokenScale * variation)
+        let agent: String?
+        if source == .pi {
+          agent = nil
+        } else {
+          agent = category == .planning ? "plan" : "build"
+        }
         turns.append(
           Turn(
             timestamp: timestamp,
             source: source,
-            agent: source == .pi ? nil : (category == .planning ? "plan" : "build"),
+            agent: agent,
             toolCalls: toolCalls(for: category, source: source, dayIndex: dayIndex),
             records: [UsageRecord(model: model, timestamp: timestamp.addingTimeInterval(60), tokens: tokens)]
           )
