@@ -231,10 +231,9 @@ struct DashboardView: View {
 
   private func modelCard(usage: CopilotUsage) -> some View {
     let breakdown = ShareBreakdown.models(usageStore.modelCredits, githubCredits: usage.creditsUsed)
-    let unpricedModelCount = usageStore.modelCredits.filter { $0.credits == nil }.count
     var footnotes: [String] = []
-    if unpricedModelCount > 0 {
-      footnotes.append("\(unpricedModelCount) model(s) have no price and are not counted.")
+    if let unpricedModelsNote = ShareBreakdown.unpricedModelsNote(usageStore.modelCredits) {
+      footnotes.append(unpricedModelsNote)
     }
     if !usageStore.lowCacheSentences.isEmpty {
       footnotes.append(usageStore.lowCacheSentences.joined(separator: " "))

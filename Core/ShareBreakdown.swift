@@ -86,6 +86,16 @@ public struct ShareBreakdown: Equatable, Sendable {
     )
   }
 
+  // The dashboard By model note that names the models without a price. nil when every model has one.
+  public static func unpricedModelsNote(_ modelCredits: [ModelCredits]) -> String? {
+    let unpricedModels = modelCredits.filter { $0.credits == nil }.map(\.model).sorted()
+    switch unpricedModels.count {
+    case 0: return nil
+    case 1: return "1 model has no price: \(unpricedModels[0])"
+    default: return "\(unpricedModels.count) models have no price: \(unpricedModels.joined(separator: ", "))"
+    }
+  }
+
   private static func item(name: String, credits: Double, kind: ShareItem.Kind, of shareTotal: Double) -> ShareItem {
     ShareItem(name: name, credits: credits, share: Credits.sharePercent(credits, of: shareTotal), kind: kind)
   }

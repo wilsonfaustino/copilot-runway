@@ -133,6 +133,8 @@ Messages from models without a price add 0, as in `Credits.byCategory`.
     shares are of the GitHub total. A gap under 1% is left out. When local credits are more than GitHub
     credits, shares and `shareTotal` are of the local total and `unit` is "local credits". With no local
     credits there are no items, `shareTotal` is the GitHub total and the card shows its empty text.
+  - `unpricedModelsNote(_:)` is the dashboard By model note: "1 model has no price: <id>" or
+    "2 models have no price: <id1>, <id2>", ids sorted. `nil` when every model has a price.
   - `unit` names what `shareTotal` counts ("local credits" or "GitHub credits"). `isEmpty` is true when
     there is no bar to draw.
 

@@ -121,3 +121,22 @@ private func itemCreditsTotal(_ breakdown: ShareBreakdown) -> Double {
   #expect(ShareBreakdown.local(entries: [("Pi", 0)]).isEmpty)
   #expect(!ShareBreakdown.local(entries: [("Pi", 5)]).isEmpty)
 }
+
+@Test func unpricedModelsNoteIsNilWhenEveryModelHasAPrice() {
+  #expect(ShareBreakdown.unpricedModelsNote([ModelCredits(model: "gpt-6.1-sol", credits: 620)]) == nil)
+  #expect(ShareBreakdown.unpricedModelsNote([]) == nil)
+}
+
+@Test func unpricedModelsNoteNamesOneModel() {
+  let modelCredits = [ModelCredits(model: "gpt-6.1-sol", credits: 620), ModelCredits(model: "grok-5", credits: nil)]
+  #expect(ShareBreakdown.unpricedModelsNote(modelCredits) == "1 model has no price: grok-5")
+}
+
+@Test func unpricedModelsNoteSortsSeveralModels() {
+  let modelCredits = [
+    ModelCredits(model: "grok-5", credits: nil),
+    ModelCredits(model: "gpt-6.1-sol", credits: 620),
+    ModelCredits(model: "claude-haiku-5-5", credits: nil),
+  ]
+  #expect(ShareBreakdown.unpricedModelsNote(modelCredits) == "2 models have no price: claude-haiku-5-5, grok-5")
+}
