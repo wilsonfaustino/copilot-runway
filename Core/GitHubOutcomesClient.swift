@@ -180,7 +180,7 @@ public enum GitHubOutcomesClient {
   }
 
   // Rejects an errors list as well, so a response with exit status 0 never counts as 0 results.
-  static func decodeGraphQL<Payload: Decodable>(_ type: Payload.Type, from data: Data) throws(GitHubOutcomesError) -> Payload {
+  static func decodeGraphQL<Payload: Decodable>(_: Payload.Type, from data: Data) throws(GitHubOutcomesError) -> Payload {
     let decoder = JSONDecoder()
     decoder.dateDecodingStrategy = .iso8601
     guard let response = try? decoder.decode(GraphQLResponse<Payload>.self, from: data) else {

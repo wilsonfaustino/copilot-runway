@@ -58,6 +58,10 @@ public enum Credits {
     return usd / usdPerCredit
   }
 
+  private static func summedCredits(of records: [UsageRecord], price: ModelPrice) -> Double {
+    records.reduce(0) { $0 + credits(for: $1.tokens, price: price) }
+  }
+
   // Credits are summed per message, because the long context tier depends on each request's size.
   // Highest spend first, models without a price last.
   public static func byModel(records: [UsageRecord], prices: [String: ModelPrice]) -> [ModelCredits] {
@@ -65,7 +69,7 @@ public enum Credits {
     let modelCredits = recordsByModel.map { model, modelRecords in
       ModelCredits(
         model: model,
-        credits: prices[model].map { price in modelRecords.reduce(0) { $0 + credits(for: $1.tokens, price: price) } }
+        credits: prices[model].map { price in summedCredits(of: modelRecords, price: price) }
       )
     }
     return modelCredits.sorted { left, right in
