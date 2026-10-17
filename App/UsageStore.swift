@@ -40,8 +40,16 @@ final class UsageStore {
   @ObservationIgnored private var lastReleaseCheck: Date?
   // The poll and the wake observer can both call refresh() at wake.
   @ObservationIgnored private var isRefreshing = false
+  #if DEBUG
+  // Fixed fake data from -demo. Demo mode makes no network calls, reads no session files and writes no settings.
+  @ObservationIgnored private let demoScenario = DemoLaunch.scenario
+  #endif
 
   init() {
+    #if DEBUG
+    // Set before the first render, so the real organization never shows in demo mode.
+    if demoScenario != nil { organization = DemoScenario.organization }
+    #endif
     pollingTask = Task { [weak self] in
       while !Task.isCancelled {
         await self?.refresh()
@@ -59,6 +67,12 @@ final class UsageStore {
 
   func refresh() async {
     guard !isRefreshing else { return }
+    #if DEBUG
+    if let demoScenario {
+      applyDemo(demoScenario)
+      return
+    }
+    #endif
     isRefreshing = true
     defer { isRefreshing = false }
     Task { await refreshReleaseIfDue() }
@@ -83,6 +97,10 @@ final class UsageStore {
     let sessionCredits = await Task.detached(priority: .utility) {
       SessionCredits.load(since: cycleStart, now: .now)
     }.value
+    apply(sessionCredits)
+  }
+
+  private func apply(_ sessionCredits: SessionCredits) {
     modelCredits = sessionCredits.byModel
     categoryCredits = sessionCredits.byCategory
     sourceCredits = sessionCredits.bySource
@@ -93,6 +111,18 @@ final class UsageStore {
     sessionsWarning = sessionCredits.warning
   }
 
+  #if DEBUG
+  // No usage poll, release check, outcomes fetch, session files or run-out notices.
+  private func applyDemo(_ demoScenario: DemoScenario) {
+    usage = demoScenario.usage
+    title = MenuBarTitle.title(usage: demoScenario.usage, now: .now)
+    lastRefresh = .now
+    outcomes = demoScenario.outcomes
+    copilotReviewCount = demoScenario.copilotReviewCount
+    apply(demoScenario.sessionCredits)
+  }
+  #endif
+
   func summaryText() -> String? {
     usage.map {
       QuotaSummary.text(usage: $0, now: .now, modelCredits: modelCredits, categoryCredits: categoryCredits, outcomes: outcomes)
@@ -100,6 +130,10 @@ final class UsageStore {
   }
 
   func setOrganization(_ text: String) {
+    #if DEBUG
+    // Demo mode keeps the demo organization and never writes the real setting.
+    if demoScenario != nil { return }
+    #endif
     let newOrganization = GitHubOutcomesClient.normalizedOrganization(text)
     guard newOrganization != organization else { return }
     UserDefaults.standard.set(newOrganization, forKey: Self.organizationKey)

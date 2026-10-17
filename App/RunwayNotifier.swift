@@ -38,7 +38,8 @@ final class RunwayNotifier: NSObject, UNUserNotificationCenterDelegate {
 
   #if DEBUG
   func sendTestNotice(usage: CopilotUsage?) async {
-    guard await isAuthorized() else { return }
+    // Demo mode asks for no permission and posts no notice.
+    guard !DemoLaunch.isActive, await isAuthorized() else { return }
     let notice = usage.flatMap { RunwayNotice.toSend(usage: $0, now: .now, sentKeys: []).first }
     let runOutSentence = usage.flatMap { RunwayInsight.runOutSentence(usage: $0, now: .now) }
     await post(
