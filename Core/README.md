@@ -105,8 +105,9 @@ Rules, checked in this order. The first match wins.
 | Debugging | An edit, then a shell call, then an edit of the same file path |
 | Implementation | Any edit. Every edited file counts as a source file, docs included |
 | Review | A shell command that contains `gh pr diff` or `gh pr view`, no edits. Substring match, so `rtk gh pr view` also counts |
+| Planning | The OpenCode `plan` agent, no edits and no review command. Read and shell calls do not change this |
 | Investigation | Any read or shell call, no edits |
-| Planning | No read, shell or edit calls, and the OpenCode `plan` agent or at least 1,000 output tokens (reasoning included) |
+| Planning | No read, shell or edit calls, and at least 1,000 output tokens (reasoning included) |
 | Uncategorized | None of the above |
 
 ## Dashboard aggregates
