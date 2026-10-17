@@ -9,9 +9,15 @@ struct CopilotRunwayApp: App {
       DashboardView(usageStore: appDelegate.usageStore)
     }
     .defaultSize(width: 760, height: 640)
-    .defaultLaunchBehavior(.suppressed)
+    .defaultLaunchBehavior(Self.dashboardLaunchBehavior)
     Settings {
       SettingsView(usageStore: appDelegate.usageStore)
     }
   }
+
+  #if DEBUG
+  private static let dashboardLaunchBehavior: SceneLaunchBehavior = DemoLaunch.opensDashboard ? .presented : .suppressed
+  #else
+  private static let dashboardLaunchBehavior: SceneLaunchBehavior = .suppressed
+  #endif
 }

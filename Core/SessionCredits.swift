@@ -13,7 +13,6 @@ public struct SessionCredits: Sendable {
   public let modelEfficiencyNote: String?
   public let warning: String?
 
-  // Every aggregate comes from the same turns, so all dashboard totals add up.
   public static func load(
     since cycleStart: Date,
     now: Date,
@@ -39,6 +38,23 @@ public struct SessionCredits: Sendable {
     } catch {
       warnings.append("Cannot read OpenCode sessions.")
     }
+    return aggregate(
+      turns: turns,
+      prices: prices,
+      cycleStart: cycleStart,
+      now: now,
+      warning: warnings.isEmpty ? nil : warnings.joined(separator: " ")
+    )
+  }
+
+  // Every aggregate comes from the same turns, so all dashboard totals add up.
+  static func aggregate(
+    turns: [Turn],
+    prices: [String: ModelPrice],
+    cycleStart: Date,
+    now: Date,
+    warning: String? = nil
+  ) -> SessionCredits {
     let records = turns.flatMap(\.records)
     let cacheHits = CacheHit.byModel(records: records, prices: prices)
     return SessionCredits(
@@ -49,7 +65,7 @@ public struct SessionCredits: Sendable {
       cacheHits: cacheHits,
       lowCacheSentences: CacheHit.lowSentences(cacheHits: cacheHits, prices: prices),
       modelEfficiencyNote: ModelEfficiency.note(ModelEfficiency.byModel(turns: turns, prices: prices)),
-      warning: warnings.isEmpty ? nil : warnings.joined(separator: " ")
+      warning: warning
     )
   }
 }

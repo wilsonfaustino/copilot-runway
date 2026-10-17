@@ -97,6 +97,10 @@ struct PopoverView: View {
       }
       .buttonStyle(.plain)
       .accessibilityLabel("Dismiss notice")
+      #if DEBUG
+      // Demo mode must not write the real preference.
+      .disabled(DemoLaunch.isActive)
+      #endif
     }
     .padding(.vertical, Theme.Spacing.regular)
     .padding(.horizontal, 12)

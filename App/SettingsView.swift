@@ -70,11 +70,17 @@ struct SettingsView: View {
     Section {
       Toggle("Runway notifications", isOn: $runwayNotificationsEnabled)
         .toggleStyle(.switch)
+        #if DEBUG
+        // Demo mode must not write the real preference.
+        .disabled(DemoLaunch.isActive)
+        #endif
       #if DEBUG
-      Button("Send test notice") {
-        Task { await usageStore.runwayNotifier.sendTestNotice(usage: usageStore.usage) }
+      if !DemoLaunch.isActive {
+        Button("Send test notice") {
+          Task { await usageStore.runwayNotifier.sendTestNotice(usage: usageStore.usage) }
+        }
+        .controlSize(.small)
       }
-      .controlSize(.small)
       #endif
     } header: {
       Text("Notifications")

@@ -60,6 +60,12 @@ struct DashboardView: View {
     .onAppear {
       NSApp.setActivationPolicy(.regular)
       NSApp.activate()
+      #if DEBUG
+      // Demo mode does not save the dashboard frame, so a later real run keeps its own frame.
+      if DemoLaunch.scenario != nil {
+        NSApp.windows.filter { $0.frameAutosaveName == Self.windowId }.forEach { $0.setFrameAutosaveName("") }
+      }
+      #endif
     }
     .onDisappear {
       NSApp.setActivationPolicy(.accessory)
