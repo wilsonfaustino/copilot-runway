@@ -206,9 +206,8 @@ Requires Xcode and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
 ```
 
 The script builds the Release configuration, ad-hoc signs the app, verifies the signature
-and writes `dist/CopilotRunway-<version>.zip`. It prints the zip's sha256 for
-`packaging/Casks/copilot-runway.rb`. Unzip it and move `CopilotRunway.app` to
-`/Applications`.
+and writes `dist/CopilotRunway-<version>.zip`. It prints the zip's sha256. Unzip it and
+move `CopilotRunway.app` to `/Applications`.
 
 ### Signing and Homebrew policy
 
@@ -383,10 +382,15 @@ category rules, the dashboard totals, the summary format, the outcome searches a
 
 ### Release
 
-`./scripts/release.sh` reads `MARKETING_VERSION` from `project.yml`, builds the Release
-configuration, ad-hoc signs `Core.framework` and the app, verifies the signature, and writes
-`dist/CopilotRunway-<version>.zip` with its sha256. Put the sha256 and the release URL in
-`packaging/Casks/copilot-runway.rb`.
+1. Bump `MARKETING_VERSION` in `project.yml` and merge the PR.
+2. Push the tag `vX.Y.Z`. The release workflow runs `./scripts/release.sh` and creates a draft
+   release with `dist/CopilotRunway-<version>.zip` and its sha256.
+3. Edit the draft release notes and click Publish.
+4. The workflow then writes `version` and `sha256` into `Casks/copilot-runway.rb` of
+   `wilsonfaustino/homebrew-tap`. The tap updates itself.
+
+The tap step needs the repo secret `HOMEBREW_TAP_TOKEN`: a fine-grained token with contents
+write access to `homebrew-tap` only.
 
 ## Known limitations
 

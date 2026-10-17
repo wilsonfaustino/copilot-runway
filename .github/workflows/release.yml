@@ -1,0 +1,95 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  release:
+    types: [published]
+
+jobs:
+  build:
+    if: github.event_name == 'push'
+    runs-on: macos-26
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Select Xcode 26.6
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Check tag matches MARKETING_VERSION
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          version="$(sed -n 's/^ *MARKETING_VERSION: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p' project.yml)"
+          if [[ -z "$version" ]]; then
+            echo "error: MARKETING_VERSION not found in project.yml" >&2
+            exit 1
+          fi
+          if [[ "$TAG_NAME" != "v$version" ]]; then
+            echo "error: tag $TAG_NAME does not match v$version from project.yml" >&2
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+      - name: Build release zip
+        run: scripts/release.sh
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          zip_path="dist/CopilotRunway-$VERSION.zip"
+          sha256="$(shasum -a 256 "$zip_path" | cut -d ' ' -f 1)"
+          gh release create "$TAG_NAME" "$zip_path" --draft --title "$TAG_NAME" \
+            --notes "sha256: $sha256
+
+          Release notes: the maintainer writes them before publishing."
+
+  tap:
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Download release zip
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          version="${TAG_NAME#v}"
+          gh release download "$TAG_NAME" --repo "$GITHUB_REPOSITORY" \
+            --pattern "CopilotRunway-$version.zip" --dir "$RUNNER_TEMP"
+          sha256="$(sha256sum "$RUNNER_TEMP/CopilotRunway-$version.zip" | cut -d ' ' -f 1)"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "SHA256=$sha256" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          path: source
+      - uses: actions/checkout@v7.0.1
+        with:
+          repository: wilsonfaustino/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+      - name: Update cask
+        working-directory: tap
+        run: |
+          cask_path="Casks/copilot-runway.rb"
+          cp ../source/packaging/Casks/copilot-runway.rb "$cask_path"
+          sed -i.bak \
+            -e "s/^\( *version *\)\"[^\"]*\"/\1\"$VERSION\"/" \
+            -e "s/^\( *sha256 *\)\"[^\"]*\"/\1\"$SHA256\"/" \
+            "$cask_path"
+          rm -f "$cask_path.bak"
+          grep -q "^ *version \"$VERSION\"" "$cask_path" || { echo "error: version line did not update" >&2; exit 1; }
+          grep -q "^ *sha256 \"$SHA256\"" "$cask_path" || { echo "error: sha256 line did not update" >&2; exit 1; }
+          if git diff --quiet -- "$cask_path"; then
+            echo "tap is already up to date"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add "$cask_path"
+          git commit -m "copilot-runway $VERSION"
+          git push
