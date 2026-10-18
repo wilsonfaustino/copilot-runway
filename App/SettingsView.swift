@@ -5,6 +5,8 @@ struct SettingsView: View {
   let usageStore: UsageStore
   @State private var organizationText = ""
   @AppStorage(RunwayNotifier.enabledKey) private var runwayNotificationsEnabled = true
+  @AppStorage(Theme.taskPalettePreferenceKey) private var taskPalettePreference = TaskPalettePreference.unset
+  @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiatesWithoutColor
 
   private var organizationStatus: SettingsOrganizationStatus {
     SettingsOrganizationStatus(usageStore: usageStore, enteredText: organizationText)
@@ -40,6 +42,7 @@ struct SettingsView: View {
           .padding(.top, Theme.Spacing.small)
       }
       notificationsSection
+      chartsSection
       Section {
         LabeledContent("GitHub account") {
           Label("From gh auth. No token stored.", systemImage: "text.alignleft")
@@ -91,6 +94,34 @@ struct SettingsView: View {
       )
       .captionStyle()
       .padding(.top, Theme.Spacing.small)
+    }
+  }
+
+  // Shows the effective palette while the preference is unset, so the switch matches the charts.
+  private var colorblindSafeTaskColors: Binding<Bool> {
+    Binding(
+      get: {
+        TaskPalette.resolve(preference: taskPalettePreference, systemDifferentiatesWithoutColor: differentiatesWithoutColor)
+          == .colorblindSafe
+      },
+      set: { taskPalettePreference = $0 ? .on : .off }
+    )
+  }
+
+  private var chartsSection: some View {
+    Section {
+      Toggle("Colorblind-safe task colors", isOn: colorblindSafeTaskColors)
+        .toggleStyle(.switch)
+        #if DEBUG
+        // Demo mode must not write the real preference.
+        .disabled(DemoLaunch.isActive)
+        #endif
+    } header: {
+      Text("Charts")
+    } footer: {
+      Text("Colors the task bars by hue instead of shades of blue. Until you set it, it follows Differentiate without color.")
+        .captionStyle()
+        .padding(.top, Theme.Spacing.small)
     }
   }
 
