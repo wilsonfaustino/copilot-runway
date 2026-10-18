@@ -19,6 +19,8 @@ final class UsageStore {
   private(set) var modelCategoryCredits: [ModelCategoryCredits] = []
   private(set) var sourceCredits: [SourceCredits] = []
   private(set) var dailyCredits: [DailyCredits] = []
+  private(set) var previousDailyCredits: [DailyCredits] = []
+  private(set) var cycleComparisonSentence: String?
   private(set) var cacheHits: [ModelCacheHit] = []
   private(set) var lowCacheSentences: [String] = []
   private(set) var modelEfficiencyNote: String?
@@ -107,6 +109,8 @@ final class UsageStore {
     modelCategoryCredits = sessionCredits.byModelAndCategory
     sourceCredits = sessionCredits.bySource
     dailyCredits = sessionCredits.byDay
+    previousDailyCredits = sessionCredits.previousByDay
+    cycleComparisonSentence = sessionCredits.cycleComparisonSentence
     cacheHits = sessionCredits.cacheHits
     lowCacheSentences = sessionCredits.lowCacheSentences
     modelEfficiencyNote = sessionCredits.modelEfficiencyNote

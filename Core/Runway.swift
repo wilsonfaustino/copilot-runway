@@ -19,6 +19,11 @@ public enum Runway {
     utcCalendar.date(byAdding: .day, value: -1, to: resetDate)!
   }
 
+  // Days from the cycle start through the last cycle day, for example 31 for a Nov 1 reset.
+  public static func cycleDayCount(resetDate: Date) -> Int {
+    utcCalendar.dateComponents([.day], from: cycleStart(resetDate: resetDate), to: resetDate).day!
+  }
+
   // Elapsed time counts as at least one day, so the first hours of a cycle do not inflate the burn.
   public static func averageDailyBurn(credits: Double, resetDate: Date, now: Date) -> Double {
     let elapsedDays = now.timeIntervalSince(cycleStart(resetDate: resetDate)) / secondsPerDay

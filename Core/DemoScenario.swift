@@ -28,6 +28,8 @@ public struct DemoScenario: Sendable {
   public let now: Date
   public let usage: CopilotUsage
   public let turns: [Turn]
+  // The last cycle, for the Daily burn ghost line. Kept apart from turns, which hold only this cycle.
+  public let previousTurns: [Turn]
   public let outcomes: GitHubOutcomes
   public let copilotReviewCount: Int
 
@@ -51,6 +53,16 @@ public struct DemoScenario: Sendable {
     // Month ends can move Runway.cycleStart back a few days. The sessions start on the requested day, so the span
     // and the local credits do not grow past the GitHub total. They still fall inside the app's cycle.
     turns = Self.turns(shape: shape, firstDay: requestedCycleStart, now: now)
+    // The last cycle ends before the app's cycle start, so none of it counts in this cycle.
+    let cycleStart = Runway.cycleStart(resetDate: resetDate)
+    previousTurns = shape.previousTokenScale.map { previousTokenScale in
+      Self.turns(
+        shape: shape,
+        firstDay: Runway.cycleStart(resetDate: cycleStart),
+        now: cycleStart.addingTimeInterval(-1),
+        scale: previousTokenScale
+      )
+    } ?? []
     outcomes = shape.outcomes
     copilotReviewCount = shape.copilotReviewCount
   }
@@ -58,7 +70,7 @@ public struct DemoScenario: Sendable {
   // Bundled prices only, so a prices.json override does not change the demo.
   public var sessionCredits: SessionCredits {
     SessionCredits.aggregate(
-      turns: turns, prices: PriceTable.bundled, cycleStart: Runway.cycleStart(resetDate: usage.resetDate), now: now
+      turns: previousTurns + turns, prices: PriceTable.bundled, cycleStart: Runway.cycleStart(resetDate: usage.resetDate), now: now
     )
   }
 
@@ -78,6 +90,9 @@ public struct DemoScenario: Sendable {
     let models: [String]
     let categories: [TaskCategory]
     let tokenScale: Double
+    // Last cycle tokens against this cycle's, nil for no last cycle sessions. The same day pattern repeats in both
+    // cycles, but long context pricing is not linear, so typical's 0.81 gives about 35% more credits in this cycle.
+    let previousTokenScale: Double?
     let outcomes: GitHubOutcomes
     let copilotReviewCount: Int
 
@@ -92,6 +107,7 @@ public struct DemoScenario: Sendable {
         Shape(
           entitlement: 1_500, creditsUsed: 760, elapsedDays: 16, turnsPerDay: 6,
           models: typicalModels, categories: typicalCategories, tokenScale: 1,
+          previousTokenScale: 0.81,
           outcomes: GitHubOutcomes(prsMerged: 9, prsOpen: 2, prsReviewed: 14, commits: 63), copilotReviewCount: 3
         )
       case .manyModels:
@@ -102,6 +118,7 @@ public struct DemoScenario: Sendable {
             "claude-opus-5.5", "gpt-5.6-terra", "grok-4.7", "kimi-k3",
           ],
           categories: typicalCategories, tokenScale: 0.55,
+          previousTokenScale: 1.1,
           outcomes: GitHubOutcomes(prsMerged: 12, prsOpen: 3, prsReviewed: 20, commits: 88), copilotReviewCount: 5
         )
       case .heavyPlanning:
@@ -110,38 +127,43 @@ public struct DemoScenario: Sendable {
           models: typicalModels,
           categories: [.planning, .debugging, .planning, .debugging, .implementation, .planning, .investigation],
           tokenScale: 1,
+          previousTokenScale: 0.9,
           outcomes: GitHubOutcomes(prsMerged: 4, prsOpen: 3, prsReviewed: 6, commits: 31), copilotReviewCount: 1
         )
       case .edgeUnpriced:
         Shape(
           entitlement: 1_500, creditsUsed: 720, elapsedDays: 16, turnsPerDay: 6,
           models: typicalModels + [unpricedModel], categories: typicalCategories, tokenScale: 1,
+          previousTokenScale: 1,
           outcomes: GitHubOutcomes(prsMerged: 8, prsOpen: 1, prsReviewed: 11, commits: 54), copilotReviewCount: 2
         )
       case .edgeRunout:
         Shape(
           entitlement: 1_500, creditsUsed: 1_540, elapsedDays: 20, turnsPerDay: 9,
           models: typicalModels, categories: typicalCategories, tokenScale: 1,
+          previousTokenScale: 0.6,
           outcomes: GitHubOutcomes(prsMerged: 14, prsOpen: 4, prsReviewed: 18, commits: 102), copilotReviewCount: 6
         )
       case .edgeUncategorized:
         Shape(
           entitlement: 1_500, creditsUsed: 90, elapsedDays: 10, turnsPerDay: 5,
           models: typicalModels, categories: [.uncategorized], tokenScale: 1,
+          previousTokenScale: nil,
           outcomes: GitHubOutcomes(prsMerged: 1, prsOpen: 1, prsReviewed: 2, commits: 9), copilotReviewCount: 0
         )
       case .edgeEmpty:
         Shape(
           entitlement: 1_500, creditsUsed: 0, elapsedDays: 0, turnsPerDay: 0,
           models: typicalModels, categories: typicalCategories, tokenScale: 1,
+          previousTokenScale: nil,
           outcomes: GitHubOutcomes(prsMerged: 0, prsOpen: 0, prsReviewed: 0, commits: 0), copilotReviewCount: 0
         )
       }
     }
   }
 
-  // One turn per slot from the first day through now, 90 minutes apart from 09:00 UTC.
-  static func turns(shape: Shape, firstDay: Date, now: Date) -> [Turn] {
+  // One turn per slot from the first day through now, 90 minutes apart from 09:00 UTC. scale multiplies the tokens.
+  static func turns(shape: Shape, firstDay: Date, now: Date, scale: Double = 1) -> [Turn] {
     let calendar = Runway.utcCalendar
     var turns: [Turn] = []
     var day = firstDay
@@ -158,7 +180,7 @@ public struct DemoScenario: Sendable {
         let source: SessionSource = turnIndex % 3 == 2 ? .pi : .opencode
         // 0.6, 1.0 or 1.4, so days and models do not all cost the same.
         let variation = 0.6 + 0.4 * Double((turnIndex + 2 * dayIndex) % 3)
-        let tokens = tokens(for: category, scale: shape.tokenScale * variation)
+        let tokens = tokens(for: category, scale: shape.tokenScale * scale * variation)
         let agent: String?
         if source == .pi {
           agent = nil

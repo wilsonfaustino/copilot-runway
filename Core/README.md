@@ -83,6 +83,11 @@ to the priced models in `Credits.byModel`.
   April 2026, so they cannot be in a current cycle.
 - A turn that starts before the cycle keeps only its messages in the cycle. OpenCode also drops its
   tool calls from before the cycle. Pi keeps them.
+- `SessionCredits.load` reads both parsers from the last cycle start (see Last cycle comparison), so
+  the cut above happens one cycle earlier. To keep this cycle's turns unchanged, OpenCode gets
+  `splitAt: cycleStart`: rows before it build their own turns, so the turns from the reset on equal a
+  read that starts at the reset. Pi needs no split, because a read from the reset already keeps the
+  earlier tool calls. One edge stays: a row whose `seq` order disagrees with its time order.
 
 ### Tool names
 
@@ -114,7 +119,8 @@ Rules, checked in this order. The first match wins.
 
 All dashboard numbers come from the same turns, so they add up to the same local total.
 `SessionCredits.load` reads the Pi and OpenCode turns once, picks the prices, and builds every
-aggregate. It takes the records for `Credits.byModel` and `Credits.byDay` from `turns.flatMap(\.records)`.
+aggregate. It takes the records for `Credits.byModel` and `Credits.byDay` from the current cycle turns
+after the split at the cycle start (see Last cycle comparison).
 Messages from models without a price add 0, as in `Credits.byCategory`.
 
 - `Credits.byDay`: one entry per day from the cycle start through now, days without messages at 0.
@@ -156,6 +162,36 @@ Messages from models without a price add 0, as in `Credits.byCategory`.
   The segments of a bar are the `byModelAndCategory` credits of that model, so they show its task mix.
   "Other models" sums the folded models. "Not in local sessions" has no task and keeps its striped bar.
   Every bar draws its segments in one order, highest category total first, and leaves out categories at 0.
+
+## Last cycle comparison (`CycleComparison`)
+
+The Daily burn chart draws the last cycle as a dashed line next to this cycle's bars, plus one sentence.
+Both use local credits only. They are not in the GitHub numbers, the popover or Copy summary.
+
+- Parse window: `SessionCredits.load(since: cycleStart)` reads Pi and OpenCode from
+  `Runway.cycleStart(resetDate: cycleStart)`, one cycle earlier. On our data this adds about 20 ms
+  per refresh (33 ms OpenCode, Pi flat), so there is no cache.
+- Split: `SessionCredits.aggregate` keeps only records at or after `cycleStart` in each turn and drops
+  turns with no record left. Every current aggregate (`byModel`, `byCategory`, `byModelAndCategory`,
+  `bySource`, `byDay`, `cacheHits`, the notes) reads these turns. The earlier records feed only
+  `previousByDay`: `Credits.byDay` from the last cycle start through the day before `cycleStart`.
+  OpenCode turns that cross the reset are split in the parser, see Turns.
+- Pairing: days pair by index from each cycle start (day 1 with day 1). The chart x axis is "Day N"
+  up to the longer of this cycle's length (`Runway.cycleDayCount`) and the last cycle's.
+- `CycleComparison.compare(current:previous:)` compares totals so far, through yesterday. The last
+  `byDay` entry is today, which is not over, so it is left out. The last cycle total runs through the
+  same day index. Past the last cycle's final day (day 31 against a 30-day cycle), it is the whole last
+  cycle. The percent is `(current - previous) / previous * 100`, rounded.
+- Minimum data: `nil` without a full day in this cycle, with fewer than 5 days above 0 credits in the
+  paired last cycle days, or with a paired last cycle total of 0. Missing old sessions (OpenCode
+  pruning, deleted Pi folders) look like quiet days, so the minimum also guards the "below" sentence.
+- `sentence(locale:)`: "Local credits through Oct 17 are 35% above the same days of last cycle.",
+  "... 12% below ..." or, when the percent rounds to 0, "Local credits through Oct 17 are about the
+  same as last cycle." The day is the UTC day (`RunwayInsight.day`). `SessionCredits` keeps it as
+  `cycleComparisonSentence`.
+- Prices load once per refresh and apply to both cycles, so the comparison is token volume at the
+  current rates, not what GitHub billed.
+- The chart hides the line and its legend when the last cycle has 0 credits.
 
 ## Model display names (`ModelDisplayName`)
 

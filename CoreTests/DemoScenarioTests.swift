@@ -112,6 +112,28 @@ func demoScenarioGitHubCreditsCoverLocalPricedCreditsAtAnyLaunchTime(name: DemoS
   #expect(Runway.daysLeft(usage: scenario.usage, now: demoNow) == nil)
 }
 
+@Test(arguments: DemoScenario.Name.allCases, demoLaunchTimes)
+func demoScenarioPreviousTurnsFallInsideTheLastCycle(name: DemoScenario.Name, launchTime: String) {
+  let scenario = DemoScenario(name: name, now: utcDate(launchTime))
+  let cycleStart = Runway.cycleStart(resetDate: scenario.usage.resetDate)
+  let previousCycleStart = Runway.cycleStart(resetDate: cycleStart)
+  #expect(scenario.previousTurns.flatMap(\.records).allSatisfy { $0.timestamp >= previousCycleStart && $0.timestamp < cycleStart })
+}
+
+@Test func typicalDemoIsAboutAThirdAboveTheLastCycle() throws {
+  let sessionCredits = DemoScenario(name: .typical, now: demoNow).sessionCredits
+  let comparison = try #require(CycleComparison.compare(current: sessionCredits.byDay, previous: sessionCredits.previousByDay))
+  #expect((30...40).contains(comparison.percentDifference))
+  #expect(sessionCredits.cycleComparisonSentence?.contains("% above the same days of last cycle.") == true)
+}
+
+@Test func edgeUncategorizedDemoHasNoLastCycle() {
+  let sessionCredits = DemoScenario(name: .edgeUncategorized, now: demoNow).sessionCredits
+  #expect(!sessionCredits.byDay.isEmpty)
+  #expect(sessionCredits.previousByDay.allSatisfy { $0.credits == 0 })
+  #expect(sessionCredits.cycleComparisonSentence == nil)
+}
+
 @Test func demoLaunchValueIsTheArgumentAfterDemo() {
   #expect(DemoScenario.launchValue(arguments: ["/app", "-demo", "many-models", "-openDashboard"]) == "many-models")
   #expect(DemoScenario.launchValue(arguments: ["/app", "-openDashboard"]) == nil)
