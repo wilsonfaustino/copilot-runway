@@ -6,6 +6,7 @@ import SwiftUI
 struct ModelTaskSplitView: View {
   let breakdown: ShareBreakdown
   let taskSplit: ModelTaskSplit
+  let taskPalette: TaskPalette
   // A line under the "Not in local sessions" item.
   var notInLocalSessionsNote: String?
 
@@ -30,7 +31,7 @@ struct ModelTaskSplitView: View {
         ForEach(taskSplit.categories, id: \.self) { category in
           HStack(spacing: Theme.Spacing.small) {
             RoundedRectangle(cornerRadius: Self.swatchRadius)
-              .fill(Theme.taskColor(category))
+              .fill(Theme.taskColor(category, palette: taskPalette))
               .frame(width: Self.swatchSize, height: Self.swatchSize)
             Text(category.displayName)
           }
@@ -90,7 +91,7 @@ struct ModelTaskSplitView: View {
             // The other segments of the hovered bar dim, so the highlight does not rely on color alone.
             let isDimmed = hoveredSegment?.itemID == item.id && hoveredSegment != thisSegment
             shape
-              .fill(Theme.taskColor(segment.category))
+              .fill(Theme.taskColor(segment.category, palette: taskPalette))
               .opacity(isDimmed ? Self.dimmedOpacity : 1)
               .frame(width: segmentsWidth * CGFloat(segment.credits / segmentsTotal))
               .contentShape(Rectangle())

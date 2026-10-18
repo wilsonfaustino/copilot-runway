@@ -14,6 +14,12 @@ struct DashboardView: View {
   let usageStore: UsageStore
   @State private var summaryCopied = false
   @Environment(\.openSettings) private var openSettings
+  @AppStorage(Theme.taskPalettePreferenceKey) private var taskPalettePreference = TaskPalettePreference.unset
+  @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiatesWithoutColor
+
+  private var taskPalette: TaskPalette {
+    TaskPalette.resolve(preference: taskPalettePreference, systemDifferentiatesWithoutColor: differentiatesWithoutColor)
+  }
 
   var body: some View {
     let health = RunwayHealth(usage: usageStore.usage, hasError: usageStore.usageError != nil, now: .now)
@@ -229,7 +235,7 @@ struct DashboardView: View {
     shareCard(
       title: "By task",
       breakdown: ShareBreakdown.tasks(usageStore.categoryCredits),
-      colors: Dictionary(uniqueKeysWithValues: TaskCategory.allCases.map { (.entry($0.displayName), Theme.taskColor($0)) }),
+      colors: Dictionary(uniqueKeysWithValues: TaskCategory.allCases.map { (.entry($0.displayName), Theme.taskColor($0, palette: taskPalette)) }),
       marksSmallShares: true
     )
   }
@@ -297,7 +303,9 @@ struct DashboardView: View {
       .lineLimit(1)
       .minimumScaleFactor(0.6)
       if !breakdown.isEmpty, let taskSplit {
-        ModelTaskSplitView(breakdown: breakdown, taskSplit: taskSplit, notInLocalSessionsNote: notInLocalSessionsNote)
+        ModelTaskSplitView(
+          breakdown: breakdown, taskSplit: taskSplit, taskPalette: taskPalette, notInLocalSessionsNote: notInLocalSessionsNote
+        )
       } else if !breakdown.isEmpty {
         ShareBreakdownView(
           breakdown: breakdown, colors: colors, marksSmallShares: marksSmallShares, notInLocalSessionsNote: notInLocalSessionsNote

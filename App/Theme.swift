@@ -35,10 +35,19 @@ enum Theme {
   static let cardFill = Color.primary.opacity(0.05)
   static let cardBorder = Color.primary.opacity(0.08)
 
+  static let taskPalettePreferenceKey = "taskPalettePreference"
+
+  static func taskColor(_ category: TaskCategory, palette: TaskPalette) -> Color {
+    switch palette {
+    case .standard: standardTaskColor(category)
+    case .colorblindSafe: colorblindSafeTaskColor(category)
+    }
+  }
+
   // Split bar ramps, one hue per card. Dark values come from the mockup. Each light ramp is darker so its
   // lightest step keeps 2:1 contrast on a white background (checked with the dataviz palette validator).
   // Dark planning is lighter than the mockup, so it keeps 2:1 contrast on the dark card.
-  static func taskColor(_ category: TaskCategory) -> Color {
+  private static func standardTaskColor(_ category: TaskCategory) -> Color {
     let nsColor =
       switch category {
       case .investigation: dynamicColor(dark: 0xCDE2FB, light: 0x61A7FF)
@@ -47,6 +56,22 @@ enum Theme {
       case .review: dynamicColor(dark: 0x3987E5, light: 0x005BB4)
       case .uncategorized: dynamicColor(dark: 0x256ABF, light: 0x00468D)
       case .planning: dynamicColor(dark: 0x1C58A6, light: 0x003167)
+      }
+    return Color(nsColor: nsColor)
+  }
+
+  // Okabe-Ito hue families, checked on all pairs with the dataviz palette validator, because any two tasks can touch.
+  // Worst CVD delta E is 8.3 (deutan) in dark and 8.4 in light. Dark planning, implementation and debugging stay
+  // near 2.5:1 on the dark card: 3:1 there costs the normal-vision floor. The legend and labels carry identity too.
+  private static func colorblindSafeTaskColor(_ category: TaskCategory) -> Color {
+    let nsColor =
+      switch category {
+      case .investigation: dynamicColor(dark: 0x177AEA, light: 0x0260C1)
+      case .debugging: dynamicColor(dark: 0xC83501, light: 0x9D2700)
+      case .implementation: dynamicColor(dark: 0x267847, light: 0x239761)
+      case .review: dynamicColor(dark: 0xAC8704, light: 0xB26F04)
+      case .uncategorized: dynamicColor(dark: 0xACACAC, light: 0x626262)
+      case .planning: dynamicColor(dark: 0x925286, light: 0x802072)
       }
     return Color(nsColor: nsColor)
   }
