@@ -117,6 +117,43 @@ import Testing
   }
 }
 
+@Test(arguments: ["input", "cachedInput", "cacheWrite", "output"])
+func negativeStandardRateInOverrideThrows(field: String) throws {
+  var rates = ["input": "1", "cachedInput": "0.1", "cacheWrite": "0", "output": "2"]
+  rates[field] = "-1"
+  let ratesJSON = rates.map { "\"\($0.key)\": \($0.value)" }.joined(separator: ", ")
+  let overrideFile = try writeTemporaryFile(#"{ "gpt-6.1-sol": { "standard": { \#(ratesJSON) } } }"#)
+  defer { try? FileManager.default.removeItem(at: overrideFile) }
+  #expect(throws: PriceTableError.invalidOverride) {
+    try PriceTable.load(overrideURL: overrideFile)
+  }
+}
+
+@Test func negativeLongContextRateInOverrideThrows() throws {
+  let overrideFile = try writeTemporaryFile("""
+    {
+      "gpt-6.1-sol": {
+        "standard": { "input": 1, "cachedInput": 0.1, "cacheWrite": 0, "output": 2 },
+        "longContextThreshold": 200000,
+        "longContext": { "input": 2, "cachedInput": 0.2, "cacheWrite": 0, "output": -4 }
+      }
+    }
+    """)
+  defer { try? FileManager.default.removeItem(at: overrideFile) }
+  #expect(throws: PriceTableError.invalidOverride) {
+    try PriceTable.load(overrideURL: overrideFile)
+  }
+}
+
+@Test func zeroRatesInOverrideLoad() throws {
+  let overrideFile = try writeTemporaryFile(
+    #"{ "gpt-6.1-sol": { "standard": { "input": 0, "cachedInput": 0, "cacheWrite": 0, "output": 0 } } }"#
+  )
+  defer { try? FileManager.default.removeItem(at: overrideFile) }
+  let prices = try PriceTable.load(overrideURL: overrideFile)
+  #expect(prices["gpt-6.1-sol"] == ModelPrice(standard: TokenRates(input: 0, cachedInput: 0, cacheWrite: 0, output: 0)))
+}
+
 func writeTemporaryFile(_ contents: String) throws -> URL {
   let fileURL = FileManager.default.temporaryDirectory.appending(path: "prices-\(UUID().uuidString).json")
   try Data(contents.utf8).write(to: fileURL)

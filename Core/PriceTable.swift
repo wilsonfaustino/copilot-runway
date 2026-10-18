@@ -185,6 +185,13 @@ public enum PriceTable {
       let overrideData = try? Data(contentsOf: overrideURL),
       let overridePrices = try? JSONDecoder().decode([String: ModelPrice].self, from: overrideData)
     else { throw PriceTableError.invalidOverride }
+    for price in overridePrices.values {
+      for rates in [price.standard, price.longContext].compactMap({ $0 }) {
+        guard rates.input >= 0, rates.cachedInput >= 0, rates.cacheWrite >= 0, rates.output >= 0 else {
+          throw PriceTableError.invalidOverride
+        }
+      }
+    }
     return bundled.merging(overridePrices) { _, overridePrice in overridePrice }
   }
 }
