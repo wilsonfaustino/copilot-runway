@@ -148,11 +148,44 @@ let millionSolInputTokens = TokenUsage(input: 1_000_000, cachedInput: 0, cacheWr
   #expect(Credits.sharePercent(5, of: 0) == 0)
 }
 
-@Test func shareLabelMarksSharesThatRoundToZero() {
-  #expect(Credits.shareLabel(0, of: 1000) == "0%")
-  #expect(Credits.shareLabel(3, of: 1000) == "<1%")
-  #expect(Credits.shareLabel(124, of: 1000) == "12%")
-  #expect(Credits.shareLabel(0, of: 0) == "0%")
+@Test func shareLabelMarksSharesThatAreZeroWithCredits() {
+  #expect(Credits.shareLabel(percent: 0, of: 0) == "0%")
+  #expect(Credits.shareLabel(percent: 0, of: 3) == "<1%")
+  #expect(Credits.shareLabel(percent: 12, of: 124) == "12%")
+}
+
+@Test func sharePercentsOfThreeEqualPartsAddUpTo100() {
+  #expect(Credits.sharePercents([1, 1, 1], of: 3) == [34, 33, 33])
+}
+
+@Test func sharePercentsGiveTheExtraPointsToTheLargestRemainders() {
+  #expect(Credits.sharePercents([1, 1, 4], of: 6) == [17, 17, 66])
+  #expect(Credits.sharePercents([620, 250, 130], of: 1000) == [62, 25, 13])
+}
+
+@Test func sharePercentsOfZeroTotalOrZeroPartsAreZero() {
+  #expect(Credits.sharePercents([0, 0], of: 0) == [0, 0])
+  #expect(Credits.sharePercents([0, 0], of: 10) == [0, 0])
+  #expect(Credits.sharePercents([], of: 10) == [])
+}
+
+@Test func sharePercentsOfOnePartAreItsRoundedShare() {
+  #expect(Credits.sharePercents([5], of: 5) == [100])
+  #expect(Credits.sharePercents([1], of: 3) == [33])
+}
+
+@Test func sharePercentsBreakTiesInInputOrder() {
+  #expect(Credits.sharePercents(Array(repeating: 1, count: 8), of: 8) == [13, 13, 13, 13, 12, 12, 12, 12])
+}
+
+@Test func sharePercentsLeaveATinyPartAtZeroWhenOthersHaveLargerRemainders() {
+  let percents = Credits.sharePercents([3, 997], of: 1000)
+  #expect(percents == [0, 100])
+  #expect(Credits.shareLabel(percent: percents[0], of: 3) == "<1%")
+}
+
+@Test func sharePercentsOfPartsThatMissTheTotalByUnderHalfAPercentStillAddUpTo100() {
+  #expect(Credits.sharePercents([600, 396], of: 1000) == [60, 40])
 }
 
 @Test func formattedCreditsHaveNoFraction() {

@@ -168,13 +168,30 @@ private func sevenModelTurns() -> [Turn] {
 
 @Test func segmentSummaryNamesTheTaskItsShareOfTheModelAndItsCredits() {
   let segment = CategoryCredits(category: .debugging, credits: 1925)
-  #expect(ModelTaskSplit.segmentSummary(segment, of: 6210, locale: Locale(identifier: "en_US")) == "Debugging, 31%, 1,925 credits")
-  #expect(ModelTaskSplit.segmentSummary(segment, of: 6210, locale: Locale(identifier: "pt_BR")) == "Debugging, 31%, 1.925 credits")
+  #expect(ModelTaskSplit.segmentSummary(segment, percent: 31, locale: Locale(identifier: "en_US")) == "Debugging, 31%, 1,925 credits")
+  #expect(ModelTaskSplit.segmentSummary(segment, percent: 31, locale: Locale(identifier: "pt_BR")) == "Debugging, 31%, 1.925 credits")
 }
 
 @Test func segmentSummaryShowsASmallShareAsBelowOnePercent() {
   let segment = CategoryCredits(category: .planning, credits: 2)
-  #expect(ModelTaskSplit.segmentSummary(segment, of: 1000, locale: Locale(identifier: "en_US")) == "Planning, <1%, 2 credits")
+  #expect(ModelTaskSplit.segmentSummary(segment, percent: 0, locale: Locale(identifier: "en_US")) == "Planning, <1%, 2 credits")
+}
+
+@Test func segmentPercentsOfAModelAddUpTo100AndFollowTheSegmentOrder() {
+  let turns = [
+    efficiencyTurn(toolCalls: editCalls, records: [efficiencyRecord(model: "gpt-6.1-sol", credits: 100)]),
+    efficiencyTurn(toolCalls: readCalls, records: [efficiencyRecord(model: "gpt-6.1-sol", credits: 100)]),
+    efficiencyTurn(toolCalls: [], records: [efficiencyRecord(model: "gpt-6.1-sol", credits: 100)]),
+  ]
+  let breakdown = ShareBreakdown.models(
+    Credits.byModel(records: turns.flatMap(\.records), prices: efficiencyPrices), githubCredits: 0
+  )
+  let split = ModelTaskSplit(
+    breakdown: breakdown, modelCategoryCredits: Credits.byModelAndCategory(turns: turns, prices: efficiencyPrices)
+  )
+  let solID = ShareItem.ID.entry("gpt-6.1-sol")
+  #expect(split.segments[solID]?.count == 3)
+  #expect(split.segmentPercents[solID] == [34, 33, 33])
 }
 
 @Test func rowSummaryListsTheTotalShareAndEveryTaskInBarOrder() {
