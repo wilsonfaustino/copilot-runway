@@ -76,6 +76,10 @@ Click the title to open the popover:
 - Cards for days of runway, percent remaining, average daily burn and credits per PR authored.
 - A daily burn chart for the cycle, one bar per UTC day from local sessions, with a line at the
   GitHub average daily burn. Select a bar to see the credits for that day.
+- A dashed line for last cycle, paired by day of the cycle, when last cycle has credits. Hover a
+  day to see both cycles. A sentence under the chart title compares this cycle with the same days
+  of last cycle. Today is left out. The sentence shows only when last cycle has at least 5 days
+  with credits in the paired days.
 - Local credits by task category, by model and by agent (OpenCode or Pi).
 - A note with the percent of GitHub credits that local sessions do not explain, and the number of
   models with no price.
@@ -304,7 +308,8 @@ bundled entry with the same model id. Models not in the file keep the bundled pr
 ```
 
 The `example-model` rates only show the shape. They are not real prices. If the file is not
-valid, the app uses the bundled prices and shows a warning.
+valid, the app uses the bundled prices and shows "prices.json is invalid. Using bundled prices."
+A negative rate makes the whole file not valid. A rate of 0 is valid.
 
 ### Category rules
 
