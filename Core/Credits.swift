@@ -21,6 +21,18 @@ public struct CategoryCredits: Equatable, Sendable {
   }
 }
 
+public struct ModelCategoryCredits: Equatable, Sendable {
+  public let model: String
+  public let category: TaskCategory
+  public let credits: Double
+
+  public init(model: String, category: TaskCategory, credits: Double) {
+    self.model = model
+    self.category = category
+    self.credits = credits
+  }
+}
+
 public struct SourceCredits: Equatable, Sendable {
   public let source: SessionSource
   public let credits: Double
@@ -92,6 +104,33 @@ public enum Credits {
       if left.credits != right.credits { return left.credits > right.credits }
       return left.category.rawValue < right.category.rawValue
     }
+  }
+
+  // A turn can mix models, so each message goes to its own model and the category of its turn. Models without
+  // a price are left out, so the totals per model equal byModel and the totals per category equal byCategory.
+  // Highest spend first.
+  public static func byModelAndCategory(turns: [Turn], prices: [String: ModelPrice]) -> [ModelCategoryCredits] {
+    var creditsByKey: [ModelCategoryKey: Double] = [:]
+    for turn in turns {
+      let category = TaskCategorizer.category(of: turn)
+      for record in turn.records {
+        guard let price = prices[record.model] else { continue }
+        creditsByKey[ModelCategoryKey(model: record.model, category: category), default: 0] += credits(for: record.tokens, price: price)
+      }
+    }
+    let modelCategoryCredits = creditsByKey.map { key, credits in
+      ModelCategoryCredits(model: key.model, category: key.category, credits: credits)
+    }
+    return modelCategoryCredits.sorted { left, right in
+      if left.credits != right.credits { return left.credits > right.credits }
+      if left.model != right.model { return left.model < right.model }
+      return left.category.rawValue < right.category.rawValue
+    }
+  }
+
+  private struct ModelCategoryKey: Hashable {
+    let model: String
+    let category: TaskCategory
   }
 
   // Same pricing rule as byCategory: messages from models without a price add 0. Highest spend first.

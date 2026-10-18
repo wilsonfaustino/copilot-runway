@@ -44,8 +44,10 @@ public struct ShareBreakdown: Equatable, Sendable {
   public static let githubCreditsUnit = "GitHub credits"
   public static let otherModelsName = "Other models"
   public static let notInLocalSessionsName = "Not in local sessions"
-  // The dashboard has 3 model colors. More models fold into one "Other models" item.
+  // The popover has 3 model colors. More models fold into one "Other models" item.
   public static let namedModelLimit = 3
+  // The dashboard By model bars are split by task and need no model colors, so they name more models.
+  public static let taskSplitModelLimit = 5
 
   public let shareTotal: Double
   public let items: [ShareItem]
@@ -85,7 +87,9 @@ public struct ShareBreakdown: Equatable, Sendable {
   // credits than local sessions, a last item holds the difference and shares are of the GitHub total.
   // Otherwise shares are of the local total, for example after a price table overestimate, and the unit says so.
   // No local credits gives no items, so the card shows its empty text.
-  public static func models(_ modelCredits: [ModelCredits], githubCredits: Double) -> ShareBreakdown {
+  public static func models(
+    _ modelCredits: [ModelCredits], githubCredits: Double, namedModelLimit: Int = ShareBreakdown.namedModelLimit
+  ) -> ShareBreakdown {
     let pricedModels: [(model: String, credits: Double)] = modelCredits.compactMap { model in
       model.credits.map { (model.model, $0) }
     }

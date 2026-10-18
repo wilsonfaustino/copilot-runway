@@ -37,6 +37,7 @@ enum Theme {
 
   // Split bar ramps, one hue per card. Dark values come from the mockup. Each light ramp is darker so its
   // lightest step keeps 2:1 contrast on a white background (checked with the dataviz palette validator).
+  // Dark planning is lighter than the mockup, so it keeps 2:1 contrast on the dark card.
   static func taskColor(_ category: TaskCategory) -> Color {
     let nsColor =
       switch category {
@@ -45,7 +46,7 @@ enum Theme {
       case .implementation: dynamicColor(dark: 0x6DA7EC, light: 0x2374D0)
       case .review: dynamicColor(dark: 0x3987E5, light: 0x005BB4)
       case .uncategorized: dynamicColor(dark: 0x256ABF, light: 0x00468D)
-      case .planning: dynamicColor(dark: 0x184F95, light: 0x003167)
+      case .planning: dynamicColor(dark: 0x1C58A6, light: 0x003167)
       }
     return Color(nsColor: nsColor)
   }

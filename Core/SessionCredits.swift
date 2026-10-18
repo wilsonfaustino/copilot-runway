@@ -3,6 +3,7 @@ import Foundation
 public struct SessionCredits: Sendable {
   public let byModel: [ModelCredits]
   public let byCategory: [CategoryCredits]
+  public let byModelAndCategory: [ModelCategoryCredits]
   public let bySource: [SourceCredits]
   public let byDay: [DailyCredits]
   // Same order as byModel.
@@ -60,6 +61,7 @@ public struct SessionCredits: Sendable {
     return SessionCredits(
       byModel: Credits.byModel(records: records, prices: prices),
       byCategory: Credits.byCategory(turns: turns, prices: prices),
+      byModelAndCategory: Credits.byModelAndCategory(turns: turns, prices: prices),
       bySource: Credits.bySource(turns: turns, prices: prices),
       byDay: Credits.byDay(records: records, prices: prices, cycleStart: cycleStart, now: now, calendar: Runway.utcCalendar),
       cacheHits: cacheHits,
