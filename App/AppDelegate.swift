@@ -70,6 +70,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     }
     NSApp.activate()
     popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+    // show does not make the popover key, and the system declines activate() for a status item click, so
+    // without this the popover looks inactive and the first click in it only makes it key.
+    popover.contentViewController?.view.window?.makeKey()
     button.highlight(true)
   }
 
