@@ -331,9 +331,10 @@ next to it as a count and are not in the divisor. With 0 PRs there is no value.
 The app counts these for your `gh` user in one organization since the cycle start, with
 `gh search`:
 
-- PRs opened: PRs you created in the cycle, open, closed, merged or draft.
-- PRs reviewed: GitHub search has no review date filter. The app counts PRs that you reviewed at
-  any time and that were updated in the cycle. Your own PRs are left out.
+- PRs opened: PRs you created in the cycle that are open (drafts included) or merged. A PR
+  closed without a merge does not count.
+- PRs reviewed: PRs by other people where your most recent review was submitted in the cycle.
+  Your own PRs are left out.
 - Commits: commit search covers only the default branch of each repo, so commits on branches
   that are not merged do not count. The date is the author date, not the push date.
 
