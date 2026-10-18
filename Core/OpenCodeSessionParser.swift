@@ -47,8 +47,9 @@ public enum OpenCodeSessionParser {
     """
 
   // Only turns with at least one Copilot record in the cycle. Reads the 2.x table only, see Core/README.md.
-  public static func turns(inDirectory directory: URL = dataDirectory, since cycleStart: Date) throws -> [Turn] {
-    try databaseURLs(in: directory).flatMap { try turns(inDatabaseAt: $0, since: cycleStart) }
+  // Rows before splitAt build their own turns, so the turns from splitAt on equal a read since splitAt.
+  public static func turns(inDirectory directory: URL = dataDirectory, since cycleStart: Date, splitAt: Date? = nil) throws -> [Turn] {
+    try databaseURLs(in: directory).flatMap { try turns(inDatabaseAt: $0, since: cycleStart, splitAt: splitAt) }
   }
 
   private static func databaseURLs(in directory: URL) -> [URL] {
@@ -58,7 +59,7 @@ public enum OpenCodeSessionParser {
       .map { directory.appending(path: $0) }
   }
 
-  static func turns(inDatabaseAt databaseURL: URL, since cycleStart: Date) throws -> [Turn] {
+  static func turns(inDatabaseAt databaseURL: URL, since cycleStart: Date, splitAt: Date? = nil) throws -> [Turn] {
     let database = try openDatabase(at: databaseURL)
     defer { sqlite3_close(database) }
     guard try tableExists(currentTable, in: database) else { return [] }
@@ -72,29 +73,43 @@ public enum OpenCodeSessionParser {
       )
     }
 
-    var turns: [Turn] = []
-    var currentTurn: Turn?
-    var currentSessionId: String?
+    // Index 0 for rows from splitAt on, 1 for rows before it.
+    var builders = [TurnBuilder(), TurnBuilder()]
     try forEachRow(query: turnQuery, in: database, since: cycleStartMilliseconds) { statement in
       guard let messageId = text(statement, 0), let sessionId = text(statement, 1), let type = text(statement, 2) else { return }
       let timestamp = Date(timeIntervalSince1970: Double(sqlite3_column_int64(statement, 3)) / 1000)
-      if sessionId != currentSessionId || type == "user" {
-        if let currentTurn { turns.append(currentTurn) }
-        currentTurn = nil
-        currentSessionId = sessionId
-      }
-      var turn = currentTurn ?? Turn(timestamp: timestamp, source: .opencode)
-      if type == "assistant" {
+      let isBeforeSplit = splitAt.map { timestamp < $0 } ?? false
+      builders[isBeforeSplit ? 1 : 0].add(sessionId: sessionId, type: type, timestamp: timestamp) { turn in
         turn.agent = turn.agent ?? text(statement, 4)
         turn.toolCalls += toolCallsByMessageId[messageId] ?? []
         if text(statement, 5) == copilotProvider, let model = text(statement, 6) {
           turn.records.append(UsageRecord(model: model, timestamp: timestamp, tokens: tokens(statement, firstColumn: 7)))
         }
       }
+    }
+    return builders.flatMap { $0.finishedTurns() }.filter { !$0.records.isEmpty }
+  }
+
+  // Groups rows in session order: a user row or a new session starts a turn.
+  private struct TurnBuilder {
+    private var turns: [Turn] = []
+    private var currentTurn: Turn?
+    private var currentSessionId: String?
+
+    mutating func add(sessionId: String, type: String, timestamp: Date, addAssistant: (inout Turn) -> Void) {
+      if sessionId != currentSessionId || type == "user" {
+        if let currentTurn { turns.append(currentTurn) }
+        currentTurn = nil
+        currentSessionId = sessionId
+      }
+      var turn = currentTurn ?? Turn(timestamp: timestamp, source: .opencode)
+      if type == "assistant" { addAssistant(&turn) }
       currentTurn = turn
     }
-    if let currentTurn { turns.append(currentTurn) }
-    return turns.filter { !$0.records.isEmpty }
+
+    func finishedTurns() -> [Turn] {
+      turns + (currentTurn.map { [$0] } ?? [])
+    }
   }
 
   private static func openDatabase(at databaseURL: URL) throws -> OpaquePointer? {
