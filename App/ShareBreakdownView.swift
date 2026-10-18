@@ -14,10 +14,17 @@ struct ShareBreakdownView: View {
   var marksSmallShares = false
   // A line under the "Not in local sessions" item.
   var notInLocalSessionsNote: String?
+  // Hovering a bar part dims the other parts, grows the matching legend swatch and name, and bolds its values.
+  var highlightsOnHover = false
 
+  @State private var hoveredItemID: ShareItem.ID?
+
+  private static let dimmedOpacity = 0.35
   private static let partSpacing: CGFloat = 2
   private static let swatchSize: CGFloat = 10
   private static let swatchRadius: CGFloat = 2
+  private static let legendHoverScale: CGFloat = 1.15
+  private static let legendHoverAnimation = Animation.easeOut(duration: 0.12)
 
   var body: some View {
     VStack(alignment: .leading, spacing: Theme.Spacing.regular) {
@@ -59,12 +66,29 @@ struct ShareBreakdownView: View {
       let partsWidth = max(proxy.size.width - Self.partSpacing * CGFloat(barItems.count - 1), 0)
       HStack(spacing: Self.partSpacing) {
         ForEach(barItems) { item in
+          let isDimmed = highlightsOnHover && hoveredItemID != nil && hoveredItemID != item.id
           itemFill(item)
+            .opacity(isDimmed ? Self.dimmedOpacity : 1)
             .frame(width: partsWidth * CGFloat(item.credits / breakdown.shareTotal))
+            .contentShape(Rectangle())
+            .onHover { isHovering in
+              guard highlightsOnHover else { return }
+              if isHovering {
+                hoveredItemID = item.id
+              } else if hoveredItemID == item.id {
+                hoveredItemID = nil
+              }
+            }
+            .help(highlightsOnHover ? partSummary(item) : "")
         }
       }
     }
     .frame(height: Self.swatchSize)
+  }
+
+  private func partSummary(_ item: ShareItem) -> String {
+    let share = marksSmallShares ? Credits.shareLabel(percent: item.share, of: item.credits) : "\(item.share)%"
+    return "\(item.name), \(share), \(Credits.formatted(item.credits)) credits"
   }
 
   @ViewBuilder
@@ -81,12 +105,16 @@ struct ShareBreakdownView: View {
   private func legendRow<Swatch: View, Values: View>(
     id: ShareItem.ID, name: String, italic: Bool, swatch: Swatch, @ViewBuilder values: () -> Values
   ) -> some View {
-    HStack(spacing: Theme.Spacing.regular) {
-      swatch
-        .frame(width: Self.swatchSize, height: Self.swatchSize)
-      Text(name)
-        .italic(italic)
-        .foregroundStyle(italic ? .secondary : .primary)
+    let isHovered = hoveredItemID == id
+    return HStack(spacing: Theme.Spacing.regular) {
+      HStack(spacing: Theme.Spacing.regular) {
+        swatch
+          .frame(width: Self.swatchSize, height: Self.swatchSize)
+        Text(name)
+          .italic(italic)
+          .foregroundStyle(italic ? .secondary : .primary)
+      }
+      .scaleEffect(isHovered ? Self.legendHoverScale : 1, anchor: .leading)
       if let lowCachePercent = lowCachePercents[id] {
         HStack(alignment: .firstTextBaseline, spacing: 3) {
           Image(systemName: "exclamationmark.circle")
@@ -98,10 +126,12 @@ struct ShareBreakdownView: View {
       }
       Spacer()
       values()
+        .fontWeight(isHovered ? .semibold : nil)
     }
     .font(.system(size: 12.5))
     .monospacedDigit()
     .lineLimit(1)
+    .animation(Self.legendHoverAnimation, value: isHovered)
     .accessibilityElement(children: .combine)
   }
 }

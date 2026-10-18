@@ -311,7 +311,8 @@ struct DashboardView: View {
         )
       } else if !breakdown.isEmpty {
         ShareBreakdownView(
-          breakdown: breakdown, colors: colors, marksSmallShares: marksSmallShares, notInLocalSessionsNote: notInLocalSessionsNote
+          breakdown: breakdown, colors: colors, marksSmallShares: marksSmallShares, notInLocalSessionsNote: notInLocalSessionsNote,
+          highlightsOnHover: true
         )
       } else {
         Text("No local sessions in this cycle.")
