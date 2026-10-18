@@ -16,6 +16,7 @@ final class UsageStore {
   private(set) var usage: CopilotUsage?
   private(set) var modelCredits: [ModelCredits] = []
   private(set) var categoryCredits: [CategoryCredits] = []
+  private(set) var modelCategoryCredits: [ModelCategoryCredits] = []
   private(set) var sourceCredits: [SourceCredits] = []
   private(set) var dailyCredits: [DailyCredits] = []
   private(set) var cacheHits: [ModelCacheHit] = []
@@ -103,6 +104,7 @@ final class UsageStore {
   private func apply(_ sessionCredits: SessionCredits) {
     modelCredits = sessionCredits.byModel
     categoryCredits = sessionCredits.byCategory
+    modelCategoryCredits = sessionCredits.byModelAndCategory
     sourceCredits = sessionCredits.bySource
     dailyCredits = sessionCredits.byDay
     cacheHits = sessionCredits.cacheHits

@@ -235,7 +235,9 @@ struct DashboardView: View {
   }
 
   private func modelCard(usage: CopilotUsage) -> some View {
-    let breakdown = ShareBreakdown.models(usageStore.modelCredits, githubCredits: usage.creditsUsed)
+    let breakdown = ShareBreakdown.models(
+      usageStore.modelCredits, githubCredits: usage.creditsUsed, namedModelLimit: ShareBreakdown.taskSplitModelLimit
+    )
     var footnotes: [String] = []
     if let unpricedModelsNote = ShareBreakdown.unpricedModelsNote(usageStore.modelCredits) {
       footnotes.append(unpricedModelsNote)
@@ -249,7 +251,8 @@ struct DashboardView: View {
     return shareCard(
       title: "By model",
       breakdown: breakdown,
-      colors: Theme.modelColors(for: breakdown),
+      colors: [:],
+      taskSplit: ModelTaskSplit(breakdown: breakdown, modelCategoryCredits: usageStore.modelCategoryCredits),
       footnotes: footnotes,
       notInLocalSessionsNote: usageStore.copilotReviewCount.flatMap { reviewCount in
         breakdown.copilotReviewNote(reviewCount: reviewCount, modelCredits: usageStore.modelCredits)
@@ -271,11 +274,12 @@ struct DashboardView: View {
     )
   }
 
-  // Items without a color in colors are the folded "Other models" item.
+  // Items without a color in colors are the folded "Other models" item. A task split draws one bar per model instead.
   private func shareCard(
     title: String,
     breakdown: ShareBreakdown,
     colors: [ShareItem.ID: Color],
+    taskSplit: ModelTaskSplit? = nil,
     footnotes: [String] = [],
     marksSmallShares: Bool = false,
     notInLocalSessionsNote: String? = nil
@@ -292,7 +296,9 @@ struct DashboardView: View {
       }
       .lineLimit(1)
       .minimumScaleFactor(0.6)
-      if !breakdown.isEmpty {
+      if !breakdown.isEmpty, let taskSplit {
+        ModelTaskSplitView(breakdown: breakdown, taskSplit: taskSplit, notInLocalSessionsNote: notInLocalSessionsNote)
+      } else if !breakdown.isEmpty {
         ShareBreakdownView(
           breakdown: breakdown, colors: colors, marksSmallShares: marksSmallShares, notInLocalSessionsNote: notInLocalSessionsNote
         )

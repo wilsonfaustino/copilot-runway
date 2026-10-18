@@ -123,6 +123,9 @@ Messages from models without a price add 0, as in `Credits.byCategory`.
   a user at UTC-3 gets a first bucket of 3 hours (September 30, 21:00 to midnight) and loses the
   last 3 hours of the cycle. The chart labels days in UTC too.
 - `Credits.bySource`: priced credits per `Turn.source` (OpenCode, Pi). `UsageRecord` has no source.
+- `Credits.byModelAndCategory`: priced credits per model and task. A turn can mix models, so each record
+  goes to its own model and the category of its turn. The totals per model equal `byModel` and the
+  totals per category equal `byCategory`.
 - `Runway.runOutDate`: now plus `daysLeft` days. It can fall after the reset date.
   `nil` for unlimited plans and when no credits are used.
 - `Runway.dailyHeadroom`: `allowedDailyBurn` minus `averageDailyBurn`. `allowedDailyBurn` is the credits
@@ -136,8 +139,9 @@ Messages from models without a price add 0, as in `Credits.byCategory`.
   - `tasks(_:)` is `local(entries:)` for the By task card. It always has an Uncategorized item, at 0
     credits when no turn falls in it. The card shows a share above 0 that rounds to 0% as "<1%"
     (`Credits.shareLabel(_:of:)`). The other cards show the rounded share.
-  - `models(_:githubCredits:)` skips models without a price and sorts by credits. With more than 3
-    models, the top 3 keep their names and the rest fold into one "Other models" item. When GitHub
+  - `models(_:githubCredits:namedModelLimit:)` skips models without a price and sorts by credits. With more
+    than `namedModelLimit` models (3 in the popover, 5 in the dashboard), the top ones keep their names and
+    the rest fold into one "Other models" item. When GitHub
     credits are more than local credits, a last "Not in local sessions" item holds the difference and
     shares are of the GitHub total. A gap under 1% is left out. When local credits are more than GitHub
     credits, shares and `shareTotal` are of the local total and `unit` is "local credits". With no local
@@ -148,6 +152,10 @@ Messages from models without a price add 0, as in `Credits.byCategory`.
     "2 models have no price: <name1>, <name2>", sorted by id. `nil` when every model has a price.
   - `unit` names what `shareTotal` counts ("local credits" or "GitHub credits"). `isEmpty` is true when
     there is no bar to draw.
+- `ModelTaskSplit`: the dashboard By model card draws one full-width bar per model item, split by task.
+  The segments of a bar are the `byModelAndCategory` credits of that model, so they show its task mix.
+  "Other models" sums the folded models. "Not in local sessions" has no task and keeps its striped bar.
+  Every bar draws its segments in one order, highest category total first, and leaves out categories at 0.
 
 ## Model display names (`ModelDisplayName`)
 

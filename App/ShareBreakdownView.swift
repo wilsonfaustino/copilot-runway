@@ -107,7 +107,7 @@ struct ShareBreakdownView: View {
 }
 
 // Stripes at 135 degrees, 2 pt wide with 2 pt of space, like the gap in the mockup.
-private struct DiagonalStripes: View {
+struct DiagonalStripes: View {
   let color: Color
 
   var body: some View {
