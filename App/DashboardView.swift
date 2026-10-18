@@ -518,8 +518,9 @@ private struct DailyBurnChart: View {
     return Text(lines.joined(separator: "\n"))
       .font(.caption)
       .monospacedDigit()
-      .padding(4)
-      .background(.background, in: RoundedRectangle(cornerRadius: 4))
+      .padding(6)
+      .background(Color(nsColor: .windowBackgroundColor), in: RoundedRectangle(cornerRadius: Theme.Radius.control))
+      .overlay(RoundedRectangle(cornerRadius: Theme.Radius.control).strokeBorder(Color.primary.opacity(0.2)))
   }
 
   private func hoverLine(_ dayCredits: DailyCredits) -> String {
