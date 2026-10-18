@@ -66,6 +66,32 @@ private func sevenModelTurns() -> [Turn] {
   }
 }
 
+@Test func byModelAndCategoryBreaksCreditTiesByModelThenCategory() {
+  let turns = [
+    efficiencyTurn(toolCalls: editCalls, records: [efficiencyRecord(model: "gpt-6.1-sol", credits: 10), efficiencyRecord(model: "gpt-6-luna", credits: 10)]),
+    efficiencyTurn(toolCalls: readCalls, records: [efficiencyRecord(model: "gpt-6-luna", credits: 10)]),
+  ]
+  let modelCategoryCredits = Credits.byModelAndCategory(turns: turns, prices: efficiencyPrices)
+  #expect(modelCategoryCredits.map(\.model) == ["gpt-6-luna", "gpt-6-luna", "gpt-6.1-sol"])
+  #expect(modelCategoryCredits.map(\.category) == [.implementation, .investigation, .implementation])
+}
+
+@Test func taskSplitIgnoresModelsOutsideTheBreakdownWhenThereIsNoOtherModelsItem() {
+  let breakdown = ShareBreakdown.models(
+    Credits.byModel(records: [efficiencyRecord(model: "gpt-6.1-sol", credits: 10)], prices: efficiencyPrices), githubCredits: 0
+  )
+  #expect(breakdown.items.map(\.id) == [.entry("gpt-6.1-sol")])
+  let split = ModelTaskSplit(
+    breakdown: breakdown,
+    modelCategoryCredits: [
+      ModelCategoryCredits(model: "gpt-6.1-sol", category: .implementation, credits: 10),
+      ModelCategoryCredits(model: "gpt-6-luna", category: .debugging, credits: 5),
+    ]
+  )
+  #expect(split.categories == [.implementation])
+  #expect(Set(split.segments.keys) == [.entry("gpt-6.1-sol")])
+}
+
 @Test func modelBreakdownNamesUpToTheGivenLimit() {
   let modelCredits = Credits.byModel(records: sevenModelTurns().flatMap(\.records), prices: sevenModelPrices)
   let splitBreakdown = ShareBreakdown.models(

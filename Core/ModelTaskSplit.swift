@@ -27,7 +27,10 @@ public struct ModelTaskSplit: Equatable, Sendable {
     }
     self.categories = categories
     segments = creditsByItem.mapValues { itemCredits in
-      categories.compactMap { category in itemCredits[category].map { CategoryCredits(category: category, credits: $0) } }
+      categories.compactMap { category in
+        guard let credits = itemCredits[category] else { return nil }
+        return CategoryCredits(category: category, credits: credits)
+      }
     }
   }
 
