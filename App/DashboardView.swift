@@ -5,7 +5,7 @@ import SwiftUI
 
 struct DashboardView: View {
   static let windowId = "dashboard"
-  // Neutral, because the chart is the total over every dimension and blue marks the task card.
+  // Neutral, because the chart is the total over every dimension and the task card uses its own hues.
   static let barColor = Color.primary.opacity(0.5)
   static let cardTitleFont = Font.system(size: 13, weight: .semibold)
   // Days are UTC days (see Core/README.md), so their labels are formatted in UTC too.

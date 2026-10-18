@@ -119,7 +119,7 @@ struct SettingsView: View {
     } header: {
       Text("Charts")
     } footer: {
-      Text("Colors the task bars by hue instead of shades of blue. Until you set it, it follows Differentiate without color.")
+      Text("Swaps the task colors for a palette tested for color blindness. Until you set it, it follows Differentiate without color.")
         .captionStyle()
         .padding(.top, Theme.Spacing.small)
     }
