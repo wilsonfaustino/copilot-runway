@@ -175,10 +175,28 @@ public enum Credits {
     return Int((part / total * 100).rounded())
   }
 
-  // The By task share text. A share above 0 that rounds to 0% shows "<1%".
-  public static func shareLabel(_ part: Double, of total: Double) -> String {
-    let percent = sharePercent(part, of: total)
-    return percent == 0 && part > 0 && total > 0 ? "<1%" : "\(percent)%"
+  // Whole percents of parts, in order, with the largest remainder method: each part gets its rounded-down share,
+  // then the parts with the largest remainders get 1 more each, the first part on a tie. They add up to the
+  // rounded percent that the parts are of total, which is 100 when the parts fill the total.
+  public static func sharePercents(_ parts: [Double], of total: Double) -> [Int] {
+    guard total > 0 else { return parts.map { _ in 0 } }
+    let exactPercents = parts.map { max($0, 0) / total * 100 }
+    var percents = exactPercents.map { Int($0.rounded(.down)) }
+    let extraPercents = Int(exactPercents.reduce(0, +).rounded()) - percents.reduce(0, +)
+    // Rounded to 6 places so float noise does not break a tie such as 1/6, 1/6 and 2/3.
+    let remainders = exactPercents.indices.map { ((exactPercents[$0] - Double(percents[$0])) * 1e6).rounded() }
+    let indicesByRemainder = exactPercents.indices.sorted { left, right in
+      remainders[left] != remainders[right] ? remainders[left] > remainders[right] : left < right
+    }
+    for index in indicesByRemainder.prefix(max(extraPercents, 0)) {
+      percents[index] += 1
+    }
+    return percents
+  }
+
+  // The share text of a part with this whole percent. A part with credits that has 0% shows "<1%".
+  public static func shareLabel(percent: Int, of part: Double) -> String {
+    percent == 0 && part > 0 ? "<1%" : "\(percent)%"
   }
 
   static func pricedTotal(records: [UsageRecord], prices: [String: ModelPrice]) -> Double {

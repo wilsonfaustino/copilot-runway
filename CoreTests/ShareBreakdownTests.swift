@@ -15,6 +15,11 @@ private func itemCreditsTotal(_ breakdown: ShareBreakdown) -> Double {
   #expect(breakdown.unit == "local credits")
 }
 
+@Test func localBreakdownSharesAddUpTo100() {
+  let breakdown = ShareBreakdown.local(entries: [("Pi", 1), ("OpenCode", 1), ("Other", 1)])
+  #expect(breakdown.items.map(\.share) == [34, 33, 33])
+}
+
 @Test func localBreakdownWithNoCreditsHasZeroShares() {
   #expect(ShareBreakdown.local(entries: []) == ShareBreakdown(shareTotal: 0, items: []))
   let breakdown = ShareBreakdown.local(entries: [("Pi", 0)])
@@ -32,6 +37,12 @@ private func itemCreditsTotal(_ breakdown: ShareBreakdown) -> Double {
   #expect(breakdown.items.map(\.share) == [62, 25, 13])
   #expect(breakdown.items.last?.kind == .notInLocalSessions)
   #expect(itemCreditsTotal(breakdown) == breakdown.shareTotal)
+}
+
+@Test func modelBreakdownSharesIncludingTheGapItemAddUpTo100() {
+  let modelCredits = [ModelCredits(model: "gpt-6.1-sol", credits: 333), ModelCredits(model: "gpt-6-luna", credits: 333)]
+  let breakdown = ShareBreakdown.models(modelCredits, githubCredits: 1000)
+  #expect(breakdown.items.map(\.share) == [33, 33, 34])
 }
 
 @Test func modelBreakdownHasNoGapWhenLocalEqualsGitHub() {

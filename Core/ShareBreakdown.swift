@@ -19,7 +19,7 @@ public struct ShareItem: Equatable, Sendable, Identifiable {
   // The label to draw. Not unique, because a raw model id can equal the display name of another.
   public let name: String
   public let credits: Double
-  // Rounded percent of the breakdown's share total.
+  // Whole percent of the breakdown's share total. The shares of one breakdown add up to 100.
   public let share: Int
 
   public init(id: ID, name: String, credits: Double, share: Int) {
@@ -70,7 +70,7 @@ public struct ShareBreakdown: Equatable, Sendable {
     let localTotal = entries.reduce(0) { $0 + $1.credits }
     return ShareBreakdown(
       shareTotal: localTotal,
-      items: entries.map { item(id: .entry($0.name), name: $0.name, credits: $0.credits, of: localTotal) }
+      items: items(entries.map { (.entry($0.name), $0.name, $0.credits) }, of: localTotal)
     )
   }
 
@@ -100,21 +100,20 @@ public struct ShareBreakdown: Equatable, Sendable {
     let localTotal = pricedModels.reduce(0) { $0 + $1.credits }
     guard localTotal > 0 else { return ShareBreakdown(shareTotal: githubCredits, items: [], unit: githubCreditsUnit) }
     let shareTotal = max(githubCredits, localTotal)
-    var items = pricedModels.prefix(namedModelLimit).map {
-      item(id: .entry($0.model), name: ModelDisplayName.name(for: $0.model), credits: $0.credits, of: shareTotal)
+    var entries: [(id: ShareItem.ID, name: String, credits: Double)] = pricedModels.prefix(namedModelLimit).map {
+      (.entry($0.model), ModelDisplayName.name(for: $0.model), $0.credits)
     }
     if pricedModels.count > namedModelLimit {
       let otherCredits = pricedModels.dropFirst(namedModelLimit).reduce(0) { $0 + $1.credits }
-      items.append(item(id: .otherModels, name: otherModelsName, credits: otherCredits, of: shareTotal))
+      entries.append((.otherModels, otherModelsName, otherCredits))
     }
-    if githubCredits > localTotal {
-      let gapItem = item(
-        id: .notInLocalSessions, name: notInLocalSessionsName, credits: githubCredits - localTotal, of: shareTotal
-      )
-      if gapItem.share > 0 { items.append(gapItem) }
+    let gapCredits = githubCredits - localTotal
+    if gapCredits > 0, Credits.sharePercent(gapCredits, of: shareTotal) > 0 {
+      entries.append((.notInLocalSessions, notInLocalSessionsName, gapCredits))
     }
     return ShareBreakdown(
-      shareTotal: shareTotal, items: items, unit: githubCredits >= localTotal ? githubCreditsUnit : localCreditsUnit
+      shareTotal: shareTotal, items: items(entries, of: shareTotal),
+      unit: githubCredits >= localTotal ? githubCreditsUnit : localCreditsUnit
     )
   }
 
@@ -153,7 +152,10 @@ public struct ShareBreakdown: Equatable, Sendable {
     )
   }
 
-  private static func item(id: ShareItem.ID, name: String, credits: Double, of shareTotal: Double) -> ShareItem {
-    ShareItem(id: id, name: name, credits: credits, share: Credits.sharePercent(credits, of: shareTotal))
+  private static func items(_ entries: [(id: ShareItem.ID, name: String, credits: Double)], of shareTotal: Double) -> [ShareItem] {
+    let shares = Credits.sharePercents(entries.map(\.credits), of: shareTotal)
+    return zip(entries, shares).map { entry, share in
+      ShareItem(id: entry.id, name: entry.name, credits: entry.credits, share: share)
+    }
   }
 }

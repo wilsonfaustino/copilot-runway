@@ -140,11 +140,13 @@ Messages from models without a price add 0, as in `Credits.byCategory`.
   left, and at or after the reset. `RunwayInsight.headroomText` shows it as "N credits/day of
   headroom" or "N credits/day over budget", on the second line under the popover runway figure and at
   the end of the dashboard banner run-out sentences.
-- `ShareBreakdown`: the items of the By task, By model and By agent split bars, with rounded shares.
+- `ShareBreakdown`: the items of the By task, By model and By agent split bars, with whole-percent shares.
+  `Credits.sharePercents(_:of:)` allocates them with the largest remainder method, so the shares of one
+  breakdown add up to 100 (for example 34, 33 and 33 for three equal parts). On a tie the first item wins.
   - `local(entries:)` keeps the order of the entries. Shares are of the local total.
   - `tasks(_:)` is `local(entries:)` for the By task card. It always has an Uncategorized item, at 0
-    credits when no turn falls in it. The card shows a share above 0 that rounds to 0% as "<1%"
-    (`Credits.shareLabel(_:of:)`). The other cards show the rounded share.
+    credits when no turn falls in it. The card shows an item with credits and a 0% share as "<1%"
+    (`Credits.shareLabel(percent:of:)`). The other cards show the share.
   - `models(_:githubCredits:namedModelLimit:)` skips models without a price and sorts by credits. With more
     than `namedModelLimit` models (3 in the popover, 5 in the dashboard), the top ones keep their names and
     the rest fold into one "Other models" item. When GitHub
@@ -162,6 +164,8 @@ Messages from models without a price add 0, as in `Credits.byCategory`.
   The segments of a bar are the `byModelAndCategory` credits of that model, so they show its task mix.
   "Other models" sums the folded models. "Not in local sessions" has no task and keeps its striped bar.
   Every bar draws its segments in one order, highest category total first, and leaves out categories at 0.
+  `segmentPercents` holds the whole percent of each segment, allocated like the `ShareBreakdown` shares so
+  the segments of a bar add up to 100. The hover text and the VoiceOver summary read these values.
 
 ## Last cycle comparison (`CycleComparison`)
 
@@ -267,13 +271,14 @@ Top models (share of 1,300 credits in local sessions):
 Top categories (same local sessions):
 - Implementation: 700 credits (54%)
 - Investigation: 400 credits (31%)
-- Planning: 150 credits (12%)
+- Planning: 150 credits (11%)
 ```
 
 - Cycle dates, reset and run-out dates are UTC days in ISO 8601. Numbers use `en_US` grouping,
   so the text is the same on every machine.
 - Used, remaining and the average daily burn come from the GitHub API. Shares are of the priced
-  local session total. Models without a price are left out.
+  local session total, allocated over all models or categories before the top 3 are listed (see
+  `Credits.sharePercents`), so the category percents equal the By task card. Models without a price are left out.
 - When the run-out falls on or after the reset, the line says "after the reset on <date>".
   Unlimited plans have no limit and no run-out line. Sections with no local credits are left out.
 - The outcomes line holds only the PR and PR reviewed counts and credits per PR authored, no

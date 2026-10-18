@@ -37,9 +37,38 @@ let summaryCategoryCredits = [
     Top categories (same local sessions):
     - Implementation: 700 credits (54%)
     - Investigation: 400 credits (31%)
-    - Planning: 150 credits (12%)
+    - Planning: 150 credits (11%)
     """)
   #expect(text.split(separator: "\n").count <= 15)
+}
+
+@Test func summaryCategoryPercentsOfThreeEqualCategoriesAddUpTo100() {
+  let equalCategoryCredits = [
+    CategoryCredits(category: .implementation, credits: 1),
+    CategoryCredits(category: .investigation, credits: 1),
+    CategoryCredits(category: .planning, credits: 1),
+  ]
+  let text = QuotaSummary.text(
+    usage: makeUsage(creditsUsed: 6000),
+    now: summaryNow,
+    modelCredits: [ModelCredits(model: "gpt-6.1-sol", credits: 3)],
+    categoryCredits: equalCategoryCredits
+  )
+  let categoryLines = text.split(separator: "\n").drop { !$0.hasPrefix("Top categories") }.dropFirst()
+  #expect(categoryLines.map { $0.suffix(5) } == ["(34%)", "(33%)", "(33%)"])
+}
+
+@Test func summaryCategoryPercentsMatchTheTopOfTheByTaskCard() {
+  let text = QuotaSummary.text(
+    usage: makeUsage(creditsUsed: 6000),
+    now: summaryNow,
+    modelCredits: summaryModelCredits,
+    categoryCredits: summaryCategoryCredits
+  )
+  let cardShares = ShareBreakdown.tasks(summaryCategoryCredits).items.prefix(3).map(\.share)
+  let categoryLines = text.split(separator: "\n").drop { !$0.hasPrefix("Top categories") }.dropFirst()
+  #expect(cardShares == [54, 31, 11])
+  #expect(categoryLines.map { $0.suffix(5) } == cardShares.map { "(\($0)%)" })
 }
 
 @Test func summaryAddsOneOutcomesLineWithCountsOnly() {

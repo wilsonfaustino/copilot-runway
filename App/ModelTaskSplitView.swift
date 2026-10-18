@@ -83,10 +83,11 @@ struct ModelTaskSplitView: View {
     } else {
       let segments = taskSplit.segments[item.id] ?? []
       let segmentsTotal = segments.reduce(0) { $0 + $1.credits }
+      let segmentPercents = taskSplit.segmentPercents[item.id] ?? []
       GeometryReader { proxy in
         let segmentsWidth = max(proxy.size.width - Self.segmentSpacing * CGFloat(segments.count - 1), 0)
         HStack(spacing: Self.segmentSpacing) {
-          ForEach(segments, id: \.category) { segment in
+          ForEach(Array(segments.enumerated()), id: \.element.category) { index, segment in
             let thisSegment = HoveredSegment(itemID: item.id, category: segment.category)
             // The other segments of the hovered bar dim, so the highlight does not rely on color alone.
             let isDimmed = hoveredSegment?.itemID == item.id && hoveredSegment != thisSegment
@@ -102,7 +103,7 @@ struct ModelTaskSplitView: View {
                   hoveredSegment = nil
                 }
               }
-              .help(ModelTaskSplit.segmentSummary(segment, of: segmentsTotal))
+              .help(ModelTaskSplit.segmentSummary(segment, percent: segmentPercents[index]))
           }
         }
       }

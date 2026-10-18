@@ -8,6 +8,8 @@ public struct ModelTaskSplit: Equatable, Sendable {
   public let categories: [TaskCategory]
   // The segments of each model item, without categories at 0.
   public let segments: [ShareItem.ID: [CategoryCredits]]
+  // The whole percent of each segment of its item, in segment order. They add up to 100.
+  public let segmentPercents: [ShareItem.ID: [Int]]
 
   public init(breakdown: ShareBreakdown, modelCategoryCredits: [ModelCategoryCredits]) {
     let namedModelIDs = Set(breakdown.items.filter { $0.kind == .entry }.map(\.id))
@@ -32,11 +34,15 @@ public struct ModelTaskSplit: Equatable, Sendable {
         return CategoryCredits(category: category, credits: credits)
       }
     }
+    segmentPercents = segments.mapValues { itemSegments in
+      let creditsOfSegments = itemSegments.map(\.credits)
+      return Credits.sharePercents(creditsOfSegments, of: creditsOfSegments.reduce(0, +))
+    }
   }
 
-  // The hover text of a segment, for example "Debugging, 31%, 1,925 credits". The share is of the credits of its item.
-  public static func segmentSummary(_ segment: CategoryCredits, of itemCredits: Double, locale: Locale = .current) -> String {
-    let share = Credits.shareLabel(segment.credits, of: itemCredits)
+  // The hover text of a segment, for example "Debugging, 31%, 1,925 credits". The percent is of the credits of its item.
+  public static func segmentSummary(_ segment: CategoryCredits, percent: Int, locale: Locale = .current) -> String {
+    let share = Credits.shareLabel(percent: percent, of: segment.credits)
     return "\(segment.category.displayName), \(share), \(Credits.formatted(segment.credits, locale: locale)) credits"
   }
 
@@ -44,9 +50,9 @@ public struct ModelTaskSplit: Equatable, Sendable {
   // The task summaries follow the order of the bar. An item without segments has the total and share only.
   public func rowSummary(for item: ShareItem, locale: Locale = .current) -> String {
     let itemSegments = segments[item.id] ?? []
-    let segmentsTotal = itemSegments.reduce(0) { $0 + $1.credits }
+    let percents = segmentPercents[item.id] ?? []
     let totalSummary = "\(Credits.formatted(item.credits, locale: locale)) credits, \(item.share)% of all credits."
-    let taskSummaries = itemSegments.map { Self.segmentSummary($0, of: segmentsTotal, locale: locale) + "." }
+    let taskSummaries = zip(itemSegments, percents).map { Self.segmentSummary($0, percent: $1, locale: locale) + "." }
     return ([totalSummary] + taskSummaries).joined(separator: " ")
   }
 }

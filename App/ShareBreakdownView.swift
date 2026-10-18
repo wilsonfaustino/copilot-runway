@@ -29,7 +29,7 @@ struct ShareBreakdownView: View {
           legendRow(id: item.id, name: item.name, italic: item.kind == .notInLocalSessions, swatch: itemFill(item)) {
             Text(Credits.formatted(item.credits))
               .foregroundStyle(.secondary)
-            Text(marksSmallShares ? Credits.shareLabel(item.credits, of: breakdown.shareTotal) : "\(item.share)%")
+            Text(marksSmallShares ? Credits.shareLabel(percent: item.share, of: item.credits) : "\(item.share)%")
               .foregroundStyle(.secondary)
               .frame(minWidth: 36, alignment: .trailing)
           }

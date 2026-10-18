@@ -60,10 +60,12 @@ public enum QuotaSummary {
     return "Outcomes: \(countsText); \(number(creditsPerPRAuthored)) credits per PR authored"
   }
 
-  // Expects entries sorted by credits, highest first, as Credits returns them.
+  // Expects entries sorted by credits, highest first, as Credits returns them. Percents are allocated over
+  // all entries before the top ones are taken, so they match the dashboard cards.
   static func topLines(_ entries: [(name: String, credits: Double)], total: Double) -> [String] {
-    entries.filter { $0.credits > 0 }.prefix(topCount).map { entry in
-      "- \(entry.name): \(number(entry.credits)) credits (\(Credits.sharePercent(entry.credits, of: total))%)"
+    let percents = Credits.sharePercents(entries.map(\.credits), of: total)
+    return zip(entries, percents).filter { $0.0.credits > 0 }.prefix(topCount).map { entry, percent in
+      "- \(entry.name): \(number(entry.credits)) credits (\(percent)%)"
     }
   }
 
