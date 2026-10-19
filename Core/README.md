@@ -36,6 +36,19 @@ The details below are what we found on disk in October 2026.
   `SessionCredits.load` then adds the warning "Cannot read some Pi sessions.", and the app shows it
   where it shows the OpenCode warning.
 
+### omp (`PiSessionParser`, source `omp`)
+
+omp (oh-my-pi) is a Pi fork. Checked on omp 18.12.3 in October 2026.
+
+- Path: `~/.omp/agent/sessions/<encoded cwd>/<ISO timestamp>_<session id>.jsonl`, one file per session.
+- Same format as Pi, so `PiSessionParser` reads it with `source: .omp`. Provider, `responseId`,
+  `timestamp` and `usage` match the Pi fields above.
+- Extra entry types, all skipped: `title` (before `session`), `custom`, `custom_message`, `title_change`.
+- Records are unique by `responseId` across both roots. `SessionCredits.load` reads Pi first and passes one set to both reads,
+  so a response found in both `~/.pi` and `~/.omp` counts once, as Pi.
+- A missing `~/.omp` folder gives no turns and no warning, as for Pi. A file with no line that
+  decodes adds the warning "Cannot read some omp sessions."
+
 ### OpenCode (`OpenCodeSessionParser`)
 
 - Path: `~/.local/share/opencode/opencode*.db` (SQLite, WAL mode). Opened read only.
@@ -63,7 +76,7 @@ The details below are what we found on disk in October 2026.
 ### Turns (`Turn`)
 
 A turn is one user message plus all assistant messages and tool calls until the next user message.
-Each turn keeps its timestamp, source (`pi` or `opencode`), agent (OpenCode only), tool calls
+Each turn keeps its timestamp, source (`pi`, `opencode` or `omp`), agent (OpenCode only), tool calls
 (name, file path for read and edit tools, command for shell tools), and the Copilot `UsageRecord`s
 of its assistant messages. The parsers keep only the records that pass the filters in
 [Session files](#session-files), and keep only turns with at least one record. So every record is in exactly one turn, and `Credits.byCategory` adds up
@@ -71,8 +84,12 @@ to the priced models in `Credits.byModel`.
 
 - Pi: only `message.role = "user"` starts a turn. `system` and `toolResult` messages do not.
   Tool calls are the `content` items with `type: "toolCall"`: `name`, `arguments.path`,
-  `arguments.command`. Only these three fields are decoded. Message text is not.
+  `arguments.command`, and the optional `arguments.input` (only for its `[<path>#<hash>]` header, see omp). Only these fields are decoded. Message text is not.
   Assistant messages before the first user message form a turn of their own.
+- omp: same as Pi. The omp `edit` tool has no `arguments.path`. Its `arguments.input` starts with a
+  `[<path>#<hash>]` header, so when `path` is missing and `input` starts with `[`, the file path is
+  the text between the first `[` and the first `#` of the first line. This rule applies to Pi too.
+  An `input` that is not a string is ignored.
 - OpenCode: rows of `session_message` in `session_id, seq` order. Only `type = 'user'` starts a turn.
   `synthetic`, `system`, `shell`, `agent-switched` and other rows do not. The agent is
   `data.agent` of the first assistant message. Tool calls are the `data.content` items with
@@ -83,23 +100,28 @@ to the priced models in `Credits.byModel`.
   April 2026, so they cannot be in a current cycle.
 - A turn that starts before the cycle keeps only its messages in the cycle. OpenCode also drops its
   tool calls from before the cycle. Pi keeps them.
-- `SessionCredits.load` reads both parsers from the last cycle start (see Last cycle comparison), so
+- `SessionCredits.load` reads every parser from the last cycle start (see Last cycle comparison), so
   the cut above happens one cycle earlier. To keep this cycle's turns unchanged, OpenCode gets
   `splitAt: cycleStart`: rows before it build their own turns, so the turns from the reset on equal a
-  read that starts at the reset. Pi needs no split, because a read from the reset already keeps the
+  read that starts at the reset. Pi and omp need no split, because a read from the reset already keeps the
   earlier tool calls. One edge stays: a row whose `seq` order disagrees with its time order.
 
 ### Tool names
 
-| Kind | Pi | OpenCode |
-|---|---|---|
-| Read (read, search, fetch) | `read`, `grep`, `find`, `ls` | `read`, `grep`, `glob`, `list`, `webfetch`, `websearch` |
-| Shell | `bash` | `shell`, `bash` (1.x) |
-| Edit | `edit`, `write` | `patch`, `apply_patch`, `edit`, `write`, `multiedit` (1.x) |
-| Neutral | all others, for example `codemode`, `tool_search`, `mcp__*` | all others, for example `execute`, `skill`, `question`, `subagent`, `todowrite` |
+| Kind | Pi | omp | OpenCode |
+|---|---|---|---|
+| Read (read, search, fetch) | `read`, `grep`, `find`, `ls` | Pi names plus `glob`, `ast_grep` | `read`, `grep`, `glob`, `list`, `webfetch`, `websearch` |
+| Shell | `bash` | `bash` | `shell`, `bash` (1.x) |
+| Edit | `edit`, `write` | `edit`, `write`, `ast_edit` | `patch`, `apply_patch`, `edit`, `write`, `multiedit` (1.x) |
+| Neutral | all others, for example `codemode`, `tool_search`, `mcp__*` | all others, for example `task` | all others, for example `execute`, `skill`, `question`, `subagent`, `todowrite` |
 
 Neutral tools do not change the category. `execute` and `codemode` run code that can call other
 tools, and the session does not record which ones, so they stay neutral.
+
+A call whose file path starts with `xd://` is neutral, except `read`, for every source. omp runs
+a mounted tool with a `write` to `xd://<tool>`, and that changes no file. A `read` of `xd://<tool>`
+reads the tool, so it stays a read. A staged `ast_edit` that a later `write` to `xd://resolve`
+applies is not counted as an edit.
 
 ### Categories (`TaskCategorizer`)
 
@@ -118,7 +140,7 @@ Rules, checked in this order. The first match wins.
 ## Dashboard aggregates
 
 All dashboard numbers come from the same turns, so they add up to the same local total.
-`SessionCredits.load` reads the Pi and OpenCode turns once, picks the prices, and builds every
+`SessionCredits.load` reads the Pi, omp and OpenCode turns once, picks the prices, and builds every
 aggregate. It takes the records for `Credits.byModel` and `Credits.byDay` from the current cycle turns
 after the split at the cycle start (see Last cycle comparison).
 Messages from models without a price add 0, as in `Credits.byCategory`.
@@ -128,7 +150,7 @@ Messages from models without a price add 0, as in `Credits.byCategory`.
   starts and resets at midnight UTC: every bucket is a whole day inside the cycle. With local days,
   a user at UTC-3 gets a first bucket of 3 hours (September 30, 21:00 to midnight) and loses the
   last 3 hours of the cycle. The chart labels days in UTC too.
-- `Credits.bySource`: priced credits per `Turn.source` (OpenCode, Pi). `UsageRecord` has no source.
+- `Credits.bySource`: priced credits per `Turn.source` (OpenCode, Pi, omp). `UsageRecord` has no source.
 - `Credits.byModelAndCategory`: priced credits per model and task. A turn can mix models, so each record
   goes to its own model and the category of its turn. The totals per model equal `byModel` and the
   totals per category equal `byCategory`.
@@ -172,7 +194,7 @@ Messages from models without a price add 0, as in `Credits.byCategory`.
 The Daily burn chart draws the last cycle as a dashed line next to this cycle's bars, plus one sentence.
 Both use local credits only. They are not in the GitHub numbers, the popover or Copy summary.
 
-- Parse window: `SessionCredits.load(since: cycleStart)` reads Pi and OpenCode from
+- Parse window: `SessionCredits.load(since: cycleStart)` reads Pi, omp and OpenCode from
   `Runway.cycleStart(resetDate: cycleStart)`, one cycle earlier. On our data this adds about 20 ms
   per refresh (33 ms OpenCode, Pi flat), so there is no cache.
 - Split: `SessionCredits.aggregate` keeps only records at or after `cycleStart` in each turn and drops

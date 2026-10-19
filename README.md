@@ -3,9 +3,9 @@
 Copilot Runway is a macOS menu bar app that shows your GitHub Copilot AI credit usage as
 runway: how many credits are left, how fast you use them, and which models and kinds of
 work use them. It is for developers on Copilot usage-based billing who code through
-OpenCode or Pi Agent. The menu bar shows the percent of credits left and the days until
+OpenCode, Pi Agent or omp. The menu bar shows the percent of credits left and the days until
 they run out at your current pace. The app reads your existing `gh` login and the local
-OpenCode and Pi session files, so it needs no setup.
+OpenCode, Pi and omp session files, so it needs no setup.
 
 ## Privacy
 
@@ -80,7 +80,7 @@ Click the title to open the popover:
   day to see both cycles. A sentence under the chart title compares this cycle with the same days
   of last cycle. Today is left out. The sentence shows only when last cycle has at least 5 days
   with credits in the paired days.
-- Local credits by task category, by model and by agent (OpenCode or Pi).
+- Local credits by task category, by model and by agent (OpenCode, Pi or omp).
 - A note with the percent of GitHub credits that local sessions do not explain, and the number of
   models with no price.
 - A "Copy summary" button. It puts a short plain-text report on the clipboard that you can paste
@@ -146,7 +146,7 @@ Open Settings with the gear button in the popover:
   for gh in `/opt/homebrew/bin`, `/usr/local/bin` and `/usr/bin`, because apps opened from Finder
   do not get your shell `PATH`.
 - A GitHub Copilot plan with usage-based billing (AI credits).
-- Optional: OpenCode or Pi Agent with the `github-copilot` provider. Without them, the app shows
+- Optional: OpenCode, Pi Agent or omp with the `github-copilot` provider. Without them, the app shows
   the GitHub numbers but no per-model, per-category or daily data.
 
 ## Install
@@ -266,7 +266,7 @@ Example: 10 days after the cycle start, with 6,000 of 12,000 credits used, the a
 The two totals come from different sources, so they do not match:
 
 - The GitHub total is all Copilot use on your account, from every client and every machine.
-- Local credits come from the OpenCode and Pi session files on this Mac. The app keeps only
+- Local credits come from the OpenCode, Pi and omp session files on this Mac. The app keeps only
   assistant messages billed through the `github-copilot` provider since the cycle start, and
   prices the tokens of each message with the price table.
 
@@ -432,3 +432,4 @@ The session file formats for OpenCode and Pi follow the provider docs in
 [codeburn](https://github.com/getagentseal/codeburn) (MIT):
 [docs/providers/opencode.md](https://github.com/getagentseal/codeburn/blob/main/docs/providers/opencode.md)
 and [docs/providers/pi.md](https://github.com/getagentseal/codeburn/blob/main/docs/providers/pi.md).
+omp writes the Pi format.

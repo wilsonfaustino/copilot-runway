@@ -2,7 +2,7 @@
 
 A native macOS menu bar app that shows GitHub Copilot AI credit usage as **runway**:
 how much is left, how fast it burns, and where it goes. Built for a team of Mac users
-on Copilot usage-based billing who code through OpenCode and Pi Agent with
+on Copilot usage-based billing who code through OpenCode, Pi Agent and omp with
 GPT-6.1 Sol, GPT-6 Luna and Gemini 3.8 Flash.
 
 Codeburn already covers spend across agents. This app covers what codeburn does not:
@@ -12,7 +12,7 @@ credits spent per kind of task.
 ## Principles (non-negotiable)
 
 - **Zero setup.** Install, open, see numbers. Reuse the user's existing `gh` auth.
-  Auto-detect OpenCode and Pi session files. No config file required to start.
+  Auto-detect OpenCode, Pi and omp session files. No config file required to start.
 - **Local only.** No telemetry, no backend. The only network calls go to the GitHub API.
   The app must say this on its first screen.
 - **Insights over numbers.** Prefer a sentence that changes behavior over another table.
@@ -34,7 +34,7 @@ credits spent per kind of task.
    Token handling: keep the token in memory only, for the length of one request. Send it only in the
    `Authorization` header to `api.github.com`. Never log it, print it, write it to disk or
    `UserDefaults`, put it in a URL, or include it in error messages or "Copy summary" output.
-2. **Per-model token usage.** OpenCode and Pi write local session files. Locate and parse them.
+2. **Per-model token usage.** OpenCode, Pi and omp write local session files. Locate and parse them.
    Codeburn (MIT) documents both formats: `docs/providers/opencode.md` and `docs/providers/pi.md`
    in github.com/getagentseal/codeburn. Document the paths you find in `Core/README.md`.
 3. **Pricing.** Copilot credits are consumed at published API rates per model (input, output,
