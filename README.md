@@ -171,7 +171,7 @@ installs the app and tells you what to do by hand.
 ```text
 Install Copilot Runway, a macOS menu bar app, on this Mac. Do these steps in order.
 
-1. Run `sw_vers -productVersion`. If the version is lower than 14, stop and tell me.
+1. Run `sw_vers -productVersion`. If the version is lower than 15, stop and tell me.
 2. Run `brew --version`. If Homebrew is missing, stop and point me to https://brew.sh.
    Do not install Homebrew without asking me.
 3. Run `gh --version`. If gh is missing, run `brew install gh`. Run `gh auth status`.
