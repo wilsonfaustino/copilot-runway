@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
   private var statusItem: NSStatusItem?
   private let popover = NSPopover()
   #if DEBUG
+  var openDashboard: (() -> Void)?
   // The autosave name that SwiftUI gives the Settings window.
   private static let settingsWindowAutosaveName = "com_apple_SwiftUI_Settings_window"
   #endif
@@ -31,6 +32,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     popover.delegate = self
 
     #if DEBUG
+    if DemoLaunch.opensDashboard {
+      // Async, because an argument that AppKit opens as a file makes SwiftUI skip .presented, and that happens in this launch pass.
+      DispatchQueue.main.async { [weak self] in self?.openDashboard?() }
+    }
     if DemoLaunch.scenario != nil {
       NotificationCenter.default.addObserver(
         self, selector: #selector(clearSettingsWindowAutosaveName(_:)), name: NSWindow.didUpdateNotification, object: nil)
