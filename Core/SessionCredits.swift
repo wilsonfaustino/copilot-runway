@@ -23,6 +23,7 @@ public struct SessionCredits: Sendable {
     now: Date,
     piDirectory: URL = PiSessionParser.sessionsDirectory,
     openCodeDirectory: URL = OpenCodeSessionParser.dataDirectory,
+    ompDirectory: URL = PiSessionParser.ompSessionsDirectory,
     priceURL: URL = PriceTable.overrideURL
   ) -> SessionCredits {
     var warnings: [String] = []
@@ -35,10 +36,17 @@ public struct SessionCredits: Sendable {
     }
     // One cycle back, for previousByDay. aggregate keeps the earlier records out of every current total.
     let previousCycleStart = Runway.cycleStart(resetDate: cycleStart)
-    let piTurns = PiSessionParser.turns(inDirectory: piDirectory, since: previousCycleStart)
+    // Pi and omp share one set, so a session copied between ~/.pi and ~/.omp counts once, as Pi.
+    var seenResponseIds = Set<String>()
+    let piTurns = PiSessionParser.turns(inDirectory: piDirectory, source: .pi, since: previousCycleStart, seenResponseIds: &seenResponseIds)
     var turns = piTurns.turns
     if piTurns.hasUndecodableFile {
       warnings.append("Cannot read some Pi sessions.")
+    }
+    let ompTurns = PiSessionParser.turns(inDirectory: ompDirectory, source: .omp, since: previousCycleStart, seenResponseIds: &seenResponseIds)
+    turns += ompTurns.turns
+    if ompTurns.hasUndecodableFile {
+      warnings.append("Cannot read some omp sessions.")
     }
     do {
       turns += try OpenCodeSessionParser.turns(inDirectory: openCodeDirectory, since: previousCycleStart, splitAt: cycleStart)

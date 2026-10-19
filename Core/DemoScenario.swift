@@ -176,16 +176,17 @@ public struct DemoScenario: Sendable {
         // Different multipliers, so each model gets a mix of categories.
         let category = shape.categories[(3 * turnIndex + dayIndex) % shape.categories.count]
         let model = shape.models[(turnIndex + dayIndex) % shape.models.count]
-        // Two OpenCode turns for each Pi turn.
-        let source: SessionSource = turnIndex % 3 == 2 ? .pi : .opencode
+        // OpenCode, Pi and omp in turn.
+        let sources: [SessionSource] = [.opencode, .pi, .omp]
+        let source = sources[turnIndex % sources.count]
         // 0.6, 1.0 or 1.4, so days and models do not all cost the same.
         let variation = 0.6 + 0.4 * Double((turnIndex + 2 * dayIndex) % 3)
         let tokens = tokens(for: category, scale: shape.tokenScale * scale * variation)
         let agent: String?
-        if source == .pi {
-          agent = nil
-        } else {
+        if source == .opencode {
           agent = category == .planning ? "plan" : "build"
+        } else {
+          agent = nil
         }
         turns.append(
           Turn(
@@ -205,7 +206,7 @@ public struct DemoScenario: Sendable {
 
   // Tool calls that TaskCategorizer maps to the category.
   static func toolCalls(for category: TaskCategory, source: SessionSource, dayIndex: Int) -> [ToolCall] {
-    let shellTool = source == .pi ? "bash" : "shell"
+    let shellTool = source == .opencode ? "shell" : "bash"
     let sourceFile = "Demo/Sources/Feature\(dayIndex % 4).swift"
     switch category {
     case .investigation:
@@ -220,7 +221,7 @@ public struct DemoScenario: Sendable {
       ]
     case .review:
       return [ToolCall(name: shellTool, command: "gh pr view 12")]
-    // OpenCode Planning comes from the plan agent, Pi Planning from the output tokens.
+    // OpenCode Planning comes from the plan agent, Pi and omp Planning from the output tokens.
     case .planning, .uncategorized:
       return []
     }

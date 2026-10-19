@@ -3,6 +3,7 @@ import Foundation
 public enum SessionSource: String, Sendable {
   case pi
   case opencode
+  case omp
 }
 
 public struct ToolCall: Equatable, Sendable {

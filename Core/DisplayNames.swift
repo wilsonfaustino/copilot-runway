@@ -5,6 +5,7 @@ extension SessionSource {
     switch self {
     case .pi: "Pi"
     case .opencode: "OpenCode"
+    case .omp: "omp"
     }
   }
 }

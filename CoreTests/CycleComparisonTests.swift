@@ -199,6 +199,7 @@ private let splitNow = utcDate("2026-10-04T12:00:00Z")
     now: utcDate("2026-10-04T00:00:00Z"),
     piDirectory: piDirectory,
     openCodeDirectory: fixturesDirectory.appending(path: "missing"),
+    ompDirectory: fixturesDirectory.appending(path: "missing"),
     priceURL: missingPriceURL
   )
   let previousTotal = sessionCredits.previousByDay.reduce(0) { $0 + $1.credits }
@@ -217,6 +218,7 @@ private let splitNow = utcDate("2026-10-04T12:00:00Z")
     now: now,
     piDirectory: fixturesDirectory.appending(path: "missing"),
     openCodeDirectory: openCodeDirectory,
+    ompDirectory: fixturesDirectory.appending(path: "missing"),
     priceURL: missingPriceURL
   )
   let readFromReset = SessionCredits.aggregate(
@@ -326,6 +328,7 @@ private func summaryText(_ sessionCredits: SessionCredits) -> String {
     now: splitNow,
     piDirectory: piDirectory,
     openCodeDirectory: fixturesDirectory.appending(path: "missing"),
+    ompDirectory: fixturesDirectory.appending(path: "missing"),
     priceURL: missingPriceURL
   )
   let readFromReset = SessionCredits.aggregate(

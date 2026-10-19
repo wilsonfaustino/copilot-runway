@@ -135,3 +135,32 @@ func openCodeFixtureCategories() throws -> [Int: TaskCategory] {
   #expect(Credits.byCategory(turns: turns, prices: PriceTable.bundled).map(\.category) == [.investigation, .implementation])
   #expect(isClose(Credits.byCategory(turns: turns, prices: PriceTable.bundled)[1].credits, 2.77))
 }
+
+// Fixture turns: glob and xd:// calls only; write, run, edit by input header, run; gh pr view.
+@Test func ompCategoriesSessionIsInvestigationDebuggingReview() {
+  let turns = PiSessionParser.turns(
+    inDirectory: fixturesDirectory.appending(path: "omp/sessions/--workspace-project-b--"), source: .omp, since: fixtureCycleStart
+  ).turns
+  #expect(turns.sorted { $0.timestamp < $1.timestamp }.map(TaskCategorizer.category) == [.investigation, .debugging, .review])
+}
+
+// omp runs mounted tools by a write to xd://<tool>. No file changes.
+@Test func xdWriteIsANeutralTool() {
+  let timestamp = utcDate("2026-10-07T01:00:00Z")
+  for source in [SessionSource.omp, .pi, .opencode] {
+    let xdWrite = Turn(timestamp: timestamp, source: source, toolCalls: [ToolCall(name: "write", filePath: "xd://ast_edit")])
+    let xdRead = Turn(timestamp: timestamp, source: source, toolCalls: [ToolCall(name: "read", filePath: "xd://ast_grep")])
+    #expect(TaskCategorizer.category(of: xdWrite) == .uncategorized)
+    #expect(TaskCategorizer.category(of: xdRead) == .investigation)
+  }
+}
+
+@Test func ompMapsGlobAndAstTools() {
+  let timestamp = utcDate("2026-10-07T01:00:00Z")
+  let glob = Turn(timestamp: timestamp, source: .omp, toolCalls: [ToolCall(name: "glob")])
+  let astGrep = Turn(timestamp: timestamp, source: .omp, toolCalls: [ToolCall(name: "ast_grep")])
+  let astEdit = Turn(timestamp: timestamp, source: .omp, toolCalls: [ToolCall(name: "ast_edit", filePath: "a.swift")])
+  #expect(TaskCategorizer.category(of: glob) == .investigation)
+  #expect(TaskCategorizer.category(of: astGrep) == .investigation)
+  #expect(TaskCategorizer.category(of: astEdit) == .implementation)
+}

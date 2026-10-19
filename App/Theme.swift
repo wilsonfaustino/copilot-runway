@@ -91,10 +91,15 @@ enum Theme {
     return Dictionary(uniqueKeysWithValues: zip(namedModelIDs, modelRamp))
   }
 
+  // One hue in three steps, light to dark, so lightness tells agents apart without hue. The ordinal check of the
+  // dataviz palette validator passes in both modes. The legend names each agent too.
+  // The dark omp vs Pi pair scores 14.5 against the 15 categorical floor. Accepted as an exception, as for the
+  // green model ramp at 14.0.
   static func agentColor(_ source: SessionSource) -> Color {
     switch source {
     case .opencode: Color(nsColor: dynamicColor(dark: 0xF2A27E, light: 0xF57242))
     case .pi: Color(nsColor: dynamicColor(dark: 0xD95926, light: 0xC04200))
+    case .omp: Color(nsColor: dynamicColor(dark: 0x9C3A12, light: 0x782800))
     }
   }
 

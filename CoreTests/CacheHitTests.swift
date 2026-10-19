@@ -100,6 +100,7 @@ func cachePrice(input: Double, cachedInput: Double) -> ModelPrice {
     now: sessionCreditsNow,
     piDirectory: fixturesDirectory.appending(path: "pi/sessions"),
     openCodeDirectory: openCodeDirectory,
+    ompDirectory: fixturesDirectory.appending(path: "missing"),
     priceURL: missingPriceURL
   )
   #expect(!sessionCredits.cacheHits.isEmpty)

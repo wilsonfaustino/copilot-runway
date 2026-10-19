@@ -62,11 +62,11 @@ func demoScenarioGitHubCreditsCoverLocalPricedCreditsAtAnyLaunchTime(name: DemoS
   #expect(firstTurn.timestamp >= utcDate("2026-01-31T00:00:00Z"))
 }
 
-@Test func typicalDemoHasThreeModelsBothSourcesAndAboutHalfUsed() {
+@Test func typicalDemoHasThreeModelsAllSourcesAndAboutHalfUsed() {
   let scenario = DemoScenario(name: .typical, now: demoNow)
   let sessionCredits = scenario.sessionCredits
   #expect(Set(sessionCredits.byModel.map(\.model)) == ["gpt-6.1-sol", "gpt-6-luna", "gemini-3.8-flash"])
-  #expect(Set(sessionCredits.bySource.map(\.source)) == [.opencode, .pi])
+  #expect(Set(sessionCredits.bySource.map(\.source)) == [.opencode, .pi, .omp])
   #expect(sessionCredits.byCategory.count >= 4)
   #expect((40...60).contains(scenario.usage.percentRemaining))
   #expect(scenario.copilotReviewCount > 0)
