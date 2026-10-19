@@ -1,0 +1,363 @@
+body {
+  margin: 0;
+  background: #0D0F14;
+  color: #E8EAED;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+}
+
+a {
+  color: #26C8DF;
+}
+
+a:hover {
+  color: #7FE4F2;
+}
+
+code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 120px;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 28px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #E8EAED;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 17px;
+}
+
+.brand:hover {
+  color: #E8EAED;
+}
+
+.nav-links {
+  display: flex;
+  gap: 24px;
+  font-size: 15px;
+}
+
+.hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 64px;
+}
+
+.hero-text {
+  flex: 3 1 460px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.eyebrow {
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9AA3AE;
+}
+
+h1 {
+  font-size: 60px;
+  line-height: 1.05;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.lead {
+  font-size: 20px;
+  line-height: 1.5;
+  color: #B9C0C9;
+  max-width: 520px;
+}
+
+.install-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  background: #161A21;
+  border: 1px solid #2A303A;
+  border-radius: 10px;
+  padding: 8px 8px 8px 18px;
+}
+
+.install-box code {
+  flex: 1 1 280px;
+  min-width: 0;
+  font-size: 15px;
+  color: #E8EAED;
+  overflow-wrap: anywhere;
+}
+
+.install-box button {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 8px;
+  background: #26C8DF;
+  color: #0D0F14;
+  font: inherit;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.note {
+  font-size: 14px;
+  color: #9AA3AE;
+}
+
+.hero-gauge {
+  flex: 1 1 380px;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.hero-gauge svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.runout {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.runout-quote {
+  font-size: 34px;
+  line-height: 1.3;
+  font-weight: 600;
+  max-width: 860px;
+  text-wrap: pretty;
+}
+
+.warn {
+  color: #EA8300;
+  font-size: 1.2em;
+}
+
+.runout-text {
+  font-size: 18px;
+  line-height: 1.5;
+  color: #B9C0C9;
+  max-width: 640px;
+}
+
+.shot-dashboard {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 14px;
+  border: 1px solid #222832;
+  box-sizing: border-box;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  gap: 24px;
+  align-items: start;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px;
+  border-radius: 14px;
+  background: #13171D;
+  border: 1px solid #222832;
+}
+
+.card h2 {
+  font-size: 20px;
+}
+
+.card p {
+  color: #B9C0C9;
+  line-height: 1.5;
+}
+
+.card code {
+  color: #E8EAED;
+}
+
+.card img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.shot-menubar {
+  width: 110px;
+}
+
+.card .shot-popover {
+  width: 386px;
+  max-width: min(240px, 100%);
+  margin: 0 auto;
+}
+
+.setup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 48px;
+}
+
+.setup-text {
+  flex: 1 1 380px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.setup h2 {
+  font-size: 32px;
+}
+
+.setup-text p {
+  font-size: 18px;
+  line-height: 1.5;
+  color: #B9C0C9;
+}
+
+.setup code {
+  color: #E8EAED;
+}
+
+.setup-list {
+  flex: 1 1 380px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 16px;
+  color: #B9C0C9;
+}
+
+.setup-list li {
+  padding: 14px 18px;
+  border-radius: 10px;
+  background: #13171D;
+}
+
+.privacy {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 48px;
+  border-radius: 14px;
+  border: 1px solid #2A3E52;
+  background: #101820;
+}
+
+.privacy h2 {
+  font-size: 32px;
+  color: #64A8FF;
+}
+
+.privacy p {
+  font-size: 18px;
+  line-height: 1.5;
+  color: #C9D1DA;
+  max-width: 720px;
+}
+
+.install {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  text-align: center;
+}
+
+.install h2 {
+  font-size: 40px;
+}
+
+.install code {
+  font-size: 16px;
+  padding: 16px 22px;
+  border-radius: 10px;
+  background: #161A21;
+  border: 1px solid #2A303A;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 32px 0 48px;
+  border-top: 1px solid #222832;
+  font-size: 14px;
+  color: #9AA3AE;
+}
+
+@media (max-width: 600px) {
+  .page {
+    gap: 80px;
+  }
+
+  .hero {
+    gap: 40px;
+  }
+
+  h1 {
+    font-size: 40px;
+  }
+
+  .runout-quote {
+    font-size: 24px;
+  }
+
+  .setup {
+    gap: 32px;
+  }
+
+  .privacy {
+    padding: 28px 24px;
+  }
+
+  .install h2 {
+    font-size: 30px;
+  }
+}

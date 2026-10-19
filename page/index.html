@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Copilot Runway</title>
+  <meta name="description" content="Copilot Runway is a macOS menu bar app that shows your GitHub Copilot AI credit usage as runway: how many credits are left, how fast you use them, and which models and kinds of work use them.">
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="page">
+
+    <nav class="nav" aria-label="Main">
+      <a class="brand" href="#top">
+        <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" fill="none" stroke="#26C8DF" stroke-opacity="0.28" stroke-width="3" stroke-linecap="round"></path><path d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" fill="none" stroke="#26C8DF" stroke-width="3" stroke-linecap="round" stroke-dasharray="19.62 40.05"></path></svg>
+        Copilot Runway
+      </a>
+      <div class="nav-links">
+        <a href="#privacy">Privacy</a>
+        <a href="https://github.com/wilsonfaustino/copilot-runway">GitHub</a>
+      </div>
+    </nav>
+
+    <section class="hero" id="top">
+      <div class="hero-text">
+        <p class="eyebrow">macOS menu bar app for GitHub Copilot</p>
+        <h1>Know when your Copilot credits run out.</h1>
+        <p class="lead">The menu bar shows the percent of credits left and the days until they run out at your current pace.</p>
+        <div class="install-box">
+          <code id="brew-command">brew install --cask wilsonfaustino/tap/copilot-runway</code>
+          <button type="button" id="copy-button">Copy</button>
+        </div>
+        <p class="note">Free and open source (MIT). macOS 15 or later. <a href="https://github.com/wilsonfaustino/copilot-runway/releases/latest">Latest release</a>.</p>
+      </div>
+      <div class="hero-gauge">
+        <svg viewBox="0 0 24 24" width="380" height="380" role="img" aria-label="Runway gauge at 49 percent"><path d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" fill="none" stroke="#26C8DF" stroke-opacity="0.18" stroke-width="2.4" stroke-linecap="round"></path><path d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" fill="none" stroke="#26C8DF" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="19.62 40.05" id="gauge-arc"></path><text id="gauge-percent" x="12" y="12.4" text-anchor="middle" font-size="4.6" font-weight="700" fill="#E8EAED" font-family="ui-rounded, -apple-system, sans-serif">49%</text><text x="12" y="15.4" text-anchor="middle" font-size="1.6" fill="#B9C0C9" font-family="-apple-system, sans-serif">16 days left</text></svg>
+      </div>
+    </section>
+
+    <section class="runout" aria-label="Run-out insight">
+      <p class="runout-quote">"At this pace you run out on Oct 21,<br><span class="warn">10 days before the reset</span> on Nov 1."</p>
+      <p class="runout-text">One sentence, updated every 5 minutes. You see it while you can still change how you work.</p>
+      <a href="assets/dashboard-typical.png"><img class="shot-dashboard" src="assets/dashboard-typical.png" width="1520" height="1180" alt="The Copilot Runway dashboard with a run-out banner, four summary cards and a chart of daily credit burn."></a>
+    </section>
+
+    <section class="cards" aria-label="What it shows">
+      <div class="card">
+        <h2>Menu bar</h2>
+        <p>Percent left and days of runway, for example <code>49% · 16d</code>. The gauge turns orange when you will run out before the reset, and red when less than a day is left.</p>
+        <img class="shot-menubar" src="assets/menubar-typical.png" width="220" height="56" alt="Menu bar item showing 49% credits left and 16 days of runway next to the gauge.">
+      </div>
+      <div class="card">
+        <h2>Popover</h2>
+        <p>The run-out date, average daily burn, credits per PR authored and credits per model.</p>
+        <img class="shot-popover" src="assets/popover-typical.png" width="772" height="1178" alt="The Copilot Runway popover with a gauge at 49%, 16 days of runway, three summary cards and credits per model.">
+      </div>
+      <div class="card">
+        <h2>Dashboard</h2>
+        <p>Credits by kind of work (implementation, debugging, review and more), by model and by agent. "Copy summary" puts a plain-text report on the clipboard for a quota request.</p>
+      </div>
+    </section>
+
+    <section class="setup" aria-label="Setup">
+      <div class="setup-text">
+        <h2>No setup</h2>
+        <p>The app reads your existing <code>gh</code> login and the local OpenCode and Pi session files. Open it and the numbers are there.</p>
+      </div>
+      <ul class="setup-list">
+        <li>macOS 15 (Sequoia) or later</li>
+        <li><code>gh</code> installed and logged in</li>
+        <li>A Copilot plan with usage-based billing</li>
+        <li>The build is ad-hoc signed, not notarized. After you open it the first time, click "Open Anyway" in System Settings, Privacy and Security. Do this once for each new version.</li>
+      </ul>
+    </section>
+
+    <section class="privacy" id="privacy">
+      <h2>Local only. No telemetry.</h2>
+      <p>The only network calls go to api.github.com: your credits every 5 minutes, outcome counts if you set an organization, and a release check once a day. Your <code>gh</code> token stays in memory for one request. The app does not decode or keep prompt or answer text.</p>
+    </section>
+
+    <section class="install" aria-label="Install">
+      <h2>See your runway in a minute.</h2>
+      <code>brew install --cask wilsonfaustino/tap/copilot-runway</code>
+    </section>
+
+    <footer class="footer">
+      <span>MIT license. Made by Wilson Faustino. Session formats from codeburn (MIT).</span>
+      <a href="https://github.com/wilsonfaustino/copilot-runway">github.com/wilsonfaustino/copilot-runway</a>
+    </footer>
+
+  </div>
+  <script>
+    var copyButton = document.getElementById("copy-button");
+    var brewCommand = document.getElementById("brew-command");
+    function showCopyFallback() {
+      var range = document.createRange();
+      range.selectNodeContents(brewCommand);
+      var selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      copyButton.textContent = "Press Cmd+C";
+      setTimeout(function () { copyButton.textContent = "Copy"; }, 3000);
+    }
+    copyButton.addEventListener("click", function () {
+      if (!navigator.clipboard) { showCopyFallback(); return; }
+      navigator.clipboard.writeText(brewCommand.textContent).then(function () {
+        copyButton.textContent = "Copied";
+        setTimeout(function () { copyButton.textContent = "Copy"; }, 2000);
+      }, showCopyFallback);
+    });
+
+    var gaugeArc = document.getElementById("gauge-arc");
+    var gaugePercent = document.getElementById("gauge-percent");
+    var GAUGE_FULL_LENGTH = 40.05;
+    var GAUGE_FINAL_PERCENT = 49;
+    var GAUGE_DURATION_MS = 1200;
+    function renderGauge(percent) {
+      gaugeArc.setAttribute("stroke-dasharray", (GAUGE_FULL_LENGTH * percent / 100).toFixed(2) + " " + GAUGE_FULL_LENGTH);
+      gaugePercent.textContent = Math.round(percent) + "%";
+    }
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      renderGauge(100);
+      var gaugeStart = null;
+      requestAnimationFrame(function step(now) {
+        if (gaugeStart === null) { gaugeStart = now; }
+        var progress = Math.min((now - gaugeStart) / GAUGE_DURATION_MS, 1);
+        var eased = 1 - Math.pow(1 - progress, 3);
+        renderGauge(100 - (100 - GAUGE_FINAL_PERCENT) * eased);
+        if (progress < 1) { requestAnimationFrame(step); }
+      });
+    }
+  </script>
+</body>
+</html>
