@@ -1,22 +1,35 @@
 import Foundation
 
-// Pi writes one JSONL file per session. See Core/README.md for the format.
+// Pi and omp write one JSONL file per session, in the same format. See Core/README.md.
 public enum PiSessionParser {
   public static let sessionsDirectory = FileManager.default.homeDirectoryForCurrentUser
     .appending(path: ".pi/agent/sessions")
+  public static let ompSessionsDirectory = FileManager.default.homeDirectoryForCurrentUser
+    .appending(path: ".omp/agent/sessions")
   static let copilotProvider = "github-copilot"
 
   // Only turns with at least one Copilot record in the cycle, so every record is in exactly one turn.
   // hasUndecodableFile is true when a file has lines but none of them decode, for example after a format change.
   public static func turns(
     inDirectory directory: URL = sessionsDirectory,
+    source: SessionSource = .pi,
     since cycleStart: Date
+  ) -> (turns: [Turn], hasUndecodableFile: Bool) {
+    var seenResponseIds = Set<String>()
+    return turns(inDirectory: directory, source: source, since: cycleStart, seenResponseIds: &seenResponseIds)
+  }
+
+  // seenResponseIds is shared across calls, so a response in more than one root counts once, for the first root read.
+  public static func turns(
+    inDirectory directory: URL,
+    source: SessionSource,
+    since cycleStart: Date,
+    seenResponseIds: inout Set<String>
   ) -> (turns: [Turn], hasUndecodableFile: Bool) {
     guard let enumerator = FileManager.default.enumerator(
       at: directory,
       includingPropertiesForKeys: [.contentModificationDateKey]
     ) else { return ([], false) }
-    var seenResponseIds = Set<String>()
     var allTurns: [Turn] = []
     var hasUndecodableFile = false
     for case let fileURL as URL in enumerator where fileURL.pathExtension == "jsonl" {
@@ -24,7 +37,7 @@ public enum PiSessionParser {
       // A file last written before the cycle cannot hold messages from this cycle.
       if let modificationDate, modificationDate < cycleStart { continue }
       guard let fileData = try? Data(contentsOf: fileURL) else { continue }
-      guard let fileTurns = turns(fromJSONL: fileData, since: cycleStart, seenResponseIds: &seenResponseIds) else {
+      guard let fileTurns = turns(fromJSONL: fileData, source: source, since: cycleStart, seenResponseIds: &seenResponseIds) else {
         hasUndecodableFile = true
         continue
       }
@@ -35,7 +48,12 @@ public enum PiSessionParser {
 
   // Forked sessions copy earlier entries, so the same response can appear in more than one file.
   // A single bad line is skipped, because Pi can be writing the last line. nil when the file has lines but none decode.
-  static func turns(fromJSONL fileData: Data, since cycleStart: Date, seenResponseIds: inout Set<String>) -> [Turn]? {
+  static func turns(
+    fromJSONL fileData: Data,
+    source: SessionSource,
+    since cycleStart: Date,
+    seenResponseIds: inout Set<String>
+  ) -> [Turn]? {
     let decoder = JSONDecoder()
     let lines = fileData.split(separator: UInt8(ascii: "\n"))
     var decodedLineCount = 0
@@ -48,9 +66,9 @@ public enum PiSessionParser {
       switch message.role {
       case "user":
         if let currentTurn { turns.append(currentTurn) }
-        currentTurn = Turn(timestamp: date(milliseconds: message.timestamp ?? 0), source: .pi)
+        currentTurn = Turn(timestamp: date(milliseconds: message.timestamp ?? 0), source: source)
       case "assistant":
-        var turn = currentTurn ?? Turn(timestamp: date(milliseconds: message.timestamp ?? 0), source: .pi)
+        var turn = currentTurn ?? Turn(timestamp: date(milliseconds: message.timestamp ?? 0), source: source)
         turn.toolCalls += message.toolCalls
         if let record = record(from: message, since: cycleStart, seenResponseIds: &seenResponseIds) {
           turn.records.append(record)
@@ -121,7 +139,7 @@ public enum PiSessionParser {
       let content = (try? container.decodeIfPresent([ContentItem].self, forKey: .content)) ?? []
       toolCalls = content.compactMap { item in
         guard item.type == "toolCall", let name = item.name else { return nil }
-        return ToolCall(name: name, filePath: item.arguments?.path, command: item.arguments?.command)
+        return ToolCall(name: name, filePath: item.arguments?.filePath, command: item.arguments?.command)
       }
     }
   }
@@ -136,6 +154,28 @@ public enum PiSessionParser {
   private struct Arguments: Decodable {
     let path: String?
     let command: String?
+    // The omp edit tool has no path. Its input starts with a "[<path>#<hash>]" header.
+    let input: String?
+
+    enum CodingKeys: String, CodingKey {
+      case path, command, input
+    }
+
+    // input is free form in other tools, so a value that is not a string is ignored.
+    init(from decoder: Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      path = try container.decodeIfPresent(String.self, forKey: .path)
+      command = try container.decodeIfPresent(String.self, forKey: .command)
+      input = try? container.decodeIfPresent(String.self, forKey: .input)
+    }
+
+    var filePath: String? {
+      if let path { return path }
+      guard let input, input.hasPrefix("["), let firstLine = input.split(separator: "\n").first,
+            let hashIndex = firstLine.firstIndex(of: "#")
+      else { return nil }
+      return String(firstLine[firstLine.index(after: firstLine.startIndex)..<hashIndex])
+    }
   }
 
   private struct Usage: Decodable {

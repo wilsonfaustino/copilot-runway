@@ -29,6 +29,9 @@ public enum TaskCategorizer {
     "edit": .edit, "write": .edit,
   ]
 
+  // omp is a Pi fork with more tools.
+  static let ompToolKinds = piToolKinds.merging(["glob": .read, "ast_grep": .read, "ast_edit": .edit]) { piKind, _ in piKind }
+
   // Includes the OpenCode 1.x names (bash, edit, write, list), which old sessions still hold.
   static let openCodeToolKinds: [String: ToolKind] = [
     "read": .read, "grep": .read, "glob": .read, "list": .read, "webfetch": .read, "websearch": .read,
@@ -57,7 +60,14 @@ public enum TaskCategorizer {
   }
 
   static func kind(of toolCall: ToolCall, source: SessionSource) -> ToolKind {
-    let toolKinds = source == .pi ? piToolKinds : openCodeToolKinds
+    // omp runs mounted tools by a write to xd://<tool>, which changes no file. A read of xd:// lists tools.
+    if toolCall.name != "read", toolCall.filePath?.hasPrefix("xd://") == true { return .other }
+    let toolKinds =
+      switch source {
+      case .pi: piToolKinds
+      case .opencode: openCodeToolKinds
+      case .omp: ompToolKinds
+      }
     return toolKinds[toolCall.name] ?? .other
   }
 
