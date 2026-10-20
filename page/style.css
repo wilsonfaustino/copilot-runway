@@ -332,7 +332,263 @@ h1 {
   color: #9AA3AE;
 }
 
+@property --p {
+  syntax: "<integer>";
+  inherits: true;
+  initial-value: 100;
+}
+
+@property --sg-size {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 600px;
+}
+
+@property --disc {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+.sg-rail,
+.sg,
+.intro,
+.landing {
+  display: none;
+}
+
+/* Scroll gauge: needs scroll timelines and allowed motion. Otherwise the page keeps the static hero gauge. */
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-padding-top: 88px;
+    }
+
+    /* The first screen holds only the gauge, big and full, at the center. */
+    .intro {
+      display: block;
+      height: 68vh;
+      margin-bottom: -120px;
+    }
+
+    .landing {
+      display: block;
+      height: 200px;
+    }
+
+    .hero-gauge {
+      display: none;
+    }
+
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      padding-bottom: 16px;
+      background: #0D0F14;
+    }
+
+    .nav,
+    .reveal {
+      animation: d-fade linear both;
+      animation-timeline: scroll(root);
+      animation-range: 55vh 80vh;
+    }
+
+    .nav:focus-within,
+    .reveal:focus-within {
+      animation: none;
+      opacity: 1;
+    }
+
+    /* Full viewport box, so cqw in the gauge keyframes is the viewport width without a classic scrollbar. */
+    .sg-rail {
+      display: block;
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      container-type: size;
+      pointer-events: none;
+    }
+
+    .sg {
+      display: block;
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      --dock-size: 110px;
+      width: var(--sg-size);
+      height: var(--sg-size);
+      animation: d-move linear both, d-land linear forwards, d-count linear both;
+      animation-timeline: scroll(root), scroll(root), scroll(root);
+      animation-range: 0 60vh, 90% 100%, normal;
+    }
+
+    .sg::before {
+      content: "";
+      position: absolute;
+      inset: -14%;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.6);
+      filter: blur(16px);
+      opacity: var(--disc);
+    }
+
+    .sg svg {
+      position: relative;
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .sg-track,
+    .brand-track {
+      animation: d-health steps(1, end) both;
+      animation-timeline: scroll(root);
+    }
+
+    .sg-fill,
+    .brand-fill {
+      animation: d-drain linear both, d-health steps(1, end) both;
+      animation-timeline: scroll(root), scroll(root);
+    }
+
+    .sg-track {
+      fill: none;
+      stroke: #64A8FF;
+      stroke-opacity: 0.18;
+      stroke-width: 2.4;
+      stroke-linecap: round;
+    }
+
+    .sg-fill {
+      fill: none;
+      stroke: #64A8FF;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-dasharray: 100 200;
+    }
+
+    .sg-label {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4em;
+      padding-top: 4%;
+    }
+
+    .sg-pct {
+      font-family: ui-rounded, -apple-system, sans-serif;
+      font-weight: 700;
+      font-size: calc(var(--sg-size) * 0.19);
+      line-height: 1;
+      color: #E8EAED;
+    }
+
+    .sg-pct::after {
+      counter-reset: pct var(--p);
+      content: counter(pct) "%";
+    }
+
+    .sg-sub {
+      font-size: calc(var(--sg-size) * 0.066);
+      color: #B9C0C9;
+      opacity: calc(1 - var(--disc));
+    }
+  }
+}
+
+/* On the first scroll the gauge moves to the bottom right corner and shrinks, before the copy fades in.
+   The corner is set with translate and cqw (the width of .sg-rail, the viewport without the scrollbar), not vw, so a classic scrollbar does not push the disc off screen.
+   The corner offset is 24px margin + half the dock size + 15px disc overhang (inset -14%). --dock-size is read on the element, so the phone breakpoint can set it. */
+@keyframes d-move {
+  from {
+    --sg-size: min(64vmin, 600px);
+    translate: -50% -50%;
+    --disc: 0;
+  }
+
+  to {
+    --sg-size: var(--dock-size);
+    translate: calc(-50% + 50cqw - 39px - var(--dock-size) / 2) calc(-50% + 50vh - var(--dock-size) / 2 - 36px);
+    --disc: 1;
+  }
+}
+
+/* At the end of the page the gauge slides from the corner to the bottom center, over the landing pad. */
+@keyframes d-land {
+  from {
+    translate: calc(-50% + 50cqw - 39px - var(--dock-size) / 2) calc(-50% + 50vh - var(--dock-size) / 2 - 36px);
+  }
+
+  to {
+    translate: -50% calc(-50% + 50vh - var(--dock-size) / 2 - 36px);
+  }
+}
+
+@keyframes d-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* The number and the arc fall from 100 to 0 over the whole page, so 0% is the very end of the scroll. */
+@keyframes d-count {
+  from {
+    --p: 100;
+  }
+
+  to {
+    --p: 0;
+  }
+}
+
+/* The arc is hidden at 0 so the round cap does not leave a dot. */
+@keyframes d-drain {
+  0% {
+    stroke-dasharray: 100 200;
+    stroke-opacity: 1;
+  }
+
+  98% {
+    stroke-opacity: 1;
+  }
+
+  100% {
+    stroke-dasharray: 0 200;
+    stroke-opacity: 0;
+  }
+}
+
+/* App health colors (Theme.swift), switched in steps like the app: healthy blue, short orange, critical red.
+   The stops sit at 49.5% and 89.5% so they match the rounded percent label: 51 and above blue, 50 to 11 orange, 10 and below red.
+   steps(1, end) holds each color until the next stop, so a mixed color never shows. */
+@keyframes d-health {
+  0% {
+    stroke: #64A8FF;
+  }
+
+  49.5% {
+    stroke: #FF9F0A;
+  }
+
+  89.5%, 100% {
+    stroke: #FF6961;
+  }
+}
+
 @media (max-width: 600px) {
+  .sg {
+    --dock-size: 76px;
+  }
+
   .page {
     gap: 80px;
   }
