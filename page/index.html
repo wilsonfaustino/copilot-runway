@@ -18,11 +18,17 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div class="sg-rail" aria-hidden="true">
+    <div class="sg">
+      <svg viewBox="0 0 24 24"><path class="sg-track" d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" pathLength="100"></path><path class="sg-fill" d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" pathLength="100"></path></svg>
+      <div class="sg-label"><span class="sg-pct"></span><span class="sg-sub">credits left</span></div>
+    </div>
+  </div>
   <div class="page">
 
     <nav class="nav" aria-label="Main">
       <a class="brand" href="#top">
-        <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" fill="none" stroke="#26C8DF" stroke-opacity="0.28" stroke-width="3" stroke-linecap="round"></path><path d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" fill="none" stroke="#26C8DF" stroke-width="3" stroke-linecap="round" stroke-dasharray="19.62 40.05"></path></svg>
+        <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true"><path class="brand-track" d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" fill="none" stroke="#26C8DF" stroke-opacity="0.28" stroke-width="3" stroke-linecap="round" pathLength="100"></path><path class="brand-fill" d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" fill="none" stroke="#26C8DF" stroke-width="3" stroke-linecap="round" stroke-dasharray="49 100" pathLength="100"></path></svg>
         Copilot Runway
       </a>
       <div class="nav-links">
@@ -31,7 +37,9 @@
       </div>
     </nav>
 
-    <section class="hero" id="top">
+    <div class="intro" aria-hidden="true"></div>
+
+    <section class="hero reveal" id="top">
       <div class="hero-text">
         <p class="eyebrow">macOS menu bar app for GitHub Copilot</p>
         <h1>Know when your Copilot credits run out.</h1>
@@ -47,7 +55,7 @@
       </div>
     </section>
 
-    <section class="runout" aria-label="Run-out insight">
+    <section class="runout reveal" aria-label="Run-out insight">
       <p class="runout-quote">"At this pace you run out on Oct 21,<br><span class="warn">10 days before the reset</span> on Nov 1."</p>
       <p class="runout-text">One sentence, updated every 5 minutes. You see it while you can still change how you work.</p>
       <a href="assets/dashboard-typical.png"><img class="shot-dashboard" src="assets/dashboard-typical.png" width="1520" height="1180" alt="The Copilot Runway dashboard with a run-out banner, four summary cards and a chart of daily credit burn."></a>
@@ -98,6 +106,8 @@
       <a href="https://github.com/wilsonfaustino/copilot-runway">github.com/wilsonfaustino/copilot-runway</a>
     </footer>
 
+    <div class="landing" aria-hidden="true"></div>
+
   </div>
   <script>
     var copyButton = document.getElementById("copy-button");
@@ -128,7 +138,8 @@
       gaugeArc.setAttribute("stroke-dasharray", (GAUGE_FULL_LENGTH * percent / 100).toFixed(2) + " " + GAUGE_FULL_LENGTH);
       gaugePercent.textContent = Math.round(percent) + "%";
     }
-    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    var hasScrollTimeline = window.CSS && CSS.supports("animation-timeline: scroll()");
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches && !hasScrollTimeline) {
       renderGauge(100);
       var gaugeStart = null;
       requestAnimationFrame(function step(now) {
