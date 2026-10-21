@@ -4,10 +4,14 @@ import SwiftUI
 struct PopoverView: View {
   let usageStore: UsageStore
   let closePopover: () -> Void
+  // The share card renders this view without controls and notices.
+  var forShare = false
+  var share: (NSView) -> Void = { _ in }
   @AppStorage("localOnlyNoticeDismissed") private var localOnlyNoticeDismissed = false
   @Environment(\.openWindow) private var openWindow
   @Environment(\.openSettings) private var openSettings
   @State private var openCount = 0
+  @State private var shareAnchor = ShareAnchor()
 
   // Stale numbers stay visible after a fetch error, but faded.
   private static let staleOpacity = 0.45
@@ -17,10 +21,10 @@ struct PopoverView: View {
     let health = RunwayHealth(usage: usageStore.usage, hasError: usageStore.usageError != nil, now: now)
     VStack(alignment: .leading, spacing: Theme.Spacing.section) {
       header
-      if !localOnlyNoticeDismissed {
+      if !forShare && !localOnlyNoticeDismissed {
         localOnlyBanner
       }
-      if let errorMessage = usageStore.errorMessage {
+      if !forShare, let errorMessage = usageStore.errorMessage {
         Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
           .font(.system(size: 12, weight: .medium))
           .foregroundStyle(Theme.accent(.critical))
@@ -33,17 +37,22 @@ struct PopoverView: View {
       }
       .opacity(usageStore.usageError == nil ? 1 : Self.staleOpacity)
       modelBars
-      if let sessionsWarning = usageStore.sessionsWarning {
+      if !forShare, let sessionsWarning = usageStore.sessionsWarning {
         Label(sessionsWarning, systemImage: "exclamationmark.circle")
           .captionStyle()
           .fixedSize(horizontal: false, vertical: true)
       }
-      Divider()
-      // The footer row has no room, so the update line sits just above it.
-      if let availableVersion = usageStore.availableVersion {
-        updateNotice(version: availableVersion)
+      if forShare {
+        Text("Copilot Runway · \(now.formatted(.dateTime.month(.abbreviated).day()))")
+          .captionStyle()
+      } else {
+        Divider()
+        // The footer row has no room, so the update line sits just above it.
+        if let availableVersion = usageStore.availableVersion {
+          updateNotice(version: availableVersion)
+        }
+        footer
       }
-      footer
     }
     .padding(Theme.Spacing.panel)
     .frame(width: 360)
@@ -116,7 +125,8 @@ struct PopoverView: View {
         remainingFraction: MenuBarTitle.remainingFraction(usage: usage),
         percentRemaining: usage.map(Runway.wholePercentRemaining),
         accent: accent,
-        openCount: openCount
+        openCount: openCount,
+        isStatic: forShare
       )
       VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
         HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
@@ -180,7 +190,7 @@ struct PopoverView: View {
       value: creditsPerPRAuthored.map { Credits.formatted($0) } ?? "-",
       detail: usageStore.organization == nil ? "no org set" : "credits each"
     )
-    if usageStore.organization == nil {
+    if usageStore.organization == nil && !forShare {
       Button {
         openSettings()
         NSApplication.shared.activate()
@@ -247,6 +257,16 @@ struct PopoverView: View {
   private var footer: some View {
     HStack(spacing: Theme.Spacing.small) {
       Button {
+        if let anchorView = shareAnchor.view { share(anchorView) }
+      } label: {
+        Image(systemName: "square.and.arrow.up")
+          .frame(width: 16)
+      }
+      .buttonStyle(FooterButtonStyle(fillOpacity: 0.06))
+      .background(ShareAnchorView(anchor: shareAnchor))
+      .accessibilityLabel("Share")
+      .disabled(usageStore.usage == nil || usageStore.usageError != nil)
+      Button {
         openWindow(id: DashboardView.windowId)
         // The app has no Dock icon, so it must come forward or the window opens behind other apps.
         NSApplication.shared.activate()
@@ -285,6 +305,8 @@ private struct RunwayRing: View {
   let accent: Color
   // Each change replays the sweep from full to the current fraction.
   let openCount: Int
+  // ImageRenderer draws one frame, where the animator is still at its start: a full ring.
+  let isStatic: Bool
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -307,18 +329,24 @@ private struct RunwayRing: View {
     let accent = accent
     ZStack {
       Self.horseshoe(fraction: 1, color: accent.opacity(RunwayGlyph.trackOpacity))
-      // The animator only supplies the progress value. The arc is built from it, so the clear view is not shown.
-      Color.clear
-        .keyframeAnimator(initialValue: 0.0, trigger: openCount) { _, progress in
-          let sweepProgress = reduceMotion ? 1 : progress
-          let shownFraction = 1 - (1 - remainingFraction) * sweepProgress
-          if shownFraction > 0 {
-            Self.horseshoe(fraction: shownFraction, color: accent)
-          }
-        } keyframes: { _ in
-          LinearKeyframe(1.0, duration: Self.sweepDuration, timingCurve: .easeOut)
+      if isStatic {
+        if remainingFraction > 0 {
+          Self.horseshoe(fraction: remainingFraction, color: accent)
         }
-        .animation(reduceMotion ? nil : .easeOut(duration: Self.refreshDuration), value: remainingFraction)
+      } else {
+        // The animator only supplies the progress value. The arc is built from it, so the clear view is not shown.
+        Color.clear
+          .keyframeAnimator(initialValue: 0.0, trigger: openCount) { _, progress in
+            let sweepProgress = reduceMotion ? 1 : progress
+            let shownFraction = 1 - (1 - remainingFraction) * sweepProgress
+            if shownFraction > 0 {
+              Self.horseshoe(fraction: shownFraction, color: accent)
+            }
+          } keyframes: { _ in
+            LinearKeyframe(1.0, duration: Self.sweepDuration, timingCurve: .easeOut)
+          }
+          .animation(reduceMotion ? nil : .easeOut(duration: Self.refreshDuration), value: remainingFraction)
+      }
       VStack(spacing: 0) {
         Text(percentRemaining.map { "\($0)%" } ?? "--%")
           .bigFigureStyle()
@@ -360,8 +388,11 @@ private struct StatCard: View {
 private struct FooterButtonStyle: ButtonStyle {
   let fillOpacity: Double
 
+  @Environment(\.isEnabled) private var isEnabled
+
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
+      .opacity(isEnabled ? 1 : 0.4)
       .font(.system(size: 13, weight: .medium))
       .padding(.horizontal, Theme.Spacing.regular)
       .frame(height: 32)
