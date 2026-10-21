@@ -64,6 +64,12 @@ Click the title to open the popover:
 - The time of the last refresh.
 - A one-line local-only notice on first launch. You can close it.
 - After a fetch error, the error message shows and the last good numbers fade.
+- A Share button, left of "Open dashboard". It opens the macOS share menu with an image of the
+  popover and the "Copy summary" text. The image has no buttons or notices, follows the current
+  light or dark mode, and has the footer "Copilot Runway · <date>". The menu also has "Copy image"
+  (image only) and "Copy summary" (text only). Slack has no macOS share extension, so use
+  "Copy image" and paste. The button is off when there is no usage data or the fetch failed. The
+  image stays in memory and the app does not write it to disk.
 
 ### Dashboard
 
