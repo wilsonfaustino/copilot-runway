@@ -429,7 +429,7 @@ h1 {
       position: absolute;
       inset: -14%;
       border-radius: 50%;
-      background: rgba(0, 0, 0, 0.6);
+      background: rgba(13, 15, 20, 0.85);
       filter: blur(16px);
       opacity: var(--disc);
     }
