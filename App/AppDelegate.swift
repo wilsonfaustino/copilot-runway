@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
   let usageStore = UsageStore()
   private var statusItem: NSStatusItem?
   private let popover = NSPopover()
+  private let sharePicker = SharePicker()
   #if DEBUG
   var openDashboard: (() -> Void)?
   // The autosave name that SwiftUI gives the Settings window.
@@ -25,7 +26,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     updateLabel()
 
     let hostingController = NSHostingController(
-      rootView: PopoverView(usageStore: usageStore, closePopover: { [weak popover] in popover?.performClose(nil) }))
+      rootView: PopoverView(
+        usageStore: usageStore,
+        closePopover: { [weak popover] in popover?.performClose(nil) },
+        share: { [weak self] anchorView in self?.share(from: anchorView) }
+      ))
     hostingController.sizingOptions = [.preferredContentSize]
     popover.behavior = .transient
     popover.contentViewController = hostingController
@@ -79,6 +84,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     // without this the popover looks inactive and the first click in it only makes it key.
     popover.contentViewController?.view.window?.makeKey()
     button.highlight(true)
+  }
+
+  private func share(from anchorView: NSView) {
+    guard let image = ShareCardRenderer.image(usageStore: usageStore), let summary = usageStore.summaryText() else { return }
+    sharePicker.show(image: image, summary: summary, relativeTo: anchorView)
   }
 
   #if DEBUG
