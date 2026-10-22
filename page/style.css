@@ -350,6 +350,18 @@ h1 {
   initial-value: 0;
 }
 
+@property --dx {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --dy {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
 .sg-rail,
 .sg,
 .intro,
@@ -414,11 +426,13 @@ h1 {
     .sg {
       display: block;
       position: absolute;
-      left: 50%;
-      top: 50%;
+      inset: 0;
+      margin: auto;
       --dock-size: 110px;
+      --dock-x: calc(50cqw - 39px - var(--dock-size) / 2);
       width: var(--sg-size);
       height: var(--sg-size);
+      translate: var(--dx) var(--dy);
       animation: d-move linear both, d-land linear forwards, d-count linear both;
       animation-timeline: scroll(root), scroll(root), scroll(root);
       animation-range: 0 60vh, 90% 100%, normal;
@@ -493,6 +507,13 @@ h1 {
       content: counter(pct) "%";
     }
 
+    /* round() needs its own support test: an unsupported round() after var() substitution leaves the counter at 0. */
+    @supports (counter-reset: pct round(1, 1)) {
+      .sg-pct::after {
+        counter-reset: pct round(var(--p), 1);
+      }
+    }
+
     .sg-sub {
       font-size: calc(var(--sg-size) * 0.066);
       color: #B9C0C9;
@@ -502,18 +523,21 @@ h1 {
 }
 
 /* On the first scroll the gauge moves to the bottom right corner and shrinks, before the copy fades in.
-   The corner is set with translate and cqw (the width of .sg-rail, the viewport without the scrollbar), not vw, so a classic scrollbar does not push the disc off screen.
-   The corner offset is 24px margin + half the dock size + 15px disc overhang (inset -14%). --dock-size is read on the element, so the phone breakpoint can set it. */
+   The corner is set with cqw (the width of .sg-rail, the viewport without the scrollbar), not vw, so a classic scrollbar does not push the disc off screen.
+   The corner offset is 24px margin + half the dock size + 15px disc overhang (inset -14%). --dock-size and --dock-x are read on the element, so the phone breakpoint can set them.
+   The keyframes animate --dx and --dy, not translate: Safari 27 did not paint a scroll-driven translate here, but it paints animated custom properties. */
 @keyframes d-move {
   from {
     --sg-size: min(64vmin, 600px);
-    translate: -50% -50%;
+    --dx: 0px;
+    --dy: 0px;
     --disc: 0;
   }
 
   to {
     --sg-size: var(--dock-size);
-    translate: calc(-50% + 50cqw - 39px - var(--dock-size) / 2) calc(-50% + 50vh - var(--dock-size) / 2 - 36px);
+    --dx: var(--dock-x);
+    --dy: calc(50vh - var(--dock-size) / 2 - 36px);
     --disc: 1;
   }
 }
@@ -521,11 +545,11 @@ h1 {
 /* At the end of the page the gauge slides from the corner to the bottom center, over the landing pad. */
 @keyframes d-land {
   from {
-    translate: calc(-50% + 50cqw - 39px - var(--dock-size) / 2) calc(-50% + 50vh - var(--dock-size) / 2 - 36px);
+    --dx: var(--dock-x);
   }
 
   to {
-    translate: -50% calc(-50% + 50vh - var(--dock-size) / 2 - 36px);
+    --dx: 0px;
   }
 }
 
@@ -585,8 +609,10 @@ h1 {
 }
 
 @media (max-width: 600px) {
+  /* On phones the gauge stays centered and docks at the bottom center. */
   .sg {
     --dock-size: 76px;
+    --dock-x: 0px;
   }
 
   .page {
@@ -615,5 +641,10 @@ h1 {
 
   .install h2 {
     font-size: 30px;
+  }
+
+  .install code {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 }
