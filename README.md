@@ -20,9 +20,14 @@ OpenCode, Pi and omp session files, so it needs no setup.
   For `gh search`, gh reads its own login, so the app never reads the token.
 - Session files stay on your Mac. The OpenCode database opens read only, and the queries select
   only time, agent, model, token and tool call fields, plus the session folder and project root.
+  From each Pi and omp file, the app reads the session id and folder from the header line.
+  To name a project, the app checks the session folder and its parents for a `.git` entry on disk.
+  For a linked worktree, it reads the `.git` file to find the main repo.
   The app does not decode or keep prompt or answer text or session titles.
 - "Copy summary" holds only numbers, dates, model ids and category names. It has no login,
   organization, token, file path, prompt or command.
+- Project names and session labels show only in the Dashboard. They are never in "Copy summary"
+  or the Share image.
 
 ## Features
 
@@ -87,6 +92,11 @@ Click the title to open the popover:
   of last cycle. Today is left out. The sentence shows only when last cycle has at least 5 days
   with credits in the paired days.
 - Local credits by task category, by model and by agent (OpenCode, Pi or omp).
+- A "By project" card with local credits by project. The app names a project from the repo root,
+  so worktree sessions count with their repo. The card shows the top 5 projects and folds the rest
+  into "Other projects".
+- A "Top sessions" list with the 5 most expensive sessions of this cycle. Each label has the date,
+  the agent, the top model and the biggest task. It has no prompt text and no titles.
 - A note with the percent of GitHub credits that local sessions do not explain, and the number of
   models with no price.
 - A "Copy summary" button. It puts a short plain-text report on the clipboard that you can paste
