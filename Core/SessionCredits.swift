@@ -5,6 +5,9 @@ public struct SessionCredits: Sendable {
   public let byCategory: [CategoryCredits]
   public let byModelAndCategory: [ModelCategoryCredits]
   public let bySource: [SourceCredits]
+  public let byProject: [ProjectCredits]
+  // Highest spend first. The dashboard shows the top SessionSpend.topCount.
+  public let bySession: [SessionSpend]
   public let byDay: [DailyCredits]
   // The last cycle, one entry per UTC day from its start through the day before this cycle starts.
   public let previousByDay: [DailyCredits]
@@ -53,9 +56,12 @@ public struct SessionCredits: Sendable {
     } catch {
       warnings.append("Cannot read OpenCode sessions.")
     }
+    // An ancestor can have no usage in the cycle, so the parent ids are read apart from the turns.
+    let openCodeParents = (try? OpenCodeSessionParser.parentSessions(inDirectory: openCodeDirectory)) ?? [:]
     return aggregate(
       turns: turns,
       prices: prices,
+      openCodeParents: openCodeParents,
       cycleStart: cycleStart,
       now: now,
       warning: warnings.isEmpty ? nil : warnings.joined(separator: " ")
@@ -67,6 +73,7 @@ public struct SessionCredits: Sendable {
   static func aggregate(
     turns: [Turn],
     prices: [String: ModelPrice],
+    openCodeParents: [String: String] = [:],
     cycleStart: Date,
     now: Date,
     warning: String? = nil,
@@ -80,6 +87,7 @@ public struct SessionCredits: Sendable {
     let records = currentTurns.flatMap(\.records)
     let previousRecords = turns.flatMap(\.records).filter { $0.timestamp < cycleStart }
     let cacheHits = CacheHit.byModel(records: records, prices: prices)
+    let projectName = ProjectName.names(of: currentTurns)
     let byDay = Credits.byDay(records: records, prices: prices, cycleStart: cycleStart, now: now, calendar: Runway.utcCalendar)
     let previousByDay = Credits.byDay(
       records: previousRecords,
@@ -93,6 +101,8 @@ public struct SessionCredits: Sendable {
       byCategory: Credits.byCategory(turns: currentTurns, prices: prices),
       byModelAndCategory: Credits.byModelAndCategory(turns: currentTurns, prices: prices),
       bySource: Credits.bySource(turns: currentTurns, prices: prices),
+      byProject: Credits.byProject(turns: currentTurns, prices: prices, projectName: projectName),
+      bySession: Credits.bySession(turns: currentTurns, prices: prices, openCodeParents: openCodeParents, projectName: projectName),
       byDay: byDay,
       previousByDay: previousByDay,
       cacheHits: cacheHits,

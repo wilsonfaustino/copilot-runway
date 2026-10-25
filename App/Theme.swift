@@ -103,6 +103,23 @@ enum Theme {
     }
   }
 
+  // One blue hue in five steps, light to dark by credit rank, because the project set changes. The ordinal check of
+  // the dataviz palette validator passes in both modes: lightest dark step 2.48:1 on the dark surface, lightest light
+  // step 2.58:1 on white. Adjacent steps score 8.9 against the 15 categorical floor in both modes, accepted because
+  // the legend names every project and the 2 pt gaps separate the parts. ProjectName.namedProjectLimit is the count.
+  private static let projectRamp = [
+    Color(nsColor: dynamicColor(dark: 0x9CC7FF, light: 0x5AA2F5)),
+    Color(nsColor: dynamicColor(dark: 0x6EAEFF, light: 0x2F80E0)),
+    Color(nsColor: dynamicColor(dark: 0x4A90EE, light: 0x1F64BF)),
+    Color(nsColor: dynamicColor(dark: 0x3373CC, light: 0x164C96)),
+    Color(nsColor: dynamicColor(dark: 0x2457A6, light: 0x0E356C)),
+  ]
+
+  // The named projects come first in ProjectName.breakdown. The folded "Other projects" item gets no color.
+  static func projectColors(for breakdown: ShareBreakdown) -> [ShareItem.ID: Color] {
+    Dictionary(uniqueKeysWithValues: zip(breakdown.items.prefix(ProjectName.namedProjectLimit).map(\.id), projectRamp))
+  }
+
   // System grays switch with the appearance. The stripes, not a hue, tell the gap from the solid Other models gray.
   static let otherModelsColor = Color(nsColor: .tertiaryLabelColor)
   static let notInLocalSessionsStripe = Color(nsColor: .systemGray)

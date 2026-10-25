@@ -1,17 +1,19 @@
 import Foundation
 
 public struct ShareItem: Equatable, Sendable, Identifiable {
-  // An entry is keyed by its raw model id, or by its name for a task or an agent. A model id can read
-  // "Other models", so the folded and gap items have their own cases.
+  // An entry is keyed by its raw model id, or by its name for a task, an agent or a project. A model id can read
+  // "Other models" and a project can be named "Other projects", so the folded and gap items have their own cases.
   public enum ID: Hashable, Sendable {
     case entry(String)
     case otherModels
+    case otherProjects
     case notInLocalSessions
   }
 
   public enum Kind: Equatable, Sendable {
     case entry
     case otherModels
+    case otherProjects
     case notInLocalSessions
   }
 
@@ -33,6 +35,7 @@ public struct ShareItem: Equatable, Sendable, Identifiable {
     switch id {
     case .entry: .entry
     case .otherModels: .otherModels
+    case .otherProjects: .otherProjects
     case .notInLocalSessions: .notInLocalSessions
     }
   }
@@ -72,6 +75,16 @@ public struct ShareBreakdown: Equatable, Sendable {
       shareTotal: localTotal,
       items: items(entries.map { (.entry($0.name), $0.name, $0.credits) }, of: localTotal)
     )
+  }
+
+  // Local credits per project, as local(entries:), with the folded remainder last as its own item.
+  public static func projects(
+    entries: [(name: String, credits: Double)], other: (name: String, credits: Double)?
+  ) -> ShareBreakdown {
+    var itemEntries: [(id: ShareItem.ID, name: String, credits: Double)] = entries.map { (.entry($0.name), $0.name, $0.credits) }
+    if let other { itemEntries.append((.otherProjects, other.name, other.credits)) }
+    let localTotal = itemEntries.reduce(0) { $0 + $1.credits }
+    return ShareBreakdown(shareTotal: localTotal, items: items(itemEntries, of: localTotal))
   }
 
   // Local credits per task, as local(entries:). Uncategorized always has an item, at 0 when no turn falls in it.

@@ -19,8 +19,8 @@ OpenCode, Pi and omp session files, so it needs no setup.
   The app does not store the token on disk or in `UserDefaults`, and does not log it.
   For `gh search`, gh reads its own login, so the app never reads the token.
 - Session files stay on your Mac. The OpenCode database opens read only, and the queries select
-  only time, agent, model, token and tool call fields. The app does not decode or keep prompt or
-  answer text.
+  only time, agent, model, token and tool call fields, plus the session folder and project root.
+  The app does not decode or keep prompt or answer text or session titles.
 - "Copy summary" holds only numbers, dates, model ids and category names. It has no login,
   organization, token, file path, prompt or command.
 
