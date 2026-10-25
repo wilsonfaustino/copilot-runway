@@ -52,6 +52,8 @@ struct DashboardView: View {
             agentCard(usage: usage)
           }
           .fixedSize(horizontal: false, vertical: true)
+          projectCard
+          topSessionsCard
         } else {
           Text(usageStore.errorMessage ?? "Loading usage from GitHub.")
             .foregroundStyle(.secondary)
@@ -283,11 +285,105 @@ struct DashboardView: View {
     )
   }
 
+  private var projectCard: some View {
+    let breakdown = ProjectName.breakdown(usageStore.projectCredits)
+    let projectCount = usageStore.projectCredits.count
+    return shareCard(
+      title: "By project",
+      breakdown: breakdown,
+      colors: Theme.projectColors(for: breakdown),
+      insight: ProjectName.insight(breakdown),
+      footnotes: breakdown.isEmpty
+        ? []
+        : ["\(projectCount == 1 ? "1 project" : "\(projectCount) projects"). Named from the repo root, so worktree sessions count with their repo."]
+    )
+  }
+
+  // MARK: Top sessions
+
+  private var topSessionsCard: some View {
+    let sessions = usageStore.sessionSpends
+    let localTotal = sessions.reduce(0) { $0 + $1.credits }
+    let topSessions = Array(sessions.prefix(SessionSpend.topCount))
+    // A session bar takes its project's color, gray when the project folds into "Other projects".
+    let projectColors = Theme.projectColors(for: ProjectName.breakdown(usageStore.projectCredits))
+    return VStack(alignment: .leading, spacing: Theme.Spacing.regular) {
+      HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
+        Text("Top sessions")
+          .font(Self.cardTitleFont)
+        Spacer()
+        if !topSessions.isEmpty {
+          Text("\(SessionSpend.topShare(sessions, of: localTotal))%")
+            .bigFigureStyle(size: 26)
+          Text("of credits in \(topSessions.count == 1 ? "1 session" : "\(topSessions.count) sessions")")
+            .captionStyle()
+        }
+      }
+      .lineLimit(1)
+      .minimumScaleFactor(0.6)
+      if let topSentence = SessionSpend.topSentence(sessions) {
+        Text(topSentence)
+          .font(.system(size: 12.5))
+          .fixedSize(horizontal: false, vertical: true)
+          .textSelection(.enabled)
+        VStack(alignment: .leading, spacing: Theme.Spacing.section) {
+          ForEach(Array(topSessions.enumerated()), id: \.offset) { index, session in
+            sessionRow(
+              rank: index + 1, session: session, localTotal: localTotal, topCredits: topSessions[0].credits,
+              color: projectColors[.entry(session.project)] ?? Theme.otherModelsColor
+            )
+          }
+        }
+        Text("Labels use date, agent, top model and biggest task. No prompt text or titles. This cycle only.")
+          .captionStyle()
+          .fixedSize(horizontal: false, vertical: true)
+      } else {
+        Text("No local sessions in this cycle.")
+          .captionStyle()
+      }
+    }
+    .frame(maxWidth: .infinity, alignment: .topLeading)
+    .cardStyle(padding: Theme.Spacing.panel)
+  }
+
+  // The bar is scaled to the top session, so the first row is always full width.
+  private func sessionRow(rank: Int, session: SessionSpend, localTotal: Double, topCredits: Double, color: Color) -> some View {
+    let label = session.label()
+    let turns = session.turnCount == 1 ? "1 turn" : "\(session.turnCount) turns"
+    let share = session.sharePercentText(of: localTotal)
+    return VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+      HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.regular) {
+        Text("\(rank)")
+          .foregroundStyle(.secondary)
+          .frame(width: 14, alignment: .trailing)
+        VStack(alignment: .leading, spacing: 2) {
+          Text(label)
+          Text("\(session.project) · \(turns)")
+            .captionStyle()
+        }
+        Spacer()
+        Text(Credits.formatted(session.credits))
+        Text(share)
+          .foregroundStyle(.secondary)
+          .frame(minWidth: 48, alignment: .trailing)
+      }
+      .font(.system(size: 12.5))
+      .monospacedDigit()
+      .lineLimit(1)
+      shareBar(fraction: topCredits > 0 ? session.credits / topCredits : 0, color: color)
+        .padding(.leading, 14 + Theme.Spacing.regular)
+    }
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel("\(rank). \(label), \(session.project), \(turns)")
+    .accessibilityValue("\(Credits.formatted(session.credits)) credits, \(share) of local credits")
+  }
+
   // Items without a color in colors are the folded "Other models" item. A task split draws one bar per model instead.
   private func shareCard(
     title: String,
     breakdown: ShareBreakdown,
     colors: [ShareItem.ID: Color],
+    insight: String? = nil,
     taskSplit: ModelTaskSplit? = nil,
     footnotes: [String] = [],
     marksSmallShares: Bool = false,
@@ -305,6 +401,12 @@ struct DashboardView: View {
       }
       .lineLimit(1)
       .minimumScaleFactor(0.6)
+      if let insight {
+        Text(insight)
+          .font(.system(size: 12.5))
+          .fixedSize(horizontal: false, vertical: true)
+          .textSelection(.enabled)
+      }
       if !breakdown.isEmpty, let taskSplit {
         ModelTaskSplitView(
           breakdown: breakdown, taskSplit: taskSplit, taskPalette: taskPalette, notInLocalSessionsNote: notInLocalSessionsNote

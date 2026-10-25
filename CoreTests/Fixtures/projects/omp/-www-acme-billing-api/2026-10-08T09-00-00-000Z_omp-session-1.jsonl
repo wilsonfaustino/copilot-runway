@@ -1,0 +1,4 @@
+{"type":"title","v":1,"title":"redacted","source":"auto","updatedAt":"2026-10-08T09:01:00.000Z"}
+{"type":"session","version":3,"id":"omp-session-1","timestamp":"2026-10-08T09:00:00.000Z","cwd":"/Users/example/www/acme/billing-api"}
+{"type":"message","id":"e1","parentId":null,"timestamp":"2026-10-08T09:00:00.000Z","message":{"role":"user","content":[{"type":"text","text":"Synthetic prompt."}],"timestamp":1791450000000}}
+{"type":"message","id":"e2","parentId":"e1","timestamp":"2026-10-08T09:00:10.000Z","message":{"role":"assistant","content":[{"type":"toolCall","name":"bash","arguments":{"command":"gh pr view 12"}}],"provider":"github-copilot","model":"gpt-6-luna","responseId":"proj_resp_3","usage":{"input":50,"output":100,"cacheRead":2000,"cacheWrite":0},"timestamp":1791450010000}}

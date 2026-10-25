@@ -96,6 +96,14 @@ public struct DemoScenario: Sendable {
     let outcomes: GitHubOutcomes
     let copilotReviewCount: Int
 
+    // Repo folders that do not exist on disk, so the project name comes from the folder alone.
+    static let projectFolders = [
+      "/Users/demo/www/acme/runway-app", "/Users/demo/www/acme/billing-api", "/Users/demo/www/acme/design-system",
+      "/Users/demo/www/acme/docs-site", "/Users/demo/www/acme/infra", "/Users/demo/www/acme/mobile-app",
+      "/Users/demo/www/acme/data-jobs",
+    ]
+    // Indexes into projectFolders, one per session in turn. Uneven, so one project leads and two fold into Other.
+    static let projectPattern = [0, 1, 0, 2, 0, 0, 3, 1, 0, 4, 0, 2, 5, 0, 1, 6, 0]
     static let typicalModels = ["gpt-6.1-sol", "gpt-6-luna", "gpt-6.1-sol", "gemini-3.8-flash"]
     static let typicalCategories: [TaskCategory] = [
       .implementation, .investigation, .debugging, .implementation, .review, .planning, .investigation,
@@ -178,7 +186,11 @@ public struct DemoScenario: Sendable {
         let model = shape.models[(turnIndex + dayIndex) % shape.models.count]
         // OpenCode, Pi and omp in turn.
         let sources: [SessionSource] = [.opencode, .pi, .omp]
-        let source = sources[turnIndex % sources.count]
+        let sourceIndex = turnIndex % sources.count
+        let source = sources[sourceIndex]
+        // One session per day and source.
+        let sessionIndex = dayIndex * sources.count + sourceIndex
+        let projectFolder = Shape.projectFolders[Shape.projectPattern[sessionIndex % Shape.projectPattern.count]]
         // 0.6, 1.0 or 1.4, so days and models do not all cost the same.
         let variation = 0.6 + 0.4 * Double((turnIndex + 2 * dayIndex) % 3)
         let tokens = tokens(for: category, scale: shape.tokenScale * scale * variation)
@@ -194,7 +206,10 @@ public struct DemoScenario: Sendable {
             source: source,
             agent: agent,
             toolCalls: toolCalls(for: category, source: source, dayIndex: dayIndex),
-            records: [UsageRecord(model: model, timestamp: timestamp.addingTimeInterval(60), tokens: tokens)]
+            records: [UsageRecord(model: model, timestamp: timestamp.addingTimeInterval(60), tokens: tokens)],
+            sessionId: "demo-\(Int(day.timeIntervalSince1970 / 86_400))-\(source.rawValue)",
+            directory: projectFolder,
+            projectRoot: source == .opencode ? projectFolder : nil
           )
         )
       }

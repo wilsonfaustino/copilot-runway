@@ -18,6 +18,8 @@ final class UsageStore {
   private(set) var categoryCredits: [CategoryCredits] = []
   private(set) var modelCategoryCredits: [ModelCategoryCredits] = []
   private(set) var sourceCredits: [SourceCredits] = []
+  private(set) var projectCredits: [ProjectCredits] = []
+  private(set) var sessionSpends: [SessionSpend] = []
   private(set) var dailyCredits: [DailyCredits] = []
   private(set) var previousDailyCredits: [DailyCredits] = []
   private(set) var cycleComparisonSentence: String?
@@ -108,6 +110,8 @@ final class UsageStore {
     categoryCredits = sessionCredits.byCategory
     modelCategoryCredits = sessionCredits.byModelAndCategory
     sourceCredits = sessionCredits.bySource
+    projectCredits = sessionCredits.byProject
+    sessionSpends = sessionCredits.bySession
     dailyCredits = sessionCredits.byDay
     previousDailyCredits = sessionCredits.previousByDay
     cycleComparisonSentence = sessionCredits.cycleComparisonSentence

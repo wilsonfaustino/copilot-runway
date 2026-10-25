@@ -59,9 +59,14 @@ public enum PiSessionParser {
     var decodedLineCount = 0
     var turns: [Turn] = []
     var currentTurn: Turn?
+    var header: SessionHeader?
     for line in lines {
       guard let entry = try? decoder.decode(Entry.self, from: Data(line)) else { continue }
       decodedLineCount += 1
+      // omp writes a title entry before the header, so the header is the first session entry, not the first line.
+      if entry.type == "session", header == nil {
+        header = try? decoder.decode(SessionHeader.self, from: Data(line))
+      }
       guard entry.type == "message", let message = entry.message else { continue }
       switch message.role {
       case "user":
@@ -80,7 +85,12 @@ public enum PiSessionParser {
     }
     if !lines.isEmpty && decodedLineCount == 0 { return nil }
     if let currentTurn { turns.append(currentTurn) }
-    return turns.filter { !$0.records.isEmpty }
+    return turns.filter { !$0.records.isEmpty }.map { turn in
+      var sessionTurn = turn
+      sessionTurn.sessionId = header?.id
+      sessionTurn.directory = header?.cwd
+      return sessionTurn
+    }
   }
 
   private static func record(from message: Message, since cycleStart: Date, seenResponseIds: inout Set<String>) -> UsageRecord? {
@@ -112,6 +122,12 @@ public enum PiSessionParser {
   private struct Entry: Decodable {
     let type: String
     let message: Message?
+  }
+
+  // The first line of a session file. Its other fields (version, timestamp) are not read.
+  private struct SessionHeader: Decodable {
+    let id: String?
+    let cwd: String?
   }
 
   private struct Message: Decodable {

@@ -31,6 +31,11 @@ The details below are what we found on disk in October 2026.
 - A forked session repeats earlier entries, so records are unique by `responseId` across all files.
 - Files last modified before the cycle start are skipped.
 - `compaction` entries also carry `usage` but no model, so they are not counted.
+- The first `type: "session"` entry is the header: `id`, `cwd`, `version`, `timestamp`. The parser reads
+  only `id` (as `Turn.sessionId`) and `cwd` (as `Turn.directory`) and sets them on every turn of the file.
+  The folder name in the path is lossy (a `-` in a folder name reads like a `/`), so `cwd` is the source.
+  A file without a header gives turns with no session id and no folder. The parser does not read
+  `session_info` (a session name in some Pi files).
 - A line that does not decode is skipped, because Pi can be writing the last line. A file that has
   lines but no line that decodes sets `hasUndecodableFile`, for example after a Pi format change.
   `SessionCredits.load` then adds the warning "Cannot read some Pi sessions.", and the app shows it
@@ -44,6 +49,7 @@ omp (oh-my-pi) is a Pi fork. Checked on omp 18.12.3 in October 2026.
 - Same format as Pi, so `PiSessionParser` reads it with `source: .omp`. Provider, `responseId`,
   `timestamp` and `usage` match the Pi fields above.
 - Extra entry types, all skipped: `title` (before `session`), `custom`, `custom_message`, `title_change`.
+  The header is the first `session` entry, after the `title` entry, with the same `id` and `cwd` as Pi.
 - Records are unique by `responseId` across both roots. `SessionCredits.load` reads Pi first and passes one set to both reads,
   so a response found in both `~/.pi` and `~/.omp` counts once, as Pi.
 - A missing `~/.omp` folder gives no turns and no warning, as for Pi. A file with no line that
@@ -66,8 +72,18 @@ omp (oh-my-pi) is a Pi fork. Checked on omp 18.12.3 in October 2026.
 - 2.x copies 1.x messages into `session_message` under the same id, so reading only
   `session_message` counts each copied message once.
 - Child (subagent) sessions have their own rows, so the parser reads all rows and needs no session walk.
+- Session table `session_v2`: `id`, `project_id`, `parent_id` (set for subagent sessions), `directory`
+  (the folder the session ran in), `title` and others. Project table `project`: `id`, `worktree` (the main
+  repo root, also for a session in a linked git worktree; `/` for the `global` project with no repo).
+  The turn query joins `session_v2.id = session_message.session_id` and `project.id = session_v2.project_id`
+  with `LEFT JOIN`, so a message without a session row still counts. It reads `session_v2.directory`,
+  `session_v2.parent_id` and `project.worktree` into `Turn.directory`, `Turn.parentSessionId` and
+  `Turn.projectRoot`. When a database has no `session_v2` or `project` table, or the table lacks one of
+  these columns, the query selects `NULL` instead and the turns get no folder.
+- One repo path can have two `project` ids (an old one and a new one), so projects group by name, never by id.
 - The queries select only time, agent, model, token and tool call fields (tool name, file path,
-  shell command) with `json_extract`, so prompt and answer text never leaves the database.
+  shell command) with `json_extract`, plus the session folder, parent session and project root columns
+  above, so prompt and answer text never leaves the database. Session titles (`session_v2.title`) are not read.
 - Not read: the file based JSON store under `~/.local/share/opencode/storage/`
   (only older sessions on our machines).
 
@@ -77,8 +93,9 @@ omp (oh-my-pi) is a Pi fork. Checked on omp 18.12.3 in October 2026.
 
 A turn is one user message plus all assistant messages and tool calls until the next user message.
 Each turn keeps its timestamp, source (`pi`, `opencode` or `omp`), agent (OpenCode only), tool calls
-(name, file path for read and edit tools, command for shell tools), and the Copilot `UsageRecord`s
-of its assistant messages. The parsers keep only the records that pass the filters in
+(name, file path for read and edit tools, command for shell tools), the Copilot `UsageRecord`s
+of its assistant messages, and its session: session id, folder, and for OpenCode the project root and
+parent session (see Session files). The parsers keep only the records that pass the filters in
 [Session files](#session-files), and keep only turns with at least one record. So every record is in exactly one turn, and `Credits.byCategory` adds up
 to the priced models in `Credits.byModel`.
 
@@ -188,6 +205,61 @@ Messages from models without a price add 0, as in `Credits.byCategory`.
   Every bar draws its segments in one order, highest category total first, and leaves out categories at 0.
   `segmentPercents` holds the whole percent of each segment, allocated like the `ShareBreakdown` shares so
   the segments of a bar add up to 100. The hover text and the VoiceOver summary read these values.
+
+## Projects and sessions
+
+The dashboard By project and Top sessions cards. Both come from the same current cycle turns as
+`Credits.byModel`, so their totals equal the priced model total. Project names and session labels stay in
+the dashboard: they are not in Copy summary (`QuotaSummary`), the Share image or the Share text.
+
+### Project name (`ProjectName`)
+
+`ProjectName.of(directory:projectRoot:)` names a project from folders only. Rules, in order:
+
+1. OpenCode project root (`Turn.projectRoot`): its last folder component. A root of `/` is the OpenCode
+   `global` project (no repo), so the next rules decide.
+2. Git root on disk: the nearest folder with a `.git` entry, from the session folder up to but not
+   including the home folder and `/`. A dotfiles repo in the home folder must not name every folder below it.
+   Symlinks of folders that exist are resolved first, so a link and its target name one repo and a link to
+   the home folder stops the walk. A folder that is gone keeps its recorded path.
+   A `.git` file with `gitdir: <repo>/.git/worktrees/<name>` (a linked worktree) gives `<repo>`. A relative
+   `gitdir` is relative to the folder. Any other `.git` file (a submodule) makes the folder the root.
+3. Orca workspace: `~/orca/workspaces/<repo>/<branch>` and its subfolders give `<repo>`. Orca removes these
+   folders after a merge, so this rule needs no disk.
+4. The last component of the session folder.
+
+Any rule's folder under `/tmp`, `/private/tmp`, `/var/folders` or `/private/var/folders` gives "Temporary".
+The home folder and `/` give "Home". A turn with no folder gives "Unknown folder".
+`ProjectName.names(of:)` looks up each distinct folder once. The home folder and the `.git` lookup are
+parameters, so tests use a fake disk.
+
+- `Credits.byProject`: priced credits per project name, highest first. The same repo under two folders
+  (a main checkout and an Orca worktree) has one name, so it counts once.
+- `ProjectName.breakdown(_:)`: the top 5 projects by name, the rest folded into "Other projects" (its own
+  `ShareItem.ID.otherProjects`, so a project of that name stays separate), with
+  shares allocated like the other split bars. `ProjectName.insight(_:)` reads "<project> took 67% of local
+  credits this cycle.", with the share the legend shows.
+
+### Sessions (`SessionSpend`)
+
+`Credits.bySession` gives one `SessionSpend` per session, highest credits first: id, project, source, turn
+count, credits, first and last record time, top model and biggest task by credits.
+
+- Sessions are keyed by source and session id. Turns without a session id form one entry per source.
+- OpenCode subagent sessions fold into their root session. `OpenCodeSessionParser.parentSessions` reads every
+  `session_v2` `id` and `parent_id`, also for sessions with no usage in the cycle, and the walk follows these
+  edges up to the first session with no known parent. Pi and omp have no parents and never fold. Without
+  `session_v2` or `parent_id` the walk uses `Turn.parentSessionId`. A root with no turn in this cycle keeps its
+  id as the entry id. The ids of a parent cycle fold into the smallest id of the cycle.
+- Top model ties go by id. When no model has a price, the top model is the first id. Biggest task ties go
+  as in `Credits.byCategory`.
+- Only this cycle's records count, so a session that started in the last cycle shows only its part in this cycle.
+- `label(locale:)`: "<day> · <agent> · <top model> · <biggest task>", for example
+  "Oct 7 · Pi · Gemini 3.8 Flash · Debugging". Days are UTC days, as in the Daily burn chart. A session over
+  two days in one month reads "Oct 14 to 15", across months "Oct 31 to Nov 1". The label uses no title and
+  no message text.
+- `topShare(_:of:)`: the rounded percent of local credits in the top 5 sessions. `topSentence(_:)`: "The top
+  session cost 1,489 credits in 9 turns, 41% of it debugging." `sharePercentText(of:)`: one decimal, "11.9%".
 
 ## Last cycle comparison (`CycleComparison`)
 

@@ -43,6 +43,16 @@ public struct SourceCredits: Equatable, Sendable {
   }
 }
 
+public struct ProjectCredits: Equatable, Sendable {
+  public let name: String
+  public let credits: Double
+
+  public init(name: String, credits: Double) {
+    self.name = name
+    self.credits = credits
+  }
+}
+
 public struct DailyCredits: Equatable, Sendable {
   // Start of the day in the calendar given to Credits.byDay.
   public let day: Date
@@ -143,6 +153,87 @@ public enum Credits {
       if left.credits != right.credits { return left.credits > right.credits }
       return left.source.rawValue < right.source.rawValue
     }
+  }
+
+  // Grouped by project name, so the same repo under two folders counts once. Same pricing rule as byCategory.
+  // Highest spend first.
+  public static func byProject(turns: [Turn], prices: [String: ModelPrice], projectName: (Turn) -> String) -> [ProjectCredits] {
+    let turnsByProject = Dictionary(grouping: turns, by: projectName)
+    let projectCredits = turnsByProject.map { name, projectTurns in
+      ProjectCredits(name: name, credits: pricedTotal(records: projectTurns.flatMap(\.records), prices: prices))
+    }
+    return projectCredits.sorted { left, right in
+      if left.credits != right.credits { return left.credits > right.credits }
+      return left.name < right.name
+    }
+  }
+
+  // One entry per session, with OpenCode subagent sessions folded into their root session. Turns without a session
+  // id form one entry per source. Only OpenCode has parents, so Pi and omp ids never fold through an OpenCode edge.
+  // openCodeParents holds parent ids of sessions without a turn in turns. Same pricing rule as byCategory.
+  // Highest spend first.
+  public static func bySession(
+    turns: [Turn], prices: [String: ModelPrice], openCodeParents: [String: String] = [:], projectName: (Turn) -> String
+  ) -> [SessionSpend] {
+    let turnParents = Dictionary(
+      turns.compactMap { turn -> (String, String)? in
+        guard turn.source == .opencode, let sessionId = turn.sessionId, let parentId = turn.parentSessionId else { return nil }
+        return (sessionId, parentId)
+      },
+      uniquingKeysWith: min
+    )
+    let parentBySession = turnParents.merging(openCodeParents) { _, openCodeParent in openCodeParent }
+    let turnsBySession = Dictionary(grouping: turns) { turn in
+      let sessionId = turn.sessionId ?? ""
+      let rootId = turn.source == .opencode ? rootSessionId(of: sessionId, parentBySession: parentBySession) : sessionId
+      return SessionKey(source: turn.source, id: rootId)
+    }
+    let sessionSpends = turnsBySession.compactMap { key, sessionTurns -> SessionSpend? in
+      let records = sessionTurns.flatMap(\.records)
+      guard let firstRecord = records.map(\.timestamp).min(), let lastRecord = records.map(\.timestamp).max(),
+        let topModel = byModel(records: records, prices: prices).first,
+        let biggestTask = byCategory(turns: sessionTurns, prices: prices).first
+      else { return nil }
+      // The root session's own folder names the project. A root with no turn left in the cycle takes the first
+      // child by id, so the name does not depend on the order of turns.
+      let projectTurn = sessionTurns.first { $0.sessionId == key.id }
+        ?? sessionTurns.min { ($0.sessionId ?? "", $0.timestamp) < ($1.sessionId ?? "", $1.timestamp) }!
+      return SessionSpend(
+        id: key.id,
+        project: projectName(projectTurn),
+        source: key.source,
+        turnCount: sessionTurns.count,
+        credits: pricedTotal(records: records, prices: prices),
+        firstRecord: firstRecord,
+        lastRecord: lastRecord,
+        topModel: topModel.model,
+        biggestTask: biggestTask.category,
+        biggestTaskCredits: biggestTask.credits
+      )
+    }
+    return sessionSpends.sorted { left, right in
+      if left.credits != right.credits { return left.credits > right.credits }
+      if left.firstRecord != right.firstRecord { return left.firstRecord < right.firstRecord }
+      return left.id < right.id
+    }
+  }
+
+  private struct SessionKey: Hashable {
+    let source: SessionSource
+    let id: String
+  }
+
+  // Subagents can start their own subagents, so the walk goes up to the first session without a known parent.
+  // The parent ids of a cycle have no top, so every session that reaches the cycle takes its smallest id as root.
+  private static func rootSessionId(of sessionId: String, parentBySession: [String: String]) -> String {
+    var path = [sessionId]
+    while let parentId = parentBySession[path[path.count - 1]] {
+      if let cycleStart = path.firstIndex(of: parentId) {
+        return path[cycleStart...].min() ?? parentId
+      }
+      path.append(parentId)
+    }
+    return path[path.count - 1]
   }
 
   // One entry per calendar day from the cycle start through now, days without messages at 0.

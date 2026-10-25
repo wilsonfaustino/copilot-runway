@@ -20,7 +20,9 @@ func lunaRecord(_ isoString: String, output: Int = 10) -> UsageRecord {
       timestamp: utcDate("2026-10-07T00:30:00Z"),
       source: .pi,
       toolCalls: [ToolCall(name: "read", filePath: "Sources/a.swift")],
-      records: [lunaRecord("2026-10-07T00:30:00Z")]
+      records: [lunaRecord("2026-10-07T00:30:00Z")],
+      sessionId: "session-fixture",
+      directory: "/Users/example/project"
     ),
     Turn(
       timestamp: utcDate("2026-10-07T01:00:00Z"),
@@ -30,13 +32,17 @@ func lunaRecord(_ isoString: String, output: Int = 10) -> UsageRecord {
         ToolCall(name: "edit", filePath: "Sources/a.swift"),
         ToolCall(name: "read", filePath: "Sources/b.swift"),
       ],
-      records: [lunaRecord("2026-10-07T01:00:01Z"), lunaRecord("2026-10-07T01:00:03Z")]
+      records: [lunaRecord("2026-10-07T01:00:01Z"), lunaRecord("2026-10-07T01:00:03Z")],
+      sessionId: "session-fixture",
+      directory: "/Users/example/project"
     ),
     Turn(
       timestamp: utcDate("2026-09-30T23:00:00Z"),
       source: .pi,
       toolCalls: [ToolCall(name: "read", filePath: "Sources/d.swift")],
-      records: [lunaRecord("2026-10-01T00:10:00Z")]
+      records: [lunaRecord("2026-10-01T00:10:00Z")],
+      sessionId: "session-fixture",
+      directory: "/Users/example/project"
     ),
   ])
 }
