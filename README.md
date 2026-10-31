@@ -194,10 +194,14 @@ Install Copilot Runway, a macOS menu bar app, on this Mac. Do these steps in ord
    If I am not logged in, ask me to run `gh auth login` myself, because it is interactive.
    Never print, copy or ask for my token.
 4. Run `brew install --cask wilsonfaustino/tap/copilot-runway`.
-5. Tell me about the first launch. The app is ad-hoc signed and not notarized, so macOS
-   blocks it once. I must open it from /Applications, click Done, then open System Settings >
-   Privacy & Security and click Open Anyway. Do not remove the quarantine attribute (xattr)
-   unless I explicitly ask, because that turns off a macOS security check.
+5. Run `brew list --cask --versions copilot-runway` and read the installed version.
+   Version 1.0.0 and later is signed with a Developer ID and notarized. Tell me that it needs
+   no Open Anyway override, and that macOS can still ask me to confirm that I want to open an
+   app downloaded from the Internet. Version 0.9.0 and older is ad-hoc signed and not
+   notarized. For those, tell me to open the app from /Applications, click Done on the
+   warning, then open System Settings > Privacy & Security and click Open Anyway. Do not
+   remove the quarantine attribute (xattr) unless I explicitly ask, because that turns off a
+   macOS security check.
 6. After I confirm I did this, run `pgrep -x CopilotRunway` to check that the app runs.
    Ask me to read the menu bar title. It should show the percent left and the days left,
    for example `62% · 9d`. If it shows `gh missing` or `gh login`, fix gh as in step 3.
@@ -206,18 +210,14 @@ Install Copilot Runway, a macOS menu bar app, on this Mac. Do these steps in ord
 
 ### First launch
 
-Releases are ad-hoc signed and not notarized by Apple. Homebrew sets the quarantine
-attribute on cask downloads, so Gatekeeper blocks the first launch:
+Version 1.0.0 and later is signed with a Developer ID and notarized by Apple. It needs no
+"Open Anyway" override. macOS can still show its normal confirmation that the app was
+downloaded from the Internet the first time you open it. Click Open.
 
-1. Open Copilot Runway from `/Applications`. macOS shows a warning. Click Done.
-2. Open System Settings > Privacy & Security, scroll down, and click "Open Anyway" next to
-   the message about Copilot Runway. Confirm with your password.
-
-You do this once per installed version. Alternative from the terminal:
-
-```sh
-xattr -dr com.apple.quarantine /Applications/CopilotRunway.app
-```
+Version 0.9.0 and older is ad-hoc signed and not notarized. Gatekeeper blocks its first
+launch. Click Done on the warning, then click "Open Anyway" in System Settings > Privacy &
+Security. See Apple's steps:
+[Safely open apps on your Mac](https://support.apple.com/en-us/102445).
 
 ### Build from source
 
@@ -247,17 +247,17 @@ This needs the team's Developer ID Application certificate in your login keychai
 notarytool profile. To make the profile, run `xcrun notarytool store-credentials <profile>`.
 The script signs with the hardened runtime, sends the app to Apple's notary service, staples
 the ticket and checks the app with Gatekeeper. Then it writes the zip. If you set only one of
-the two variables, the script stops before it builds. CI releases are still ad-hoc signed.
+the two variables, the script stops before it builds. CI builds are ad-hoc signed.
 
 ### Signing and Homebrew policy
 
-Published releases are still ad-hoc signed (`codesign --sign -`) and are not notarized,
-because CI builds them without a Developer ID. CI signing comes later. The release script
-can already sign with a Developer ID and the hardened runtime, and notarize, when you set
-both variables (see "Build from source" above). Without them, the script signs ad-hoc and
-skips the hardened runtime. With an ad-hoc signature, the hardened runtime's library
-validation needs a Team ID, so dyld refuses to load `Core.framework`. A notarized build
-removes the first-launch step.
+Version 1.0.0 and later is signed with a Developer ID and the hardened runtime, and
+notarized. CI builds stay ad-hoc signed (`codesign --sign -`) and hold no signing secrets.
+The maintainer builds the notarized zip on a Mac and replaces the release asset before
+publishing (see "Release" below). Without both variables (see "Build from source" above),
+the release script signs ad-hoc and skips the hardened runtime. With an ad-hoc signature,
+the hardened runtime's library validation needs a Team ID, so dyld refuses to load
+`Core.framework`. Version 0.9.0 and older is ad-hoc signed.
 
 Homebrew policy as of Homebrew 7.0.9 (October 2026):
 
@@ -265,7 +265,7 @@ Homebrew policy as of Homebrew 7.0.9 (October 2026):
   ([release notes](https://brew.sh/2025/11/12/homebrew-5.0.0/)). The flag is not in
   Homebrew 6.0.0 or later. The source of `Library/Homebrew/cmd/install.rb` confirms this.
   The flag was removed in the "Homebrew 6 deprecations" commit. There is no replacement
-  flag. Users must do the first-launch step above.
+  flag. A notarized app (1.0.0 and later) does not need one.
 - Homebrew applies quarantine to cask downloads so that Gatekeeper checks them
   ([Security and Supply Chain](https://docs.brew.sh/Homebrew-Security-and-Supply-Chain)).
 - Casks that fail Gatekeeper checks are not allowed in the official Homebrew/homebrew-cask
@@ -427,19 +427,35 @@ category rules, the dashboard totals, the summary format, the outcome searches a
 
 ### Release
 
-1. Bump `MARKETING_VERSION` in `project.yml` and merge the PR.
-2. Push the tag `vX.Y.Z`. The release workflow runs `./scripts/release.sh` and creates a draft
-   release with `dist/CopilotRunway-<version>.zip` and its sha256.
-3. Edit the draft release notes and click Publish.
-4. The workflow then writes `version` and `sha256` into `Casks/copilot-runway.rb` of
-   `wilsonfaustino/homebrew-tap`. The tap updates itself.
+Bump `MARKETING_VERSION` in `project.yml` and merge the PR. Then:
+
+1. Push the tag `vX.Y.Z`. The release workflow builds an ad-hoc signed zip with
+   `./scripts/release.sh` and creates a draft release. CI holds no signing secrets.
+2. On your Mac, check out the tagged commit. Build the notarized zip and replace the
+   release asset:
+
+   ```sh
+   DEVELOPER_ID_IDENTITY="Developer ID Application: <name> (<team id>)" \
+   NOTARY_KEYCHAIN_PROFILE="<profile>" ./scripts/release.sh
+   gh release upload vX.Y.Z dist/CopilotRunway-X.Y.Z.zip --clobber
+   ```
+
+3. Edit the draft release notes and click Publish. The sha256 in the draft notes is for the
+   ad-hoc zip, so replace it. The `verify` job runs on macOS first. It downloads the zip and
+   fails unless the app passes `codesign --verify --deep --strict`, has `TeamIdentifier=PX9G95LY8C`,
+   passes `xcrun stapler validate`, and `spctl` reports `Notarized Developer ID` (a warning
+   only if the runner has Gatekeeper assessments off). If it fails, upload the notarized zip
+   and use "Re-run all jobs" on the release-event run (the run for the published release, not
+   the tag-push run). A successful `verify` that is kept on a re-run of failed jobs holds the old
+   sha256. Then the `tap` job downloads the zip again, stops if its sha256
+   differs from the one `verify` checked, and writes `version` and `sha256` into
+   `Casks/copilot-runway.rb` of `wilsonfaustino/homebrew-tap`. The tap updates itself.
 
 The tap step needs the repo secret `HOMEBREW_TAP_TOKEN`: a fine-grained token with contents
 write access to `homebrew-tap` only.
 
 ## Known limitations
 
-- The app is not notarized. Each new version needs the first-launch step.
 - The credits request uses `api.github.com/copilot_internal/user`, the same request as the
   OpenCode and Pi plugins. It is not part of the documented GitHub REST API, so GitHub can change it.
 - Outcomes cover one organization.
@@ -448,11 +464,6 @@ write access to `homebrew-tap` only.
   December 31, 2026. The Gemini 4 Argon rate is promotional until December 1, 2026.
 - The app does not read the older OpenCode JSON file store under
   `~/.local/share/opencode/storage/`.
-
-## Roadmap
-
-- Sign with a Developer ID, turn the hardened runtime back on, and notarize the release. Then the
-  first-launch step goes away.
 
 ## Author
 

@@ -46,8 +46,79 @@ jobs:
 
           Release notes: the maintainer writes them before publishing."
 
+  verify:
+    if: github.event_name == 'release'
+    runs-on: macos-26
+    permissions:
+      contents: read
+    outputs:
+      sha256: ${{ steps.download.outputs.sha256 }}
+      version: ${{ steps.download.outputs.version }}
+    steps:
+      - name: Download release zip
+        id: download
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        shell: bash
+        run: |
+          version="${TAG_NAME#v}"
+          gh release download "$TAG_NAME" --repo "$GITHUB_REPOSITORY" \
+            --pattern "CopilotRunway-$version.zip" --dir "$RUNNER_TEMP"
+          sha256="$(shasum -a 256 "$RUNNER_TEMP/CopilotRunway-$version.zip" | cut -d ' ' -f 1)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
+      - name: Require a notarized app
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+          VERSION: ${{ steps.download.outputs.version }}
+          EXPECTED_TEAM_ID: PX9G95LY8C
+        # codesign and stapler validate are the hard gate. They read the signature and the
+        # stapled ticket in the bundle, so they do not depend on runner settings.
+        # spctl is a hard gate only when the runner reports "assessments enabled". GitHub does
+        # not document the Gatekeeper state of its macOS images, so a disabled state only warns.
+        shell: bash
+        run: |
+          app_dir="$RUNNER_TEMP/verify"
+          app="$app_dir/CopilotRunway.app"
+          mkdir "$app_dir"
+          ditto -x -k "$RUNNER_TEMP/CopilotRunway-$VERSION.zip" "$app_dir"
+          failed=0
+          fail_check() {
+            echo "::error::$1"
+            failed=1
+          }
+
+          codesign --verify --deep --strict --verbose=2 "$app" || fail_check "codesign --verify failed: the code signature is invalid."
+
+          signature_info="$(codesign -dv "$app" 2>&1)" || fail_check "codesign -dv failed."
+          echo "$signature_info"
+          grep -qx "TeamIdentifier=$EXPECTED_TEAM_ID" <<< "$signature_info" || fail_check "the app is not signed by team $EXPECTED_TEAM_ID (TeamIdentifier line missing or different)."
+
+          xcrun stapler validate "$app" || fail_check "stapler validate failed: the app has no valid stapled notarization ticket."
+
+          gatekeeper_status="$(spctl --status 2>&1 || true)"
+          echo "spctl --status: $gatekeeper_status"
+          assessment="$(spctl -a -vv -t exec "$app" 2>&1 || true)"
+          echo "$assessment"
+          if ! grep -q "^source=Notarized Developer ID$" <<< "$assessment"; then
+            if grep -q "assessments enabled" <<< "$gatekeeper_status"; then
+              fail_check "spctl does not report source=Notarized Developer ID."
+            else
+              echo "::warning::Gatekeeper assessments are not enabled on this runner, so the spctl result is informational."
+            fi
+          fi
+
+          if [[ "$failed" -ne 0 ]]; then
+            echo "error: the release zip for $TAG_NAME is not a notarized build." >&2
+            echo "Build it with scripts/release.sh (DEVELOPER_ID_IDENTITY and NOTARY_KEYCHAIN_PROFILE set), then run: gh release upload $TAG_NAME dist/CopilotRunway-$VERSION.zip --clobber" >&2
+            echo "Then re-run this workflow." >&2
+            exit 1
+          fi
+
   tap:
     if: github.event_name == 'release'
+    needs: verify
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -56,11 +127,18 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG_NAME: ${{ github.event.release.tag_name }}
+          VERIFIED_SHA256: ${{ needs.verify.outputs.sha256 }}
+        shell: bash
         run: |
           version="${TAG_NAME#v}"
           gh release download "$TAG_NAME" --repo "$GITHUB_REPOSITORY" \
             --pattern "CopilotRunway-$version.zip" --dir "$RUNNER_TEMP"
           sha256="$(sha256sum "$RUNNER_TEMP/CopilotRunway-$version.zip" | cut -d ' ' -f 1)"
+          if [[ "$sha256" != "$VERIFIED_SHA256" ]]; then
+            echo "error: the release zip changed after the verify job (sha256 $sha256, verified $VERIFIED_SHA256)." >&2
+            echo "Re-run the whole workflow so that verify checks the current asset." >&2
+            exit 1
+          fi
           echo "VERSION=$version" >> "$GITHUB_ENV"
           echo "SHA256=$sha256" >> "$GITHUB_ENV"
       - uses: actions/checkout@v7.0.1
