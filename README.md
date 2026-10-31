@@ -231,13 +231,33 @@ The script builds the Release configuration, ad-hoc signs the app, verifies the 
 and writes `dist/CopilotRunway-<version>.zip`. It prints the zip's sha256. Unzip it and
 move `CopilotRunway.app` to `/Applications`.
 
+To sign with a Developer ID and notarize, set both environment variables:
+
+| Variable | Value |
+|---|---|
+| `DEVELOPER_ID_IDENTITY` | The codesign identity, for example `Developer ID Application: <name> (<team id>)` |
+| `NOTARY_KEYCHAIN_PROFILE` | The name of a notarytool keychain profile |
+
+```sh
+DEVELOPER_ID_IDENTITY="Developer ID Application: <name> (<team id>)" \
+NOTARY_KEYCHAIN_PROFILE="<profile>" ./scripts/release.sh
+```
+
+This needs the team's Developer ID Application certificate in your login keychain and a
+notarytool profile. To make the profile, run `xcrun notarytool store-credentials <profile>`.
+The script signs with the hardened runtime, sends the app to Apple's notary service, staples
+the ticket and checks the app with Gatekeeper. Then it writes the zip. If you set only one of
+the two variables, the script stops before it builds. CI releases are still ad-hoc signed.
+
 ### Signing and Homebrew policy
 
-The app is ad-hoc signed (`codesign --sign -`) and is not notarized. The release script
-signs without the hardened runtime. With an ad-hoc signature, the hardened runtime's
-library validation stops the app from loading its own `Core.framework`. With a Developer ID
-certificate, the build can use the hardened runtime and be notarized, and the first-launch
-step goes away.
+Published releases are still ad-hoc signed (`codesign --sign -`) and are not notarized,
+because CI builds them without a Developer ID. CI signing comes later. The release script
+can already sign with a Developer ID and the hardened runtime, and notarize, when you set
+both variables (see "Build from source" above). Without them, the script signs ad-hoc and
+skips the hardened runtime. With an ad-hoc signature, the hardened runtime's library
+validation needs a Team ID, so dyld refuses to load `Core.framework`. A notarized build
+removes the first-launch step.
 
 Homebrew policy as of Homebrew 7.0.9 (October 2026):
 
