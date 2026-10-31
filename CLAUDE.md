@@ -62,9 +62,11 @@ Each rule gets unit tests with fixture sessions in `CoreTests/Fixtures/`.
 
 ### M6. Distribution
 - Homebrew tap with a cask, signed and notarized build.
-- Decision (2026-10-15): releases are ad-hoc signed for now, not notarized. No Developer ID yet.
-- `scripts/release.sh` signs without hardened runtime. Library validation needs a Team ID, and dyld refuses `Core.framework` under an ad-hoc signature.
-- When a Developer ID is available: turn hardened runtime back on in `scripts/release.sh` and add notarization. Ask the user before choosing or using any identity.
+- Decision (2026-10-15): releases were ad-hoc signed, not notarized.
+- Decision (2026-10-31): sign with the Developer ID of the team PX9G95LY8C.
+- `scripts/release.sh` is ad-hoc by default, without hardened runtime. Library validation needs a Team ID, and dyld refuses `Core.framework` under an ad-hoc signature. With `DEVELOPER_ID_IDENTITY` and `NOTARY_KEYCHAIN_PROFILE` set, it signs with hardened runtime and a timestamp, notarizes, staples and checks with spctl.
+- CI builds are still ad-hoc. Next: CI signing with GitHub secrets (`release.yml`), then CI fails without an identity. Tag 1.0.0 after that lands.
+- Ask the user before choosing or using any identity.
 - Creating repos or releases is outward-facing, so ask first.
 
 ## Out of scope
