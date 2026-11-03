@@ -559,6 +559,8 @@ Bundled rates, in USD per 1 million tokens, from GitHub's
 | `gpt-6-sol` | Long context, prompt > 272K | 4.00 | 0.40 | 5.00 | 15.00 |
 | `gpt-6.1-sol` | Default, prompt <= 272K | 2.00 | 0.10 | 2.50 | 10.00 |
 | `gpt-6.1-sol` | Long context, prompt > 272K | 4.00 | 0.20 | 5.00 | 15.00 |
+| `gpt-6.1-terra` | Default, prompt <= 272K | 1.00 | 0.05 | 1.25 | 5.00 |
+| `gpt-6.1-terra` | Long context, prompt > 272K | 2.00 | 0.10 | 2.50 | 7.50 |
 | `claude-haiku-4.5` | Default, no tier | 1.00 | 0.10 | 1.25 | 5.00 |
 | `claude-haiku-5.5` | Default, prompt <= 100K | 0.10 | 0.01 | 0.125 | 0.50 |
 | `claude-haiku-5.5` | Long context, prompt > 100K | 0.50 | 0.05 | 0.625 | 2.50 |
@@ -586,8 +588,11 @@ Bundled rates, in USD per 1 million tokens, from GitHub's
 - The same page says: "1 AI credit = $0.01 USD". So credits = USD x 100.
 - GitHub lists a cache write rate for GPT-5.6 and later OpenAI models and for all Anthropic models.
   For all other models the page shows "Not applicable" or has no cache write column, so the table has 0.
-- The table has every model on that page except Claude Opus 4.8 (fast mode), which has a price but no
-  known model id. Add it to `prices.json` when you know the id OpenCode or Pi writes.
+- The table has every token-priced chat model on that page except Claude Opus 4.8 (fast mode), which has a
+  price but no known model id. Add it to `prices.json` when you know the id OpenCode or Pi writes.
+  GPT Image 2.5 Flare is also left out: it has text and image rates, not the four chat rates.
+- `gpt-5-mini`, `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.5` and `gemini-3.7-flash` stay in the table although
+  the page (checked 2026-11-03) no longer lists them, because old sessions still use them.
 - Model ids are the page names in lowercase with hyphens, for example `claude-opus-5.5`. Ids seen in
   OpenCode and Pi session files follow this form. Ids for models not yet seen in a session file
   (for example `grok-4.5` and `kimi-k3`) come from the same rule and are not checked.
