@@ -3,9 +3,9 @@
 Copilot Runway is a macOS menu bar app that shows your GitHub Copilot AI credit usage as
 runway: how many credits are left, how fast you use them, and which models and kinds of
 work use them. It is for developers on Copilot usage-based billing who code through
-OpenCode, Pi Agent or omp. The menu bar shows the percent of credits left and the days until
+OpenCode, Pi Agent, omp, the Copilot CLI or the GitHub Copilot app. The menu bar shows the percent of credits left and the days until
 they run out at your current pace. The app reads your existing `gh` login and the local
-OpenCode, Pi and omp session files, so it needs no setup.
+OpenCode, Pi, omp and Copilot CLI and app session files, so it needs no setup.
 
 ## Privacy
 
@@ -91,10 +91,10 @@ Click the title to open the popover:
   day to see both cycles. A sentence under the chart title compares this cycle with the same days
   of last cycle. Today is left out. The sentence shows only when last cycle has at least 5 days
   with credits in the paired days.
-- Local credits by task category, by model and by agent (OpenCode, Pi or omp).
+- Local credits by task category, by model and by agent (OpenCode, Pi, omp, Copilot CLI or Copilot app).
 - A "By project" card with local credits by project. The app names a project from the repo root,
-  so worktree sessions count with their repo. The card shows the top 5 projects and folds the rest
-  into "Other projects".
+  so worktree sessions count with their repo. All Copilot app chats count as one project, "Copilot app chats".
+  The card shows the top 5 projects and folds the rest into "Other projects".
 - A "Top sessions" list with the 5 most expensive sessions of this cycle. Each label has the date,
   the agent, the top model and the biggest task. It has no prompt text and no titles.
 - A note with the percent of GitHub credits that local sessions do not explain, and the number of
@@ -162,7 +162,8 @@ Open Settings with the gear button in the popover:
   for gh in `/opt/homebrew/bin`, `/usr/local/bin` and `/usr/bin`, because apps opened from Finder
   do not get your shell `PATH`.
 - A GitHub Copilot plan with usage-based billing (AI credits).
-- Optional: OpenCode, Pi Agent or omp with the `github-copilot` provider. Without them, the app shows
+- Optional: OpenCode, Pi Agent or omp with the `github-copilot` provider, or the Copilot CLI or GitHub
+  Copilot app. Without them, the app shows
   the GitHub numbers but no per-model, per-category or daily data.
 
 ## Install
@@ -302,9 +303,11 @@ Example: 10 days after the cycle start, with 6,000 of 12,000 credits used, the a
 The two totals come from different sources, so they do not match:
 
 - The GitHub total is all Copilot use on your account, from every client and every machine.
-- Local credits come from the OpenCode, Pi and omp session files on this Mac. The app keeps only
-  assistant messages billed through the `github-copilot` provider since the cycle start, and
-  prices the tokens of each message with the price table.
+- Local credits come from the OpenCode, Pi, omp and Copilot CLI and app session files on this Mac.
+  The app keeps only assistant messages billed through the `github-copilot` provider (or the `copilot`
+  provider without BYOK in Copilot CLI and app sessions) since the cycle start. It prices the tokens of
+  each OpenCode, Pi and omp message with the price table. Copilot CLI and app sessions record the
+  credits GitHub billed for each request (`totalNanoAiu`), so the app uses those.
 
 So the local total is lower when you also use Copilot in other clients or on other Macs. It can
 also differ when the price table is not the same as the rates GitHub billed, or when a model has no
@@ -356,7 +359,7 @@ message. The app checks these rules in this order. The first match wins.
 |---|---|
 | Debugging | An edit, then a shell call, then an edit of the same file path |
 | Implementation | Any edit. Every edited file counts, docs included |
-| Review | A shell command that contains `gh pr diff` or `gh pr view`, and no edits |
+| Review | A shell command that contains `gh pr diff` or `gh pr view`, or a GitHub MCP pull request read (for example `pull_request_read`), and no edits |
 | Planning | The OpenCode `plan` agent, no edits and no review command. Read and shell calls do not change this |
 | Investigation | Any read or shell call, and no edits |
 | Planning | No read, shell or edit calls, and at least 1,000 output tokens |
@@ -479,4 +482,5 @@ The session file formats for OpenCode and Pi follow the provider docs in
 [codeburn](https://github.com/getagentseal/codeburn) (MIT):
 [docs/providers/opencode.md](https://github.com/getagentseal/codeburn/blob/main/docs/providers/opencode.md)
 and [docs/providers/pi.md](https://github.com/getagentseal/codeburn/blob/main/docs/providers/pi.md).
-omp writes the Pi format.
+omp writes the Pi format. The Copilot CLI and app format comes from local sessions, checked against
+[docs/providers/copilot.md](https://github.com/getagentseal/codeburn/blob/main/docs/providers/copilot.md).

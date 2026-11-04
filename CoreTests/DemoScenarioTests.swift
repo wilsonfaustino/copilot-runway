@@ -66,11 +66,27 @@ func demoScenarioGitHubCreditsCoverLocalPricedCreditsAtAnyLaunchTime(name: DemoS
   let scenario = DemoScenario(name: .typical, now: demoNow)
   let sessionCredits = scenario.sessionCredits
   #expect(Set(sessionCredits.byModel.map(\.model)) == ["gpt-6.1-sol", "gpt-6-luna", "gemini-3.8-flash"])
-  #expect(Set(sessionCredits.bySource.map(\.source)) == [.opencode, .pi, .omp])
+  #expect(Set(sessionCredits.bySource.map(\.source)) == [.opencode, .pi, .omp, .copilotCli, .copilotApp])
   #expect(sessionCredits.byCategory.count >= 4)
   #expect((40...60).contains(scenario.usage.percentRemaining))
   #expect(scenario.copilotReviewCount > 0)
   #expect(scenario.outcomes.prs > 0)
+}
+
+@Test func typicalDemoHasCopilotCliAndCopilotAppRows() {
+  let sessionCredits = DemoScenario(name: .typical, now: demoNow).sessionCredits
+  let sourceNames = Set(sessionCredits.bySource.map { $0.source.displayName })
+  #expect(sourceNames.isSuperset(of: ["Copilot CLI", "Copilot app"]))
+  #expect(sessionCredits.bySource.filter { [.copilotCli, .copilotApp].contains($0.source) }.allSatisfy { $0.credits > 0 })
+}
+
+@Test func typicalDemoGroupsCopilotAppChatsIntoOneProject() {
+  let turns = DemoScenario(name: .typical, now: demoNow).turns
+  let name = ProjectName.names(of: turns)
+  let appChatFolders = Set(turns.filter { $0.source == .copilotApp }.compactMap(\.directory))
+  #expect(appChatFolders.count > 1)
+  #expect(Set(turns.filter { $0.source == .copilotApp }.map(name)) == ["Copilot app chats"])
+  #expect(turns.filter { $0.source == .copilotCli }.map(name).allSatisfy { $0 != "Copilot app chats" })
 }
 
 @Test func manyModelsDemoHasAtLeastSevenPricedModels() {

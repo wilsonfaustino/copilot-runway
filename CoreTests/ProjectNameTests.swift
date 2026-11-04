@@ -237,3 +237,38 @@ func realPath(_ url: URL) -> String {
   let goneFolder = homeLink.appending(path: "orca/workspaces/runway-app/fix").path
   #expect(ProjectName.of(directory: goneFolder, projectRoot: nil, homeDirectory: homeLink.path) == "runway-app")
 }
+
+@Test func copilotAppChatsShareOneProject() {
+  let firstChat = "/Users/example/.copilot/chats/2026-11-04/fix-the-chart-6551f32e"
+  let secondChat = "/Users/example/.copilot/chats/2026-11-05/explain-pricing-a1b2c3d4"
+  #expect(projectName(directory: firstChat) == "Copilot app chats")
+  #expect(projectName(directory: secondChat) == "Copilot app chats")
+}
+
+@Test func copilotAppChatsAreOneRowInCreditsByProject() {
+  let turns = ["2026-11-04/fix-the-chart-6551f32e", "2026-11-05/explain-pricing-a1b2c3d4"].map { chat in
+    Turn(
+      timestamp: fixtureCycleStart, source: .copilotApp,
+      records: [UsageRecord(model: "gpt-6.1-sol", timestamp: fixtureCycleStart, tokens: millionSolInputTokens)],
+      directory: "/Users/example/.copilot/chats/\(chat)"
+    )
+  }
+  let name = ProjectName.names(of: turns, homeDirectory: exampleHome) { _ in nil }
+  let byProject = Credits.byProject(turns: turns, prices: PriceTable.bundled, projectName: name)
+  #expect(byProject.map(\.name) == ["Copilot app chats"])
+  #expect(isClose(byProject[0].credits, 800))
+}
+
+@Test func copilotCliSessionKeepsItsNormalProject() {
+  let repo = "/Users/example/www/acme/runway-app"
+  #expect(projectName(directory: repo + "/App", gitEntries: [repo: .directory]) == "runway-app")
+}
+
+@Test func aGitRepoInsideACopilotChatFolderStillNamesItsRepo() {
+  let chat = "/Users/example/.copilot/chats/2026-11-04/fix-the-chart-6551f32e"
+  #expect(projectName(directory: chat, gitEntries: [chat: .directory]) == "fix-the-chart-6551f32e")
+}
+
+@Test func copilotChatsFolderItselfIsNotACopilotAppChat() {
+  #expect(projectName(directory: "/Users/example/.copilot/chats") == "chats")
+}

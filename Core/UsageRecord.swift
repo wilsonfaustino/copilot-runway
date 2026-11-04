@@ -22,10 +22,14 @@ public struct UsageRecord: Equatable, Sendable {
   public let model: String
   public let timestamp: Date
   public let tokens: TokenUsage
+  // The credits GitHub billed for this message, when the session file states them (Copilot CLI and app).
+  // nil means Credits prices the tokens with PriceTable.
+  public let billedCredits: Double?
 
-  public init(model: String, timestamp: Date, tokens: TokenUsage) {
+  public init(model: String, timestamp: Date, tokens: TokenUsage, billedCredits: Double? = nil) {
     self.model = model
     self.timestamp = timestamp
     self.tokens = tokens
+    self.billedCredits = billedCredits
   }
 }

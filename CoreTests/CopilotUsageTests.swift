@@ -25,12 +25,59 @@ func utcDate(_ isoString: String) -> Date {
 
 @Test func decodesPremiumInteractions() throws {
   let usage = try CopilotUsageClient.usage(from: sampleResponse, statusCode: 200)
-  #expect(usage.creditsUsed == 8857)
+  #expect(usage.creditsUsed == 12000 - 3142.7)
   #expect(usage.entitlement == 12000)
   #expect(usage.creditsRemaining == 3142.7)
   #expect(usage.percentRemaining == 26.1)
   #expect(usage.isUnlimited == false)
   #expect(usage.resetDate == utcDate("2026-11-01T00:00:00Z"))
+}
+
+func premiumResponse(entitlement: Int, creditsUsed: Int, quotaRemaining: Double, percentRemaining: Double, unlimited: Bool) -> Data {
+  Data("""
+    {
+      "quota_reset_date_utc": "2026-12-01T00:00:00.000Z",
+      "quota_snapshots": {
+        "premium_interactions": {
+          "credits_used": \(creditsUsed),
+          "entitlement": \(entitlement),
+          "quota_remaining": \(quotaRemaining),
+          "percent_remaining": \(percentRemaining),
+          "unlimited": \(unlimited)
+        }
+      }
+    }
+    """.utf8)
+}
+
+@Test func usageUsesOneSourceForUsedAndRemaining() throws {
+  let data = premiumResponse(entitlement: 20000, creditsUsed: 1235, quotaRemaining: 18131, percentRemaining: 90.6, unlimited: false)
+  let usage = try CopilotUsageClient.usage(from: data, statusCode: 200)
+  #expect(usage.creditsUsed == 1869)
+  #expect(usage.creditsRemaining == 18131)
+  #expect(usage.entitlement - usage.creditsUsed == usage.creditsRemaining)
+  #expect(Runway.wholePercentRemaining(usage: usage) == 91)
+}
+
+@Test func unlimitedPlanKeepsCreditsUsedFromApi() throws {
+  let data = premiumResponse(entitlement: 0, creditsUsed: 50, quotaRemaining: 0, percentRemaining: 100, unlimited: true)
+  let usage = try CopilotUsageClient.usage(from: data, statusCode: 200)
+  #expect(usage.creditsUsed == 50)
+}
+
+@Test func zeroEntitlementKeepsCreditsUsedFromApi() throws {
+  let data = premiumResponse(entitlement: 0, creditsUsed: 50, quotaRemaining: 0, percentRemaining: 100, unlimited: false)
+  let usage = try CopilotUsageClient.usage(from: data, statusCode: 200)
+  #expect(usage.creditsUsed == 50)
+}
+
+@Test func overageKeepsNegativeRemainingAndUsedAboveEntitlement() throws {
+  let data = premiumResponse(entitlement: 1500, creditsUsed: 1500, quotaRemaining: -40, percentRemaining: 0, unlimited: false)
+  let usage = try CopilotUsageClient.usage(from: data, statusCode: 200)
+  #expect(usage.creditsUsed == 1540)
+  #expect(usage.creditsRemaining == -40)
+  #expect(Runway.wholePercentRemaining(usage: usage) == 0)
+  #expect(Runway.wholeDaysLeft(usage: usage, now: utcDate("2026-11-10T00:00:00Z")) == 0)
 }
 
 @Test func unauthorizedStatusMeansNotLoggedIn() {

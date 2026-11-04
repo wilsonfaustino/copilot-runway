@@ -2,12 +2,20 @@ import Foundation
 
 public struct ModelCredits: Equatable, Sendable {
   public let model: String
-  // nil when the price table has no entry for the model.
+  // nil when the price table has no entry for the model and no message of it has billed credits.
   public let credits: Double?
+  // True when some messages of the model have neither billed credits nor a price. credits then holds only the rest.
+  public let hasUnpricedRecords: Bool
 
-  public init(model: String, credits: Double?) {
+  public init(model: String, credits: Double?, hasUnpricedRecords: Bool = false) {
     self.model = model
     self.credits = credits
+    self.hasUnpricedRecords = hasUnpricedRecords
+  }
+
+  // True when the local credits of the model are not complete.
+  public var isMissingPrice: Bool {
+    credits == nil || hasUnpricedRecords
   }
 }
 
@@ -80,8 +88,9 @@ public enum Credits {
     return usd / usdPerCredit
   }
 
-  private static func summedCredits(of records: [UsageRecord], price: ModelPrice) -> Double {
-    records.reduce(0) { $0 + credits(for: $1.tokens, price: price) }
+  // The billed credits of a Copilot CLI or app message, else its tokens at the PriceTable rate. nil when neither exists.
+  static func credits(of record: UsageRecord, prices: [String: ModelPrice]) -> Double? {
+    record.billedCredits ?? prices[record.model].map { credits(for: record.tokens, price: $0) }
   }
 
   // Credits are summed per message, because the long context tier depends on each request's size.
@@ -89,9 +98,11 @@ public enum Credits {
   public static func byModel(records: [UsageRecord], prices: [String: ModelPrice]) -> [ModelCredits] {
     let recordsByModel = Dictionary(grouping: records, by: \.model)
     let modelCredits = recordsByModel.map { model, modelRecords in
-      ModelCredits(
+      let knownCredits = modelRecords.compactMap { credits(of: $0, prices: prices) }
+      return ModelCredits(
         model: model,
-        credits: prices[model].map { price in summedCredits(of: modelRecords, price: price) }
+        credits: knownCredits.isEmpty ? nil : knownCredits.reduce(0, +),
+        hasUnpricedRecords: knownCredits.count < modelRecords.count
       )
     }
     return modelCredits.sorted { left, right in
@@ -124,8 +135,8 @@ public enum Credits {
     for turn in turns {
       let category = TaskCategorizer.category(of: turn)
       for record in turn.records {
-        guard let price = prices[record.model] else { continue }
-        creditsByKey[ModelCategoryKey(model: record.model, category: category), default: 0] += credits(for: record.tokens, price: price)
+        guard let recordCredits = credits(of: record, prices: prices) else { continue }
+        creditsByKey[ModelCategoryKey(model: record.model, category: category), default: 0] += recordCredits
       }
     }
     let modelCategoryCredits = creditsByKey.map { key, credits in
@@ -292,7 +303,7 @@ public enum Credits {
 
   static func pricedTotal(records: [UsageRecord], prices: [String: ModelPrice]) -> Double {
     records.reduce(0) { total, record in
-      total + (prices[record.model].map { credits(for: record.tokens, price: $0) } ?? 0)
+      total + (credits(of: record, prices: prices) ?? 0)
     }
   }
 }

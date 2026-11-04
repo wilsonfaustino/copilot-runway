@@ -51,8 +51,14 @@ public enum CopilotUsageClient {
       let resetDate = try? Date(body.quotaResetDateUtc, strategy: .iso8601.year().month().day().time(includingFractionalSeconds: true))
     else { throw CopilotUsageError.invalidResponse }
     let premium = body.quotaSnapshots.premiumInteractions
+    // credits_used lags behind quota_remaining and percent_remaining. The GitHub billing page agrees with
+    // entitlement - quota_remaining, so used, remaining and percent all come from one source.
+    // Unlimited plans have entitlement 0, so they keep credits_used. Overage gives a negative quota_remaining,
+    // so used goes above the entitlement.
+    let hasEntitlement = !premium.unlimited && premium.entitlement > 0
+    let creditsUsed = hasEntitlement ? max(premium.entitlement - premium.quotaRemaining, 0) : premium.creditsUsed
     return CopilotUsage(
-      creditsUsed: premium.creditsUsed,
+      creditsUsed: creditsUsed,
       entitlement: premium.entitlement,
       creditsRemaining: premium.quotaRemaining,
       percentRemaining: premium.percentRemaining,

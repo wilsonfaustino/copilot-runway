@@ -191,3 +191,50 @@ let millionSolInputTokens = TokenUsage(input: 1_000_000, cachedInput: 0, cacheWr
 @Test func formattedCreditsHaveNoFraction() {
   #expect(Credits.formatted(1234.6, locale: Locale(identifier: "en_US")) == "1,235")
 }
+
+private let creditsTestTimestamp = utcDate("2026-10-05T10:00:00Z")
+
+private func usageRecord(model: String, billedCredits: Double?) -> UsageRecord {
+  UsageRecord(model: model, timestamp: creditsTestTimestamp, tokens: millionSolInputTokens, billedCredits: billedCredits)
+}
+
+@Test func billedCreditsWinOverAPriceOverride() throws {
+  let overridePrices = ["gpt-6.1-sol": try #require(PriceTable.bundled["gpt-6-luna"])]
+  let byModel = Credits.byModel(records: [usageRecord(model: "gpt-6.1-sol", billedCredits: 7)], prices: overridePrices)
+  #expect(byModel == [ModelCredits(model: "gpt-6.1-sol", credits: 7)])
+}
+
+@Test func zeroBilledCreditsStayZeroInsteadOfFallingBackToPriceTable() {
+  let byModel = Credits.byModel(records: [usageRecord(model: "gpt-6.1-sol", billedCredits: 0)], prices: PriceTable.bundled)
+  #expect(byModel == [ModelCredits(model: "gpt-6.1-sol", credits: 0)])
+}
+
+@Test func missingBilledCreditsFallBackToPriceTable() {
+  let byModel = Credits.byModel(records: [usageRecord(model: "gpt-6.1-sol", billedCredits: nil)], prices: PriceTable.bundled)
+  #expect(byModel.count == 1)
+  // 1M Sol input tokens are above the threshold: 400 credits.
+  #expect(isClose(byModel[0].credits!, 400))
+}
+
+@Test func billedCreditsWorkForAModelWithoutAPrice() {
+  let byModel = Credits.byModel(records: [usageRecord(model: "unpriced-model", billedCredits: 2)], prices: PriceTable.bundled)
+  #expect(byModel == [ModelCredits(model: "unpriced-model", credits: 2)])
+  #expect(!byModel[0].isMissingPrice)
+}
+
+@Test func modelWithBilledAndUnpricedRecordsKeepsTheBilledSubtotalAndIsMissingAPrice() {
+  let records = [
+    usageRecord(model: "unpriced-model", billedCredits: 2),
+    usageRecord(model: "unpriced-model", billedCredits: nil),
+  ]
+  let byModel = Credits.byModel(records: records, prices: PriceTable.bundled)
+  #expect(byModel == [ModelCredits(model: "unpriced-model", credits: 2, hasUnpricedRecords: true)])
+  #expect(byModel[0].isMissingPrice)
+  #expect(ShareBreakdown.unpricedModelsNote(byModel) == "1 model has no price: unpriced-model")
+}
+
+@Test func modelWithNoCreditsIsMissingAPrice() {
+  let byModel = Credits.byModel(records: [usageRecord(model: "unpriced-model", billedCredits: nil)], prices: PriceTable.bundled)
+  #expect(byModel == [ModelCredits(model: "unpriced-model", credits: nil, hasUnpricedRecords: true)])
+  #expect(byModel[0].isMissingPrice)
+}

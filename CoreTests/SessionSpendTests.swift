@@ -65,6 +65,7 @@ func projectFixtureSessionCredits(openCodeDirectory: URL) -> SessionCredits {
     piDirectory: projectFixturesDirectory.appending(path: "pi"),
     openCodeDirectory: openCodeDirectory,
     ompDirectory: projectFixturesDirectory.appending(path: "omp"),
+    copilotDirectory: fixturesDirectory.appending(path: "missing"),
     priceURL: missingPriceURL
   )
 }
@@ -219,7 +220,8 @@ func demoScenarioHasProjectsAndSessionsThatAddUp(name: DemoScenario.Name) {
 
 @Test func manyModelsDemoFoldsProjectsIntoOther() {
   let projectCredits = DemoScenario(name: .manyModels, now: demoNow).sessionCredits.byProject
-  #expect(projectCredits.count == 7)
+  // 7 demo repos and the Copilot app chats project.
+  #expect(projectCredits.count == 8)
   #expect(ProjectName.breakdown(projectCredits).items.last?.name == "Other projects")
 }
 
@@ -233,7 +235,8 @@ func sessionSummaries(_ sessions: [SessionSpend]) -> [String] {
   defer { try? FileManager.default.removeItem(at: openCodeDirectory) }
   let sessionCredits = SessionCredits.load(
     since: fixtureCycleStart, now: sessionCreditsNow, piDirectory: fixturesDirectory.appending(path: "missing/pi"),
-    openCodeDirectory: openCodeDirectory, ompDirectory: fixturesDirectory.appending(path: "missing/omp"), priceURL: missingPriceURL
+    openCodeDirectory: openCodeDirectory, ompDirectory: fixturesDirectory.appending(path: "missing/omp"),
+    copilotDirectory: fixturesDirectory.appending(path: "missing"), priceURL: missingPriceURL
   )
   #expect(sessionSummaries(sessionCredits.bySession) == ["opencode:ses_root_a:2", "opencode:ses_root_b:2"])
   let modelTotal = sessionCredits.byModel.compactMap(\.credits).reduce(0, +)
