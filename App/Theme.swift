@@ -95,11 +95,15 @@ enum Theme {
   // dataviz palette validator passes in both modes. The legend names each agent too.
   // The dark omp vs Pi pair scores 14.5 against the 15 categorical floor. Accepted as an exception, as for the
   // green model ramp at 14.0.
+  // The Copilot CLI and app share a second hue (violet) in two steps, so the GitHub clients read as one family.
+  // The pair and ordinal checks of the dataviz palette validator pass in dark and light.
   static func agentColor(_ source: SessionSource) -> Color {
     switch source {
     case .opencode: Color(nsColor: dynamicColor(dark: 0xF2A27E, light: 0xF57242))
     case .pi: Color(nsColor: dynamicColor(dark: 0xD95926, light: 0xC04200))
     case .omp: Color(nsColor: dynamicColor(dark: 0x9C3A12, light: 0x782800))
+    case .copilotCli: Color(nsColor: dynamicColor(dark: 0xB89AF5, light: 0x8250DF))
+    case .copilotApp: Color(nsColor: dynamicColor(dark: 0x7A4FD6, light: 0x512A97))
     }
   }
 

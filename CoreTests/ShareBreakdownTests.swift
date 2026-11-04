@@ -264,3 +264,20 @@ private let octoberBreakdown = ShareBreakdown.models(octoberModelCredits, github
   #expect(unpricedModels.map(\.id) == ["grok-5", "GPT-6 Luna"])
   #expect(unpricedModels.map(\.name) == ["grok-5", "GPT-6 Luna"])
 }
+
+@Test func copilotReviewNoteIsNilWhenALocalModelHasBilledAndUnpricedRecords() {
+  let modelCredits = octoberModelCredits + [ModelCredits(model: "grok-5", credits: 2, hasUnpricedRecords: true)]
+  let breakdown = ShareBreakdown.models(modelCredits, githubCredits: 10_052)
+  #expect(breakdown.copilotReviewNote(reviewCount: 14, modelCredits: modelCredits) == nil)
+}
+
+@Test func copilotReviewNoteStaysForAModelWithOnlyBilledCredits() {
+  let modelCredits = octoberModelCredits + [ModelCredits(model: "grok-5", credits: 2)]
+  let breakdown = ShareBreakdown.models(modelCredits, githubCredits: 10_052)
+  #expect(breakdown.copilotReviewNote(reviewCount: 14, modelCredits: modelCredits) != nil)
+}
+
+@Test func unpricedModelsNoteNamesAModelWithBilledAndUnpricedRecords() {
+  let modelCredits = [ModelCredits(model: "gpt-6.1-sol", credits: 620), ModelCredits(model: "grok-5", credits: 2, hasUnpricedRecords: true)]
+  #expect(ShareBreakdown.unpricedModelsNote(modelCredits) == "1 model has no price: grok-5")
+}

@@ -27,6 +27,7 @@ public struct SessionCredits: Sendable {
     piDirectory: URL = PiSessionParser.sessionsDirectory,
     openCodeDirectory: URL = OpenCodeSessionParser.dataDirectory,
     ompDirectory: URL = PiSessionParser.ompSessionsDirectory,
+    copilotDirectory: URL = CopilotSessionParser.sessionStateDirectory,
     priceURL: URL = PriceTable.overrideURL
   ) -> SessionCredits {
     var warnings: [String] = []
@@ -50,6 +51,11 @@ public struct SessionCredits: Sendable {
     turns += ompTurns.turns
     if ompTurns.hasUndecodableFile {
       warnings.append("Cannot read some omp sessions.")
+    }
+    let copilotTurns = CopilotSessionParser.turns(inDirectory: copilotDirectory, since: previousCycleStart)
+    turns += copilotTurns.turns
+    if copilotTurns.hasUndecodableFile {
+      warnings.append("Cannot read some Copilot sessions.")
     }
     do {
       turns += try OpenCodeSessionParser.turns(inDirectory: openCodeDirectory, since: previousCycleStart, splitAt: cycleStart)

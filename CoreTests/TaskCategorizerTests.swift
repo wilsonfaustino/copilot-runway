@@ -164,3 +164,45 @@ func openCodeFixtureCategories() throws -> [Int: TaskCategory] {
   #expect(TaskCategorizer.category(of: astGrep) == .investigation)
   #expect(TaskCategorizer.category(of: astEdit) == .implementation)
 }
+
+// GitHub MCP pull request reads count as Review in every client, as gh pr view does. An edit still wins.
+@Test func mcpPullRequestReadIsReview() {
+  let timestamp = utcDate("2026-10-07T01:00:00Z")
+  let mcpReads = [
+    (SessionSource.copilotCli, "github-mcp-server-pull_request_read"),
+    (.copilotApp, "github-mcp-server-pull_request_read"),
+    (.opencode, "github_get_pull_request"),
+    (.opencode, "github_get_pull_request_diff"),
+    (.pi, "mcp__github__get_pull_request_files"),
+  ]
+  for (source, toolName) in mcpReads {
+    let read = Turn(timestamp: timestamp, source: source, toolCalls: [ToolCall(name: toolName)])
+    #expect(TaskCategorizer.category(of: read) == .review)
+  }
+  let listPullRequests = Turn(timestamp: timestamp, source: .copilotCli, toolCalls: [ToolCall(name: "github-mcp-server-list_pull_requests")])
+  #expect(TaskCategorizer.category(of: listPullRequests) == .uncategorized)
+  let readThenPatch = Turn(
+    timestamp: timestamp,
+    source: .copilotCli,
+    toolCalls: [ToolCall(name: "github-mcp-server-pull_request_read"), ToolCall(name: "apply_patch", filePath: "a.swift")]
+  )
+  #expect(TaskCategorizer.category(of: readThenPatch) == .implementation)
+}
+
+// The 0.0.38x and 1.0.x tool names. Only view, bash and apply_patch appear in the 1.0.x fixtures.
+@Test func copilotMapsCliAndAppTools() {
+  let timestamp = utcDate("2026-10-07T01:00:00Z")
+  for source in [SessionSource.copilotCli, .copilotApp] {
+    for readTool in ["view", "glob", "grep", "rg", "web_fetch", "web_search"] {
+      #expect(TaskCategorizer.category(of: Turn(timestamp: timestamp, source: source, toolCalls: [ToolCall(name: readTool)])) == .investigation)
+    }
+    for editTool in ["apply_patch", "edit", "create"] {
+      let edit = Turn(timestamp: timestamp, source: source, toolCalls: [ToolCall(name: editTool, filePath: "a.swift")])
+      #expect(TaskCategorizer.category(of: edit) == .implementation)
+    }
+    let review = Turn(timestamp: timestamp, source: source, toolCalls: [ToolCall(name: "bash", command: "gh pr diff 12")])
+    #expect(TaskCategorizer.category(of: review) == .review)
+    let neutral = Turn(timestamp: timestamp, source: source, toolCalls: [ToolCall(name: "report_intent"), ToolCall(name: "skill")])
+    #expect(TaskCategorizer.category(of: neutral) == .uncategorized)
+  }
+}

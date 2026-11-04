@@ -7,10 +7,13 @@ public enum ProjectName {
   // A turn without a folder, for example from an OpenCode database without session_v2.
   public static let unknown = "Unknown folder"
   public static let otherProjectsName = "Other projects"
+  // Every Copilot app chat has its own folder under ~/.copilot/chats and no repo, so all chats are one project.
+  public static let copilotAppChats = "Copilot app chats"
   // The dashboard By project card names the top projects and folds the rest into "Other projects".
   public static let namedProjectLimit = 5
   static let temporaryFolders = ["/tmp", "/private/tmp", "/var/folders", "/private/var/folders"]
   static let orcaWorkspaces = "orca/workspaces"
+  static let copilotChats = ".copilot/chats"
 
   // What a folder holds at .git: a folder in a main checkout, a file in a linked worktree or a submodule.
   public enum GitEntry: Equatable, Sendable {
@@ -18,7 +21,8 @@ public enum ProjectName {
     case file(contents: String)
   }
 
-  // In order: the OpenCode project root, the git root on disk, the Orca workspace rule, the last folder component.
+  // In order: the OpenCode project root, the git root on disk, the Copilot app chat rule, the Orca workspace rule,
+  // the last folder component.
   // A project root of "/" is the OpenCode global project (no repo), so the folder decides instead.
   public static func of(
     directory: String?,
@@ -34,6 +38,9 @@ public enum ProjectName {
     let folder = trimmed(directory)
     if let gitRoot = gitRoot(of: folder, homeDirectory: home, gitEntry: gitEntry) {
       return name(of: gitRoot, homeDirectory: home)
+    }
+    if folder.hasPrefix(home + "/" + copilotChats + "/") {
+      return copilotAppChats
     }
     // The recorded path, not the resolved one, because a gone Orca folder has no disk to resolve.
     if let orcaRepo = orcaRepo(of: folder, homeDirectory: home) {

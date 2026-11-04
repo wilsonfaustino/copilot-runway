@@ -16,6 +16,7 @@ let sessionCreditsNow = utcDate("2026-10-10T00:00:00Z")
     piDirectory: fixturesDirectory.appending(path: "pi/sessions"),
     openCodeDirectory: openCodeDirectory,
     ompDirectory: fixturesDirectory.appending(path: "missing"),
+    copilotDirectory: fixturesDirectory.appending(path: "missing"),
     priceURL: missingPriceURL
   )
   let modelTotal = sessionCredits.byModel.compactMap(\.credits).reduce(0, +)
@@ -38,6 +39,7 @@ let sessionCreditsNow = utcDate("2026-10-10T00:00:00Z")
     piDirectory: fixturesDirectory.appending(path: "pi/undecodable"),
     openCodeDirectory: fixturesDirectory.appending(path: "missing"),
     ompDirectory: fixturesDirectory.appending(path: "missing"),
+    copilotDirectory: fixturesDirectory.appending(path: "missing"),
     priceURL: missingPriceURL
   )
   #expect(sessionCredits.warning == "Cannot read some Pi sessions.")
@@ -52,6 +54,7 @@ let sessionCreditsNow = utcDate("2026-10-10T00:00:00Z")
     piDirectory: fixturesDirectory.appending(path: "pi/sessions"),
     openCodeDirectory: fixturesDirectory.appending(path: "missing"),
     ompDirectory: fixturesDirectory.appending(path: "missing/omp"),
+    copilotDirectory: fixturesDirectory.appending(path: "missing"),
     priceURL: missingPriceURL
   )
   #expect(sessionCredits.warning == nil)
@@ -66,6 +69,7 @@ let sessionCreditsNow = utcDate("2026-10-10T00:00:00Z")
     piDirectory: fixturesDirectory.appending(path: "pi/sessions"),
     openCodeDirectory: fixturesDirectory.appending(path: "missing"),
     ompDirectory: fixturesDirectory.appending(path: "omp/sessions"),
+    copilotDirectory: fixturesDirectory.appending(path: "missing"),
     priceURL: missingPriceURL
   )
   let modelTotal = sessionCredits.byModel.compactMap(\.credits).reduce(0, +)
@@ -85,6 +89,7 @@ let sessionCreditsNow = utcDate("2026-10-10T00:00:00Z")
     piDirectory: fixturesDirectory.appending(path: "missing"),
     openCodeDirectory: fixturesDirectory.appending(path: "missing"),
     ompDirectory: fixturesDirectory.appending(path: "pi/undecodable"),
+    copilotDirectory: fixturesDirectory.appending(path: "missing"),
     priceURL: missingPriceURL
   )
   #expect(sessionCredits.warning == "Cannot read some omp sessions.")
@@ -113,6 +118,7 @@ private func loadSessionCredits(piDirectory: URL, ompDirectory: URL) -> SessionC
     piDirectory: piDirectory,
     openCodeDirectory: fixturesDirectory.appending(path: "missing"),
     ompDirectory: ompDirectory,
+    copilotDirectory: fixturesDirectory.appending(path: "missing"),
     priceURL: missingPriceURL
   )
 }

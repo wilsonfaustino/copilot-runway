@@ -4,6 +4,10 @@ public enum SessionSource: String, Sendable {
   case pi
   case opencode
   case omp
+  // workspace.yaml client_name github/cli.
+  case copilotCli
+  // workspace.yaml client_name github/autopilot, the GitHub Copilot desktop app.
+  case copilotApp
 }
 
 public struct ToolCall: Equatable, Sendable {
@@ -31,9 +35,10 @@ public struct Turn: Equatable, Sendable {
   public internal(set) var toolCalls: [ToolCall]
   // Assistant messages billed through GitHub Copilot in the cycle, the same records Credits.byModel gets.
   public internal(set) var records: [UsageRecord]
-  // OpenCode session_message.session_id, or the Pi and omp session header id.
+  // OpenCode session_message.session_id, the Pi and omp session header id, or the Copilot workspace.yaml id.
   public internal(set) var sessionId: String?
-  // The folder the session ran in: OpenCode session_v2.directory, or the Pi and omp session header cwd.
+  // The folder the session ran in: OpenCode session_v2.directory, the Pi and omp session header cwd, or the Copilot
+  // workspace.yaml cwd.
   public internal(set) var directory: String?
   // OpenCode project.worktree, the main repo root even for a linked git worktree. nil for Pi and omp.
   public internal(set) var projectRoot: String?

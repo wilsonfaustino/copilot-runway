@@ -131,10 +131,10 @@ public struct ShareBreakdown: Equatable, Sendable {
   }
 
   // The line under the "Not in local sessions" item: Copilot code reviews are the likely source of the remainder.
-  // nil without reviews or that item, and when a local model has no price, because the remainder then holds
+  // nil without reviews or that item, and when a local model lacks a price for some message, because the remainder then holds
   // that model's use too.
   public func copilotReviewNote(reviewCount: Int, modelCredits: [ModelCredits], locale: Locale = .current) -> String? {
-    guard reviewCount > 0, !modelCredits.contains(where: { $0.credits == nil }),
+    guard reviewCount > 0, !modelCredits.contains(where: \.isMissingPrice),
       let remainder = items.first(where: { $0.kind == .notInLocalSessions })
     else { return nil }
     let creditsPerReview = Credits.formatted(remainder.credits / Double(reviewCount), locale: locale)
@@ -142,9 +142,10 @@ public struct ShareBreakdown: Equatable, Sendable {
     return "Likely \(reviewCount) Copilot reviews, ~\(creditsPerReview) each"
   }
 
-  // The dashboard By model note that names the models without a price. nil when every model has one.
+  // The dashboard By model note that names the models without a price, also those with a price for only some messages.
+  // nil when every model has one.
   public static func unpricedModelsNote(_ modelCredits: [ModelCredits]) -> String? {
-    let unpricedModels = modelCredits.filter { $0.credits == nil }.map(\.model).sorted().map(ModelDisplayName.name(for:))
+    let unpricedModels = modelCredits.filter(\.isMissingPrice).map(\.model).sorted().map(ModelDisplayName.name(for:))
     switch unpricedModels.count {
     case 0: return nil
     case 1: return "1 model has no price: \(unpricedModels[0])"

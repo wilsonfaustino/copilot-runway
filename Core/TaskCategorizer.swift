@@ -39,8 +39,20 @@ public enum TaskCategorizer {
     "patch": .edit, "apply_patch": .edit, "edit": .edit, "write": .edit, "multiedit": .edit,
   ]
 
+  // Copilot CLI and app. 0.0.38x sessions use edit, create and grep. 1.0.x GPT sessions use apply_patch and rg.
+  // apply_patch has no path argument; the parser takes its paths from tool.execution_complete fileEdits.
+  static let copilotToolKinds: [String: ToolKind] = [
+    "view": .read, "glob": .read, "grep": .read, "rg": .read, "semantic_code_search": .read,
+    "web_fetch": .read, "web_search": .read, "fetch_copilot_cli_documentation": .read,
+    "bash": .shell, "write_bash": .shell, "read_bash": .shell,
+    "apply_patch": .edit, "edit": .edit, "create": .edit,
+  ]
+
   static let planAgent = "plan"
   static let reviewCommands = ["gh pr diff", "gh pr view"]
+  // GitHub MCP pull request reads. Clients prefix the tool name with the server, for example
+  // github-mcp-server-pull_request_read (Copilot) or github_get_pull_request (OpenCode).
+  static let reviewToolSuffixes = ["pull_request_read", "get_pull_request", "get_pull_request_diff", "get_pull_request_files"]
   // A turn with no read, shell or edit calls is Planning when its Copilot messages wrote at least this many
   // output tokens (reasoning included). In our October 2026 sessions, most such turns had at most 714 output
   // tokens and the next one had 1,082, so the threshold sits in that gap.
@@ -50,7 +62,7 @@ public enum TaskCategorizer {
     let kinds = turn.toolCalls.map { kind(of: $0, source: turn.source) }
     if isDebugging(turn) { return .debugging }
     if kinds.contains(.edit) { return .implementation }
-    if turn.toolCalls.contains(where: isReviewCommand) { return .review }
+    if turn.toolCalls.contains(where: { isReviewCommand($0) || isReviewTool($0) }) { return .review }
     if turn.agent == planAgent { return .planning }
     if kinds.contains(.read) || kinds.contains(.shell) { return .investigation }
     // The rules above leave only turns without read, shell or edit calls, outside the plan agent.
@@ -67,6 +79,7 @@ public enum TaskCategorizer {
       case .pi: piToolKinds
       case .opencode: openCodeToolKinds
       case .omp: ompToolKinds
+      case .copilotCli, .copilotApp: copilotToolKinds
       }
     return toolKinds[toolCall.name] ?? .other
   }
@@ -94,5 +107,9 @@ public enum TaskCategorizer {
   static func isReviewCommand(_ toolCall: ToolCall) -> Bool {
     guard let command = toolCall.command else { return false }
     return reviewCommands.contains { command.contains($0) }
+  }
+
+  static func isReviewTool(_ toolCall: ToolCall) -> Bool {
+    reviewToolSuffixes.contains { toolCall.name.hasSuffix($0) }
   }
 }

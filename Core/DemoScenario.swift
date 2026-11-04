@@ -23,6 +23,7 @@ public struct DemoScenario: Sendable {
 
   public static let organization = "demo-org"
   static let unpricedModel = "demo-unpriced-model"
+  static let copilotChatsFolder = FileManager.default.homeDirectoryForCurrentUser.path + "/" + ProjectName.copilotChats
 
   public let name: Name
   public let now: Date
@@ -184,13 +185,16 @@ public struct DemoScenario: Sendable {
         // Different multipliers, so each model gets a mix of categories.
         let category = shape.categories[(3 * turnIndex + dayIndex) % shape.categories.count]
         let model = shape.models[(turnIndex + dayIndex) % shape.models.count]
-        // OpenCode, Pi and omp in turn.
-        let sources: [SessionSource] = [.opencode, .pi, .omp]
+        // OpenCode, Pi, omp, Copilot CLI and Copilot app in turn.
+        let sources: [SessionSource] = [.opencode, .pi, .omp, .copilotCli, .copilotApp]
         let sourceIndex = turnIndex % sources.count
         let source = sources[sourceIndex]
         // One session per day and source.
         let sessionIndex = dayIndex * sources.count + sourceIndex
-        let projectFolder = Shape.projectFolders[Shape.projectPattern[sessionIndex % Shape.projectPattern.count]]
+        // A Copilot app chat has its own folder under ~/.copilot/chats, which ProjectName groups as one project.
+        let projectFolder = source == .copilotApp
+          ? "\(copilotChatsFolder)/demo-\(dayIndex)/demo-chat"
+          : Shape.projectFolders[Shape.projectPattern[sessionIndex % Shape.projectPattern.count]]
         // 0.6, 1.0 or 1.4, so days and models do not all cost the same.
         let variation = 0.6 + 0.4 * Double((turnIndex + 2 * dayIndex) % 3)
         let tokens = tokens(for: category, scale: shape.tokenScale * scale * variation)
@@ -222,12 +226,13 @@ public struct DemoScenario: Sendable {
   // Tool calls that TaskCategorizer maps to the category.
   static func toolCalls(for category: TaskCategory, source: SessionSource, dayIndex: Int) -> [ToolCall] {
     let shellTool = source == .opencode ? "shell" : "bash"
+    let readTool = source == .copilotCli || source == .copilotApp ? "view" : "read"
     let sourceFile = "Demo/Sources/Feature\(dayIndex % 4).swift"
     switch category {
     case .investigation:
-      return [ToolCall(name: "read", filePath: sourceFile), ToolCall(name: shellTool, command: "rg runway Demo")]
+      return [ToolCall(name: readTool, filePath: sourceFile), ToolCall(name: shellTool, command: "rg runway Demo")]
     case .implementation:
-      return [ToolCall(name: "read", filePath: sourceFile), ToolCall(name: "edit", filePath: sourceFile)]
+      return [ToolCall(name: readTool, filePath: sourceFile), ToolCall(name: "edit", filePath: sourceFile)]
     case .debugging:
       return [
         ToolCall(name: "edit", filePath: sourceFile),
@@ -236,7 +241,7 @@ public struct DemoScenario: Sendable {
       ]
     case .review:
       return [ToolCall(name: shellTool, command: "gh pr view 12")]
-    // OpenCode Planning comes from the plan agent, Pi and omp Planning from the output tokens.
+    // OpenCode Planning comes from the plan agent, Pi, omp and Copilot Planning from the output tokens.
     case .planning, .uncategorized:
       return []
     }
