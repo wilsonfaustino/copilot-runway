@@ -422,6 +422,7 @@ Core/                Pure logic: usage client, session parsers, prices, runway, 
 CoreTests/           Unit tests, with sample sessions in CoreTests/Fixtures/
 packaging/Casks/     Homebrew cask
 scripts/release.sh   Release build: ad-hoc signed zip in dist/
+scripts/upload-release.sh   Notarized build and upload to the draft release
 ```
 
 The app target only renders. All parsing, pricing, runway math and categories live in `Core`.
@@ -434,14 +435,18 @@ Bump `MARKETING_VERSION` in `project.yml` and merge the PR. Then:
 
 1. Push the tag `vX.Y.Z`. The release workflow builds an ad-hoc signed zip with
    `./scripts/release.sh` and creates a draft release. CI holds no signing secrets.
-2. On your Mac, check out the tagged commit. Build the notarized zip and replace the
-   release asset:
+2. On your Mac, check out the tagged commit. Build the notarized zip, replace the
+   release asset and check its digest:
 
    ```sh
    DEVELOPER_ID_IDENTITY="Developer ID Application: <name> (<team id>)" \
-   NOTARY_KEYCHAIN_PROFILE="<profile>" ./scripts/release.sh
-   gh release upload vX.Y.Z dist/CopilotRunway-X.Y.Z.zip --clobber
+   NOTARY_KEYCHAIN_PROFILE="<profile>" ./scripts/upload-release.sh
    ```
+
+   The script stops unless both variables are set, the working tree is clean, HEAD is the
+   tag's commit and the GitHub release is a draft. It runs `./scripts/release.sh`, uploads the
+   zip with `--clobber` and fails unless the asset digest equals the local sha256. It does not
+   edit notes, publish or touch tags.
 
 3. Edit the draft release notes and click Publish. The sha256 in the draft notes is for the
    ad-hoc zip, so replace it. The `verify` job runs on macOS first. It downloads the zip and
