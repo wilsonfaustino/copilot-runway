@@ -4,8 +4,8 @@ Pure logic for Copilot Runway. The app target only renders what this module retu
 
 ## Session files
 
-The parsers keep only assistant messages billed through GitHub Copilot (provider `github-copilot`)
-with a timestamp at or after the cycle start (`Runway.cycleStart`). Each message becomes a
+The parsers keep only assistant messages billed through GitHub Copilot (provider `github-copilot`, or
+`copilot` without BYOK in Copilot CLI and app sessions) with a timestamp at or after the cycle start (`Runway.cycleStart`). Each message becomes a
 `UsageRecord`: model id, timestamp, and tokens (input, cached input, cache write, output).
 Output always includes reasoning tokens, because reasoning bills at the output rate.
 
@@ -55,6 +55,43 @@ omp (oh-my-pi) is a Pi fork. Checked on omp 18.12.3 in October 2026.
 - A missing `~/.omp` folder gives no turns and no warning, as for Pi. A file with no line that
   decodes adds the warning "Cannot read some omp sessions."
 
+### Copilot CLI and Copilot app (`CopilotSessionParser`)
+
+The Copilot CLI and the GitHub Copilot desktop app (bundle `com.github.githubapp`) write the same
+format to the same folder. Checked on CLI 1.0.105 and app 1.1.34 (embedded CLI 1.0.102) in November 2026.
+
+- Path: `~/.copilot/session-state/<session id>/`, one folder per session, with `events.jsonl` and
+  `workspace.yaml`. `COPILOT_HOME` is not read: an app started from the Dock or Finder does not get it.
+- `workspace.yaml` is flat `key: value` lines. The parser reads `id` (as `Turn.sessionId`), `cwd`
+  (as `Turn.directory`) and `client_name`, which sets the source:
+  - `github/cli`: `copilotCli`, shown as "Copilot CLI".
+  - `github/autopilot`: `copilotApp`, shown as "Copilot app". Its `cwd` is the app chat folder
+    `~/.copilot/chats/<date>/<name>-<short id>`.
+  - Any other value (`hermes-agent`, `vscode-agent-host`) and a folder without `workspace.yaml`
+    (CLI 0.0.38x, `optimistic-chat-*`) are skipped.
+- `events.jsonl` has one JSON event per line: `type`, `id`, `parentId`, `timestamp` (ISO 8601 UTC with
+  milliseconds), `data`. The parser decodes only `user.message` (turn start, no text), `session.usage_record`,
+  `assistant.message` (`data.toolRequests` only) and `tool.execution_complete` (`data.toolCallId` and
+  `data.fileEdits[].path` only). Prompt, answer and tool result text is never decoded.
+- Usage: `session.usage_record.data.usage`, one per model request:
+  - `model`, for example `gpt-6-luna`
+  - `provider.id` must be `copilot` and `isByok` must be `false`. Other records are skipped.
+  - `inputTokens` includes cache reads and writes, so `TokenUsage.input` is
+    `inputTokens - cacheReadTokens - cacheWriteTokens`. `outputTokens` already includes `reasoningTokens`.
+  - `copilotUsage.totalNanoAiu` is the billed amount. `UsageRecord.billedCredits` is
+    `totalNanoAiu / 1e9` (1 credit = $0.01 = 1e9 nano AIU), and `Credits` uses it instead of `PriceTable`.
+    On the CLI fixture this equals the `PriceTable` credits on every record. The app fixture was billed at
+    70% of the price card (cause unknown; that session ran with model `auto`), so `PriceTable` would
+    read 1.43x too high there.
+    A record without `totalNanoAiu` falls back to `PriceTable`.
+  - `accounting.usageId` is unique per request. Records are unique by it across all folders.
+- Not read: `~/.copilot/session-store.db` (its CLI rows repeat `events.jsonl`, and the app writes none),
+  `~/.copilot/data.db` (app private), `session.shutdown` and `session.usage_checkpoint` rollups (the app
+  and ACP hosts often write no shutdown).
+- Files last modified before the cycle start are skipped. A line that does not decode is skipped. A file
+  with lines but no line that decodes adds the warning "Cannot read some Copilot sessions." A missing
+  `~/.copilot/session-state` gives no turns and no warning.
+
 ### OpenCode (`OpenCodeSessionParser`)
 
 - Path: `~/.local/share/opencode/opencode*.db` (SQLite, WAL mode). Opened read only.
@@ -92,7 +129,7 @@ omp (oh-my-pi) is a Pi fork. Checked on omp 18.12.3 in October 2026.
 ### Turns (`Turn`)
 
 A turn is one user message plus all assistant messages and tool calls until the next user message.
-Each turn keeps its timestamp, source (`pi`, `opencode` or `omp`), agent (OpenCode only), tool calls
+Each turn keeps its timestamp, source (`pi`, `opencode`, `omp`, `copilotCli` or `copilotApp`), agent (OpenCode only), tool calls
 (name, file path for read and edit tools, command for shell tools), the Copilot `UsageRecord`s
 of its assistant messages, and its session: session id, folder, and for OpenCode the project root and
 parent session (see Session files). The parsers keep only the records that pass the filters in
@@ -113,6 +150,15 @@ to the priced models in `Credits.byModel`.
   `type: "tool"`: `name`, `state.input.path` (2.x) or `state.input.filePath` (1.x copies), and
   `state.input.command`. A `patch` call becomes one tool call per file in `state.metadata.files[].file`.
   A patch without metadata (16 of 217 in our data, all with `state.status = "error"`) has no file path.
+- Copilot CLI and app: only `user.message` starts a turn. Usage records and `assistant.message` events
+  join the turn of the last `user.message` before them, in file order. Tool calls are
+  `assistant.message.data.toolRequests[]`: `name`, `arguments.path`, `arguments.command`. `tool.execution_start`
+  repeats them and is not read. `apply_patch` has no path argument (its `arguments` is the patch text), so the
+  call becomes one tool call per path in `tool.execution_complete.data.fileEdits[]` of the same `toolCallId`.
+  Records before the first `user.message` form a turn of their own.
+  Unverified: a new `user.message` that arrives before the late completion of the previous request. The
+  late usage record and tools then join the new turn, because the parser does not join `apiCallId` or
+  `interactionId`. No sample session shows this.
 - OpenCode turns read only the 2.x table. The 158 legacy `message` rows that 2.x did not copy end in
   April 2026, so they cannot be in a current cycle.
 - A turn that starts before the cycle keeps only its messages in the cycle. OpenCode also drops its
@@ -125,12 +171,27 @@ to the priced models in `Credits.byModel`.
 
 ### Tool names
 
-| Kind | Pi | omp | OpenCode |
-|---|---|---|---|
-| Read (read, search, fetch) | `read`, `grep`, `find`, `ls` | Pi names plus `glob`, `ast_grep` | `read`, `grep`, `glob`, `list`, `webfetch`, `websearch` |
-| Shell | `bash` | `bash` | `shell`, `bash` (1.x) |
-| Edit | `edit`, `write` | `edit`, `write`, `ast_edit` | `patch`, `apply_patch`, `edit`, `write`, `multiedit` (1.x) |
-| Neutral | all others, for example `codemode`, `tool_search`, `mcp__*` | all others, for example `task` | all others, for example `execute`, `skill`, `question`, `subagent`, `todowrite` |
+| Kind | Pi | omp | OpenCode | Copilot CLI and app |
+|---|---|---|---|---|
+| Read (read, search, fetch) | `read`, `grep`, `find`, `ls` | Pi names plus `glob`, `ast_grep` | `read`, `grep`, `glob`, `list`, `webfetch`, `websearch` | `view`, `glob`, `grep`, `rg`, `semantic_code_search`, `web_fetch`, `web_search`, `fetch_copilot_cli_documentation` |
+| Shell | `bash` | `bash` | `shell`, `bash` (1.x) | `bash`, `write_bash`, `read_bash` |
+| Edit | `edit`, `write` | `edit`, `write`, `ast_edit` | `patch`, `apply_patch`, `edit`, `write`, `multiedit` (1.x) | `apply_patch`, `edit`, `create` |
+| Neutral | all others, for example `codemode`, `tool_search`, `mcp__*` | all others, for example `task` | all others, for example `execute`, `skill`, `question`, `subagent`, `todowrite` | all others, for example `skill`, `task`, `report_intent`, `ask_user` |
+
+Copilot names seen in the 1.0.x fixtures (`CoreTests/Fixtures/copilot/`): `view`, `bash`, `apply_patch`,
+`skill`, `web_search`, `web_fetch`. Not seen in a 1.0.x session yet, so their mapping is unverified:
+
+- `glob`, `rg`, `semantic_code_search`, `fetch_copilot_cli_documentation`: from the 1.0.105 tool list
+  in `session.usage_checkpoint`. The path argument key of `glob` and `rg` is unknown.
+- `grep`, `edit`, `create`, `write_bash`, `read_bash`: seen only in CLI 0.0.38x sessions. 1.0.x GPT
+  sessions use `rg` and `apply_patch` instead; Claude models on 1.0.x may still use them.
+- `github-mcp-server-pull_request_read` (Review, see below): seen only in CLI 0.0.38x sessions.
+- `read_bash` counts as shell, so an edit, a `read_bash` and an edit of the same file is Debugging.
+
+The Review rule for MCP pull request reads also matches `get_pull_request`, `get_pull_request_diff` and
+`get_pull_request_files` with any prefix (for example `github_get_pull_request` in OpenCode or
+`mcp__github__get_pull_request_files`). These names come from the GitHub MCP server tool names. No
+fixture of any client holds them.
 
 Neutral tools do not change the category. `execute` and `codemode` run code that can call other
 tools, and the session does not record which ones, so they stay neutral.
@@ -148,7 +209,7 @@ Rules, checked in this order. The first match wins.
 |---|---|
 | Debugging | An edit, then a shell call, then an edit of the same file path |
 | Implementation | Any edit. Every edited file counts as a source file, docs included |
-| Review | A shell command that contains `gh pr diff` or `gh pr view`, no edits. Substring match, so `rtk gh pr view` also counts |
+| Review | A shell command that contains `gh pr diff` or `gh pr view`, or a GitHub MCP pull request read, no edits. Substring match, so `rtk gh pr view` also counts. An MCP read is a tool name that ends with `pull_request_read`, `get_pull_request`, `get_pull_request_diff` or `get_pull_request_files`, for every source, so the server prefix does not matter (`github-mcp-server-`, `github_`, `mcp__github__`) |
 | Planning | The OpenCode `plan` agent, no edits and no review command. Read and shell calls do not change this |
 | Investigation | Any read or shell call, no edits |
 | Planning | No read, shell or edit calls, and at least 1,000 output tokens (reasoning included) |
@@ -157,17 +218,18 @@ Rules, checked in this order. The first match wins.
 ## Dashboard aggregates
 
 All dashboard numbers come from the same turns, so they add up to the same local total.
-`SessionCredits.load` reads the Pi, omp and OpenCode turns once, picks the prices, and builds every
+`SessionCredits.load` reads the Pi, omp, OpenCode and Copilot turns once, picks the prices, and builds every
 aggregate. It takes the records for `Credits.byModel` and `Credits.byDay` from the current cycle turns
 after the split at the cycle start (see Last cycle comparison).
-Messages from models without a price add 0, as in `Credits.byCategory`.
+A record with `billedCredits` (Copilot CLI and app) counts those credits. Every other record is priced
+with `PriceTable`. Messages from models without a price and without billed credits add 0, as in `Credits.byCategory`.
 
 - `Credits.byDay`: one entry per day from the cycle start through now, days without messages at 0.
   The caller passes the calendar. The app uses `Runway.utcCalendar` (UTC days), because the cycle
   starts and resets at midnight UTC: every bucket is a whole day inside the cycle. With local days,
   a user at UTC-3 gets a first bucket of 3 hours (September 30, 21:00 to midnight) and loses the
   last 3 hours of the cycle. The chart labels days in UTC too.
-- `Credits.bySource`: priced credits per `Turn.source` (OpenCode, Pi, omp). `UsageRecord` has no source.
+- `Credits.bySource`: priced credits per `Turn.source` (OpenCode, Pi, omp, Copilot CLI, Copilot app). `UsageRecord` has no source.
 - `Credits.byModelAndCategory`: priced credits per model and task. A turn can mix models, so each record
   goes to its own model and the category of its turn. The totals per model equal `byModel` and the
   totals per category equal `byCategory`.
@@ -224,9 +286,11 @@ the dashboard: they are not in Copy summary (`QuotaSummary`), the Share image or
    the home folder stops the walk. A folder that is gone keeps its recorded path.
    A `.git` file with `gitdir: <repo>/.git/worktrees/<name>` (a linked worktree) gives `<repo>`. A relative
    `gitdir` is relative to the folder. Any other `.git` file (a submodule) makes the folder the root.
-3. Orca workspace: `~/orca/workspaces/<repo>/<branch>` and its subfolders give `<repo>`. Orca removes these
+3. Copilot app chats: a folder under `~/.copilot/chats/` gives "Copilot app chats". Each app chat has its own
+   folder and no repo, so all chats are one project. A chat folder with a `.git` entry is named by rule 2.
+4. Orca workspace: `~/orca/workspaces/<repo>/<branch>` and its subfolders give `<repo>`. Orca removes these
    folders after a merge, so this rule needs no disk.
-4. The last component of the session folder.
+5. The last component of the session folder.
 
 Any rule's folder under `/tmp`, `/private/tmp`, `/var/folders` or `/private/var/folders` gives "Temporary".
 The home folder and `/` give "Home". A turn with no folder gives "Unknown folder".
@@ -460,8 +524,9 @@ The commit search is `author:@me author-date:>=<cycle start> user:<org>`. These 
 - Commits: commit search covers only the default branch of each repo, so commits on branches that are
   not merged do not count. `author-date` is the date the commit was written, not pushed.
   `total_count` is the exact total, also above 1,000.
-- Credits per PR authored = `credits_used` from the usage API / PRs. PRs reviewed and commits are
-  shown as counts but are not in the divisor. With 0 PRs there is no value. `credits_used` is all Copilot use on
+- Credits per PR authored = credits used from the usage API / PRs. Credits used is `entitlement - quota_remaining`
+  (`credits_used` on unlimited plans). PRs reviewed and commits are
+  shown as counts but are not in the divisor. With 0 PRs there is no value. Credits used is all Copilot use on
   the account, also outside the organization.
 
 ### Copilot code reviews
