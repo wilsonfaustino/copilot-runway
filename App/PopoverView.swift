@@ -6,7 +6,9 @@ struct PopoverView: View {
   let closePopover: () -> Void
   // The share card renders this view without controls and notices.
   var forShare = false
-  var share: (NSView) -> Void = { _ in }
+  var share: (NSView) -> Void = { _ in
+    // No-op default: only the live popover wires sharing.
+  }
   @AppStorage("localOnlyNoticeDismissed") private var localOnlyNoticeDismissed = false
   @Environment(\.openWindow) private var openWindow
   @Environment(\.openSettings) private var openSettings
