@@ -66,7 +66,7 @@ Each rule gets unit tests with fixture sessions in `CoreTests/Fixtures/`.
 - Decision (2026-10-31): sign with the Developer ID of the team PX9G95LY8C.
 - `scripts/release.sh` is ad-hoc by default, without hardened runtime. Library validation needs a Team ID, and dyld refuses `Core.framework` under an ad-hoc signature. With `DEVELOPER_ID_IDENTITY` and `NOTARY_KEYCHAIN_PROFILE` set, it signs with hardened runtime and a timestamp, notarizes, staples and checks with spctl.
 - CI builds stay ad-hoc and hold no signing secrets (decision 2026-10-31).
-- The maintainer builds the notarized zip locally with `scripts/release.sh` and replaces the release asset (`gh release upload --clobber`) before Publish.
+- The maintainer runs `scripts/upload-release.sh` locally. It builds the notarized zip with `scripts/release.sh`, replaces the draft release asset (`gh release upload --clobber`) and checks the asset digest. Notes and Publish stay manual.
 - The `verify` job in `release.yml` runs on macos-26 before the `tap` job. It fails unless the release zip passes `codesign --verify --deep --strict`, has `TeamIdentifier=PX9G95LY8C`, passes `xcrun stapler validate`, and `spctl` reports `Notarized Developer ID` (a warning only when the runner has Gatekeeper assessments off). The `tap` job fails if its sha256 differs from the one `verify` checked.
 - Notarization starts with 1.0.0. Versions 0.9.0 and older are ad-hoc signed.
 - Ask the user before choosing or using any identity.
