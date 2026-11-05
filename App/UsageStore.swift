@@ -7,9 +7,11 @@ import Observation
 final class UsageStore {
   static let refreshInterval: Duration = .seconds(5 * 60)
   static let organizationKey = "githubOrganization"
+  static let gaugeModeKey = "gaugeMode"
   static let releaseCheckInterval: TimeInterval = 24 * 60 * 60
 
   private(set) var title = MenuBarTitle.placeholder
+  private(set) var gaugeMode = UsageStore.savedGaugeMode()
   private(set) var errorMessage: String?
   private(set) var usageError: CopilotUsageError?
   private(set) var lastRefresh: Date?
@@ -68,6 +70,28 @@ final class UsageStore {
     ) { [weak self] _ in
       Task { await self?.refresh() }
     }
+    // The Settings toggle writes the mode with @AppStorage, so the store re-reads it and the menu bar redraws with no relaunch.
+    NotificationCenter.default.addObserver(
+      forName: UserDefaults.didChangeNotification,
+      object: nil,
+      queue: .main
+    ) { [weak self] _ in
+      Task { await self?.reloadGaugeMode() }
+    }
+  }
+
+  private static func savedGaugeMode() -> GaugeMode {
+    UserDefaults.standard.string(forKey: gaugeModeKey).flatMap(GaugeMode.init(rawValue:)) ?? .left
+  }
+
+  // didChangeNotification fires for every setting, so only a new mode changes the store.
+  private func reloadGaugeMode() {
+    let savedMode = Self.savedGaugeMode()
+    guard savedMode != gaugeMode else { return }
+    gaugeMode = savedMode
+    if usageError == nil, let usage {
+      title = MenuBarTitle.title(usage: usage, now: .now, mode: savedMode)
+    }
   }
 
   func refresh() async {
@@ -83,7 +107,7 @@ final class UsageStore {
     Task { await refreshReleaseIfDue() }
     do throws(CopilotUsageError) {
       let usage = try await CopilotUsageClient.fetchCurrentUsage()
-      title = MenuBarTitle.title(usage: usage, now: .now)
+      title = MenuBarTitle.title(usage: usage, now: .now, mode: gaugeMode)
       errorMessage = nil
       usageError = nil
       lastRefresh = .now
@@ -125,7 +149,7 @@ final class UsageStore {
   // No usage poll, release check, outcomes fetch, session files or run-out notices.
   private func applyDemo(_ demoScenario: DemoScenario) {
     usage = demoScenario.usage
-    title = MenuBarTitle.title(usage: demoScenario.usage, now: .now)
+    title = MenuBarTitle.title(usage: demoScenario.usage, now: .now, mode: gaugeMode)
     lastRefresh = .now
     outcomes = demoScenario.outcomes
     copilotReviewCount = demoScenario.copilotReviewCount
@@ -135,7 +159,9 @@ final class UsageStore {
 
   func summaryText() -> String? {
     usage.map {
-      QuotaSummary.text(usage: $0, now: .now, modelCredits: modelCredits, categoryCredits: categoryCredits, outcomes: outcomes)
+      QuotaSummary.text(
+        usage: $0, now: .now, modelCredits: modelCredits, categoryCredits: categoryCredits, outcomes: outcomes,
+        gaugeMode: gaugeMode)
     }
   }
 

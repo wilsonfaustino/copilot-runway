@@ -121,11 +121,13 @@ struct PopoverView: View {
 
   private func runwaySection(health: RunwayHealth, now: Date) -> some View {
     let usage = usageStore.usage
+    let gaugeMode = usageStore.gaugeMode
     let accent = Theme.accent(health)
     return HStack(spacing: 18) {
       RunwayRing(
-        remainingFraction: MenuBarTitle.remainingFraction(usage: usage),
-        percentRemaining: usage.map(Runway.wholePercentRemaining),
+        gaugeFraction: MenuBarTitle.gaugeFraction(usage: usage, mode: gaugeMode),
+        gaugePercent: usage.map { Runway.wholeGaugePercent(usage: $0, mode: gaugeMode) },
+        gaugeMode: gaugeMode,
         accent: accent,
         openCount: openCount,
         isStatic: forShare
@@ -302,12 +304,13 @@ struct PopoverView: View {
 }
 
 private struct RunwayRing: View {
-  let remainingFraction: Double
-  let percentRemaining: Int?
+  let gaugeFraction: Double
+  let gaugePercent: Int?
+  let gaugeMode: GaugeMode
   let accent: Color
-  // Each change replays the sweep from full to the current fraction.
+  // Each change replays the sweep from the mode's start fraction to the current fraction.
   let openCount: Int
-  // ImageRenderer draws one frame, where the animator is still at its start: a full ring.
+  // ImageRenderer draws one frame, where the animator is still at its start fraction.
   let isStatic: Bool
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -327,32 +330,33 @@ private struct RunwayRing: View {
 
   var body: some View {
     let reduceMotion = reduceMotion
-    let remainingFraction = remainingFraction
+    let gaugeFraction = gaugeFraction
+    let sweepStartFraction = gaugeMode.sweepStartFraction
     let accent = accent
     ZStack {
       Self.horseshoe(fraction: 1, color: accent.opacity(RunwayGlyph.trackOpacity))
       if isStatic {
-        if remainingFraction > 0 {
-          Self.horseshoe(fraction: remainingFraction, color: accent)
+        if gaugeFraction > 0 {
+          Self.horseshoe(fraction: gaugeFraction, color: accent)
         }
       } else {
         // The animator only supplies the progress value. The arc is built from it, so the clear view is not shown.
         Color.clear
           .keyframeAnimator(initialValue: 0.0, trigger: openCount) { _, progress in
             let sweepProgress = reduceMotion ? 1 : progress
-            let shownFraction = 1 - (1 - remainingFraction) * sweepProgress
+            let shownFraction = sweepStartFraction + (gaugeFraction - sweepStartFraction) * sweepProgress
             if shownFraction > 0 {
               Self.horseshoe(fraction: shownFraction, color: accent)
             }
           } keyframes: { _ in
             LinearKeyframe(1.0, duration: Self.sweepDuration, timingCurve: .easeOut)
           }
-          .animation(reduceMotion ? nil : .easeOut(duration: Self.refreshDuration), value: remainingFraction)
+          .animation(reduceMotion ? nil : .easeOut(duration: Self.refreshDuration), value: gaugeFraction)
       }
       VStack(spacing: 0) {
-        Text(percentRemaining.map { "\($0)%" } ?? "--%")
+        Text(gaugePercent.map { "\($0)%" } ?? "--%")
           .bigFigureStyle()
-        Text("left")
+        Text(gaugeMode == .spent ? "spent" : "left")
           .captionStyle()
       }
     }
@@ -360,7 +364,9 @@ private struct RunwayRing: View {
     .frame(width: Self.diameter, height: Self.diameter)
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(
-      percentRemaining.map { "\($0) percent of credits remaining" } ?? "Credits remaining unknown"
+      gaugeMode == .spent
+        ? gaugePercent.map { "\($0) percent of credits spent" } ?? "Credits spent unknown"
+        : gaugePercent.map { "\($0) percent of credits remaining" } ?? "Credits remaining unknown"
     )
   }
 }

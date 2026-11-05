@@ -64,6 +64,14 @@ public enum Runway {
     max(Int(usage.percentRemaining.rounded()), 0)
   }
 
+  // The percent the gauges show. Spent is 100 minus the left percent clamped to 0...100, so it stays in 0...100.
+  public static func wholeGaugePercent(usage: CopilotUsage, mode: GaugeMode) -> Int {
+    switch mode {
+    case .left: wholePercentRemaining(usage: usage)
+    case .spent: 100 - min(wholePercentRemaining(usage: usage), 100)
+    }
+  }
+
   // The moment the remaining credits reach 0 at the average daily burn. It can fall after the reset date.
   public static func runOutDate(usage: CopilotUsage, now: Date) -> Date? {
     daysLeft(usage: usage, now: now).map { now.addingTimeInterval($0 * secondsPerDay) }

@@ -2,7 +2,7 @@ import AppKit
 import Core
 import SwiftUI
 
-// The menu bar credit gauge: a thick horseshoe whose arc shows the share of credits left.
+// The menu bar credit gauge: a thick horseshoe whose arc shows the share of credits left or spent, per GaugeMode.
 // The gauge is drawn on a 24 unit grid.
 struct RunwayGlyph {
   static let menuBarSize: CGFloat = 16
@@ -15,7 +15,7 @@ struct RunwayGlyph {
   // The drawing handler runs at draw time, so the dynamic accent color follows the menu bar appearance.
   // The track is a 270 degree horseshoe with its gap at the bottom. The arc starts at the lower left and grows
   // clockwise. At 0 only the track shows.
-  static func menuBarImage(remainingFraction: Double, health: RunwayHealth) -> NSImage {
+  static func menuBarImage(gaugeFraction: Double, health: RunwayHealth) -> NSImage {
     let accentColor = Theme.accentNSColor(health)
     let size = NSSize(width: menuBarSize, height: menuBarSize)
     let image = NSImage(size: size, flipped: true) { rect in
@@ -35,8 +35,8 @@ struct RunwayGlyph {
         context.strokePath()
       }
       strokeArc(sweepDegrees: Self.trackSweepDegrees, color: accentColor.withAlphaComponent(Self.trackOpacity))
-      if remainingFraction > 0 {
-        strokeArc(sweepDegrees: Self.trackSweepDegrees * remainingFraction, color: accentColor)
+      if gaugeFraction > 0 {
+        strokeArc(sweepDegrees: Self.trackSweepDegrees * gaugeFraction, color: accentColor)
       }
       return true
     }
