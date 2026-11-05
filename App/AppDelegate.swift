@@ -63,8 +63,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         button.image = image
       } else {
         let health = RunwayHealth(usage: usageStore.usage, hasError: false, now: .now)
-        let remainingFraction = MenuBarTitle.remainingFraction(usage: usageStore.usage)
-        button.image = RunwayGlyph.menuBarImage(remainingFraction: remainingFraction, health: health)
+        let gaugeFraction = MenuBarTitle.gaugeFraction(usage: usageStore.usage, mode: usageStore.gaugeMode)
+        button.image = RunwayGlyph.menuBarImage(gaugeFraction: gaugeFraction, health: health)
       }
       button.title = usageStore.title
     } onChange: {

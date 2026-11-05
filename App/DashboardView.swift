@@ -178,13 +178,14 @@ struct DashboardView: View {
   }
 
   private func remainingCard(usage: CopilotUsage, health: RunwayHealth) -> some View {
-    kpiCard("Remaining") {
+    let gaugeMode = usageStore.gaugeMode
+    return kpiCard(gaugeMode == .spent ? "Spent" : "Remaining") {
       if usage.isUnlimited {
         Text("Unlimited").bigFigureStyle(size: 34)
         kpiDetail("\(Credits.formatted(usage.creditsUsed)) used")
       } else {
-        Text("\(Runway.wholePercentRemaining(usage: usage))%").bigFigureStyle(size: 34)
-        shareBar(fraction: usage.percentRemaining / 100, color: Theme.accent(health))
+        Text("\(Runway.wholeGaugePercent(usage: usage, mode: gaugeMode))%").bigFigureStyle(size: 34)
+        shareBar(fraction: MenuBarTitle.gaugeFraction(usage: usage, mode: gaugeMode), color: Theme.accent(health))
         kpiDetail("\(Credits.formatted(usage.creditsUsed)) of \(Credits.formatted(usage.entitlement)) used")
       }
     }

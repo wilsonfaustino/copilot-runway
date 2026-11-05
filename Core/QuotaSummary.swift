@@ -10,7 +10,8 @@ public enum QuotaSummary {
     now: Date,
     modelCredits: [ModelCredits],
     categoryCredits: [CategoryCredits],
-    outcomes: GitHubOutcomes? = nil
+    outcomes: GitHubOutcomes? = nil,
+    gaugeMode: GaugeMode = .left
   ) -> String {
     let cycleStart = Runway.cycleStart(resetDate: usage.resetDate)
     let lastCycleDay = Runway.lastCycleDay(resetDate: usage.resetDate)
@@ -18,8 +19,12 @@ public enum QuotaSummary {
     if usage.isUnlimited {
       lines.append("Used: \(number(usage.creditsUsed)) credits (unlimited plan)")
     } else {
-      let percentRemaining = Int(usage.percentRemaining.rounded())
-      lines.append("Used: \(number(usage.creditsUsed)) of \(number(usage.entitlement)) credits (\(percentRemaining)% remaining)")
+      // Left mode rounds without a clamp, as before the gauge mode existed. Spent matches the gauge percent.
+      let percentText = switch gaugeMode {
+      case .left: "\(Int(usage.percentRemaining.rounded()))% remaining"
+      case .spent: "\(Runway.wholeGaugePercent(usage: usage, mode: .spent))% spent"
+      }
+      lines.append("Used: \(number(usage.creditsUsed)) of \(number(usage.entitlement)) credits (\(percentText))")
     }
     lines.append("Average daily burn: \(number(Runway.averageDailyBurn(usage: usage, now: now))) credits/day")
     if !usage.isUnlimited {

@@ -6,6 +6,7 @@ struct SettingsView: View {
   @State private var organizationText = ""
   @AppStorage(RunwayNotifier.enabledKey) private var runwayNotificationsEnabled = true
   @AppStorage(Theme.taskPalettePreferenceKey) private var taskPalettePreference = TaskPalettePreference.unset
+  @AppStorage(UsageStore.gaugeModeKey) private var gaugeMode = GaugeMode.left
   @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiatesWithoutColor
 
   private var organizationStatus: SettingsOrganizationStatus {
@@ -42,6 +43,7 @@ struct SettingsView: View {
           .padding(.top, Theme.Spacing.small)
       }
       notificationsSection
+      gaugeSection
       chartsSection
       Section {
         LabeledContent("GitHub account") {
@@ -94,6 +96,27 @@ struct SettingsView: View {
       )
       .captionStyle()
       .padding(.top, Theme.Spacing.small)
+    }
+  }
+
+  private var showsCreditsSpent: Binding<Bool> {
+    Binding(get: { gaugeMode == .spent }, set: { gaugeMode = $0 ? .spent : .left })
+  }
+
+  private var gaugeSection: some View {
+    Section {
+      Toggle("Show credits spent instead of left", isOn: showsCreditsSpent)
+        .toggleStyle(.switch)
+        #if DEBUG
+        // Demo mode must not write the real preference.
+        .disabled(DemoLaunch.isActive)
+        #endif
+    } header: {
+      Text("Gauge")
+    } footer: {
+      Text("Applies to the menu bar, the popover ring, the dashboard and Copy summary. The color still follows the runway.")
+        .captionStyle()
+        .padding(.top, Theme.Spacing.small)
     }
   }
 
