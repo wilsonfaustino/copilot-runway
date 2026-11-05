@@ -137,6 +137,8 @@ you authored. See [Credits per PR authored](#credits-per-pr-authored-1).
 Open Settings with the gear button in the popover:
 
 - GitHub organization for outcomes. The status line under it shows if gh can search it.
+- Show credits spent instead of left. Off by default. When on, the menu bar, the popover ring,
+  the dashboard, the Share card and Copy summary show the share of credits spent in the cycle.
 - The GitHub account source ("From gh auth. No token stored.").
 - The path of the price override file.
 - An About section with the app version, the author, a Star on GitHub link and the license.
