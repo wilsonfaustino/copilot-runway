@@ -12,7 +12,7 @@ final class SharePicker: NSObject, @preconcurrency NSSharingServicePickerDelegat
 
   // Slack has no share extension, so the copy items are its path: copy, then paste.
   func sharingServicePicker(
-    _ sharingServicePicker: NSSharingServicePicker,
+    _ _: NSSharingServicePicker,
     sharingServicesForItems items: [Any],
     proposedSharingServices proposedServices: [NSSharingService]
   ) -> [NSSharingService] {
@@ -46,11 +46,13 @@ final class ShareAnchor {
 struct ShareAnchorView: NSViewRepresentable {
   let anchor: ShareAnchor
 
-  func makeNSView(context: Context) -> NSView {
+  func makeNSView(context _: Context) -> NSView {
     let view = NSView()
     anchor.view = view
     return view
   }
 
-  func updateNSView(_ nsView: NSView, context: Context) {}
+  func updateNSView(_ _: NSView, context _: Context) {
+    // The anchor view never changes after creation.
+  }
 }

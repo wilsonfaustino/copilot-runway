@@ -104,14 +104,21 @@ public enum CopilotSessionParser {
     return turns.indices.compactMap { turnIndex in
       guard !turns[turnIndex].records.isEmpty else { return nil }
       var sessionTurn = turns[turnIndex]
-      sessionTurn.toolCalls = zip(turns[turnIndex].toolCalls, toolCallIds[turnIndex]).flatMap { toolCall, toolCallId in
-        guard toolCall.filePath == nil, let toolCallId, let editedPaths = editedPathsByToolCallId[toolCallId], !editedPaths.isEmpty
-        else { return [toolCall] }
-        return editedPaths.map { ToolCall(name: toolCall.name, filePath: $0) }
-      }
+      sessionTurn.toolCalls = expandedToolCalls(
+        turns[turnIndex].toolCalls, toolCallIds: toolCallIds[turnIndex], editedPathsByToolCallId: editedPathsByToolCallId)
       sessionTurn.sessionId = sessionId
       sessionTurn.directory = directory
       return sessionTurn
+    }
+  }
+
+  private static func expandedToolCalls(
+    _ toolCalls: [ToolCall], toolCallIds: [String?], editedPathsByToolCallId: [String: [String]]
+  ) -> [ToolCall] {
+    zip(toolCalls, toolCallIds).flatMap { toolCall, toolCallId in
+      guard toolCall.filePath == nil, let toolCallId, let editedPaths = editedPathsByToolCallId[toolCallId], !editedPaths.isEmpty
+      else { return [toolCall] }
+      return editedPaths.map { ToolCall(name: toolCall.name, filePath: $0) }
     }
   }
 

@@ -11,7 +11,13 @@ enum ShareCardRenderer {
     // windowBackgroundColor renders as #282828 in dark mode. ImageRenderer lifts dark values, so 23 renders as the target #1E1E1E.
     let darkBackground = Color(red: 23 / 255, green: 23 / 255, blue: 23 / 255)
     let renderer = ImageRenderer(
-      content: PopoverView(usageStore: usageStore, closePopover: {}, forShare: true)
+      content: PopoverView(
+        usageStore: usageStore,
+        closePopover: {
+          // The share card has no popover to close.
+        },
+        forShare: true
+      )
         .background(colorScheme == .dark ? darkBackground : Color(nsColor: .windowBackgroundColor))
         .environment(\.colorScheme, colorScheme)
     )
