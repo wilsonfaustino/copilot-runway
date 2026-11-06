@@ -10,6 +10,7 @@ struct PopoverView: View {
     // No-op default: only the live popover wires sharing.
   }
   @AppStorage("localOnlyNoticeDismissed") private var localOnlyNoticeDismissed = false
+  @AppStorage("whatsNewLastSeenVersion") private var whatsNewLastSeenVersion: String?
   @Environment(\.openWindow) private var openWindow
   @Environment(\.openSettings) private var openSettings
   @State private var openCount = 0
@@ -25,6 +26,9 @@ struct PopoverView: View {
       header
       if !forShare && !localOnlyNoticeDismissed {
         localOnlyBanner
+      }
+      if !forShare, let whatsNew = whatsNewDecision.banner {
+        whatsNewBanner(whatsNew)
       }
       if !forShare, let errorMessage = usageStore.errorMessage {
         Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
@@ -60,7 +64,10 @@ struct PopoverView: View {
     .frame(width: 360)
     // NSPopover keeps this view between shows, so onAppear fires only on the first show.
     // That first show may also post willShow, and a second bump only restarts the ring sweep.
-    .onAppear { openCount += 1 }
+    .onAppear {
+      openCount += 1
+      storeWhatsNewBaselineIfNoBanner()
+    }
     .onReceive(NotificationCenter.default.publisher(for: NSPopover.willShowNotification)) { _ in openCount += 1 }
   }
 
@@ -84,6 +91,64 @@ struct PopoverView: View {
           .monospacedDigit()
       }
     }
+  }
+
+  private var whatsNewDecision: WhatsNew.Decision {
+    WhatsNew.decide(
+      currentVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "",
+      lastSeenVersion: whatsNewLastSeenVersion,
+      isExistingUser: localOnlyNoticeDismissed
+    )
+  }
+
+  // A fresh install or a release without notes moves the baseline at once, so a later release still shows its notes.
+  private func storeWhatsNewBaselineIfNoBanner() {
+    guard !forShare, let versionToStore = whatsNewDecision.versionToStore else { return }
+    #if DEBUG
+    // Demo mode must not write the real preference.
+    if DemoLaunch.isActive { return }
+    #endif
+    whatsNewLastSeenVersion = versionToStore
+  }
+
+  // Same look as the Local only notice.
+  private func whatsNewBanner(_ whatsNew: WhatsNew) -> some View {
+    let noticeColor = Theme.accent(.healthy)
+    return HStack(alignment: .top, spacing: Theme.Spacing.regular) {
+      Image(systemName: "sparkles")
+        .foregroundStyle(noticeColor)
+        .accessibilityHidden(true)
+      VStack(alignment: .leading, spacing: 4) {
+        Text("What's New in \(whatsNew.version)")
+          .font(.system(size: 12, weight: .semibold))
+        ForEach(whatsNew.lines, id: \.self) { line in
+          Text(line)
+            .font(.system(size: 12))
+            .fixedSize(horizontal: false, vertical: true)
+        }
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      Button {
+        whatsNewLastSeenVersion = whatsNew.version
+      } label: {
+        Image(systemName: "xmark")
+          .font(.system(size: 10, weight: .bold))
+          .foregroundStyle(.secondary)
+          .frame(width: 22, height: 22)
+          .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel("Dismiss What's New")
+      #if DEBUG
+      // Demo mode must not write the real preference.
+      .disabled(DemoLaunch.isActive)
+      #endif
+    }
+    .padding(.vertical, Theme.Spacing.regular)
+    .padding(.horizontal, 12)
+    .background(noticeColor.opacity(0.10), in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card).strokeBorder(noticeColor.opacity(0.22)))
+    .accessibilityElement(children: .contain)
   }
 
   // The notice is always blue, so it does not read as a runway warning.
