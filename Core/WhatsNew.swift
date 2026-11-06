@@ -23,9 +23,7 @@ public struct WhatsNew: Equatable, Sendable {
   }
 
   // One entry per release with user-visible changes, keyed by version. Add it in the release commit.
-  public static let bundledNotes: [String: [String]] = [
-    "1.1.0": ["New in Settings: show credits spent instead of credits left in the menu bar, ring and Dashboard."],
-  ]
+  public static let bundledNotes: [String: [String]] = [:]
 
   // isExistingUser separates a fresh install from an upgrade from a version older than this feature,
   // because both have no stored last-seen version.

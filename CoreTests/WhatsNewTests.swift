@@ -79,3 +79,15 @@ func whatsNewDecision(
     #expect(WhatsNew.decide(currentVersion: version, lastSeenVersion: "0.0.1", isExistingUser: true).banner != nil, "\(version)")
   }
 }
+
+@Test func noTwoBundledNotesKeysAreTheSameVersion() {
+  let versions = Array(WhatsNew.bundledNotes.keys)
+  for (index, version) in versions.enumerated() {
+    for otherVersion in versions[(index + 1)...] {
+      let isSameVersion =
+        ReleaseCheck.newerVersion(latestTag: version, currentVersion: otherVersion) == nil
+        && ReleaseCheck.newerVersion(latestTag: otherVersion, currentVersion: version) == nil
+      #expect(!isSameVersion, "\(version) and \(otherVersion)")
+    }
+  }
+}
