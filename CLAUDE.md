@@ -82,3 +82,17 @@ If a task seems to need one of these, stop and ask.
 - Never use em dashes anywhere, including comments, strings and docs
 - 2-space indent, LF line endings, UTF-8, trim trailing whitespace, final newline
 - Small types with clear names. No protocols or abstractions until a second implementation exists.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live in GitHub Issues (gh CLI). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five labels: needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
