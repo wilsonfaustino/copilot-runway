@@ -483,7 +483,9 @@ Wilson Faustino ([@wilsonfaustino](https://github.com/wilsonfaustino))
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE). One exception: `scripts/xccov-to-sonarqube-generic.sh` is LGPL-3.0,
+copied from [SonarSource sonar-scanning-examples](https://github.com/SonarSource/sonar-scanning-examples).
+It runs only in CI and is not part of the app.
 
 ## Credits
 
