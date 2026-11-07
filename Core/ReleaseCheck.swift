@@ -33,15 +33,24 @@ public enum ReleaseCheck {
   // A version that does not parse never counts as an update.
   public static func newerVersion(latestTag: String, currentVersion: String) -> String? {
     guard
-      let latestComponents = versionComponents(latestTag),
-      let currentComponents = versionComponents(currentVersion)
+      compareVersions(currentVersion, latestTag) == .orderedAscending,
+      let latestComponents = versionComponents(latestTag)
     else { return nil }
-    let componentCount = max(latestComponents.count, currentComponents.count)
-    // Missing components count as 0, so 0.2 and 0.2.0 are the same version.
-    let paddedLatest = latestComponents + Array(repeating: 0, count: componentCount - latestComponents.count)
-    let paddedCurrent = currentComponents + Array(repeating: 0, count: componentCount - currentComponents.count)
-    guard paddedCurrent.lexicographicallyPrecedes(paddedLatest) else { return nil }
     return latestComponents.map(String.init).joined(separator: ".")
+  }
+
+  // Nil when either version does not parse.
+  static func compareVersions(_ leftVersion: String, _ rightVersion: String) -> ComparisonResult? {
+    guard
+      let leftComponents = versionComponents(leftVersion),
+      let rightComponents = versionComponents(rightVersion)
+    else { return nil }
+    let componentCount = max(leftComponents.count, rightComponents.count)
+    // Missing components count as 0, so 0.2 and 0.2.0 are the same version.
+    let paddedLeft = leftComponents + Array(repeating: 0, count: componentCount - leftComponents.count)
+    let paddedRight = rightComponents + Array(repeating: 0, count: componentCount - rightComponents.count)
+    if paddedLeft == paddedRight { return .orderedSame }
+    return paddedLeft.lexicographicallyPrecedes(paddedRight) ? .orderedAscending : .orderedDescending
   }
 
   // Int(_:) accepts "+1" and "-0", so every character must be an ASCII digit.

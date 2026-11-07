@@ -433,7 +433,9 @@ category rules, the dashboard totals, the summary format, the outcome searches a
 
 ### Release
 
-Bump `MARKETING_VERSION` in `project.yml` and merge the PR. Then:
+Bump `MARKETING_VERSION` in `project.yml` and merge the PR. When the release has user-visible
+changes, add an entry for the new version to `WhatsNew.bundledNotes` in `Core/WhatsNew.swift`
+in the same PR. Then:
 
 1. Push the tag `vX.Y.Z`. The release workflow builds an ad-hoc signed zip with
    `./scripts/release.sh` and creates a draft release. CI holds no signing secrets.
