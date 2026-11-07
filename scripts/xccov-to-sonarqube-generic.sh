@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Source: https://github.com/SonarSource/sonar-scanning-examples/blob/7e7cba7dedc50d72a7f5715bce8c6517f5d324b4/swift-coverage/swift-coverage-example/xccov-to-sonarqube-generic.sh (commit 7e7cba7dedc50d72a7f5715bce8c6517f5d324b4)
+# License: LGPL-3.0, from SonarSource sonar-scanning-examples. This file is not MIT like the rest of
+# the repo. It runs only in CI to convert coverage and is not part of the app.
 set -euo pipefail
 
 # Convert xccov output to SonarQube Generic Coverage format
