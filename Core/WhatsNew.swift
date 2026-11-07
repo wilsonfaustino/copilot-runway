@@ -10,6 +10,14 @@ public struct WhatsNew: Equatable, Sendable {
     self.lines = lines
   }
 
+  // A short list reads at a glance. The release notes link covers the rest.
+  public static let maxLines = 3
+
+  // Opens in the browser, so the app itself makes no network call.
+  public var releaseNotesURL: URL {
+    URL(string: "https://github.com/wilsonfaustino/copilot-runway/releases/tag/v\(version)")!
+  }
+
   public struct Decision: Equatable, Sendable {
     public let banner: WhatsNew?
     // The new last-seen version to store now. Nil means keep the stored value.
@@ -22,7 +30,7 @@ public struct WhatsNew: Equatable, Sendable {
     }
   }
 
-  // One entry per release with user-visible changes, keyed by version. Add it in the release commit.
+  // One entry per release with user-visible changes, keyed by version, at most maxLines lines. Add it in the release commit.
   public static let bundledNotes: [String: [String]] = [:]
 
   // isExistingUser separates a fresh install from an upgrade from a version older than this feature,

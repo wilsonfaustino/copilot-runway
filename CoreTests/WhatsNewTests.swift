@@ -91,3 +91,16 @@ func whatsNewDecision(
     }
   }
 }
+
+@Test func everyBundledNotesEntryHasAtMostMaxLines() {
+  for (version, lines) in WhatsNew.bundledNotes {
+    #expect(lines.count <= WhatsNew.maxLines, "\(version)")
+  }
+}
+
+@Test func releaseNotesURLPointsAtTheVersionTag() {
+  #expect(
+    WhatsNew(version: "1.2.0", lines: []).releaseNotesURL.absoluteString
+      == "https://github.com/wilsonfaustino/copilot-runway/releases/tag/v1.2.0"
+  )
+}

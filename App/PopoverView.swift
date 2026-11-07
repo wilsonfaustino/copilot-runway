@@ -126,6 +126,8 @@ struct PopoverView: View {
             .font(.system(size: 12))
             .fixedSize(horizontal: false, vertical: true)
         }
+        Link("Release notes", destination: whatsNew.releaseNotesURL)
+          .font(.system(size: 12))
       }
       .frame(maxWidth: .infinity, alignment: .leading)
       Button {
