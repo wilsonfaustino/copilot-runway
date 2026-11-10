@@ -107,15 +107,9 @@ public enum PiSessionParser {
   private static func record(from message: Message, since cycleStart: Date, seenResponseIds: inout Set<String>) -> UsageRecord? {
     guard
       message.provider == copilotProvider,
-      let model = message.model,
       let usage = message.usage,
-      let timestampMilliseconds = message.timestamp
+      let (model, timestamp) = modelAndTimestamp(of: message, since: cycleStart, seenResponseIds: &seenResponseIds)
     else { return nil }
-    let timestamp = date(milliseconds: timestampMilliseconds)
-    guard timestamp >= cycleStart else { return nil }
-    if let responseId = message.responseId {
-      guard seenResponseIds.insert(responseId).inserted else { return nil }
-    }
     let tokens = TokenUsage(
       input: usage.input ?? 0,
       cachedInput: usage.cacheRead ?? 0,
@@ -136,18 +130,26 @@ public enum PiSessionParser {
   ) -> PortkeyRecord? {
     guard
       let provider = message.provider, PortkeyRecord.isPortkey(provider: provider),
-      let model = message.model,
-      let timestampMilliseconds = message.timestamp
+      let (model, timestamp) = modelAndTimestamp(of: message, since: cycleStart, seenResponseIds: &seenResponseIds)
     else { return nil }
+    let tokenCount = [message.usage?.input, message.usage?.output, message.usage?.cacheRead, message.usage?.cacheWrite]
+      .reduce(0) { $0 + ($1 ?? 0) }
+    let costUSD = PortkeyRecord.costUSD(stored: message.usage?.cost?.total, tokenCount: tokenCount)
+    return PortkeyRecord(model: model, timestamp: timestamp, source: source, costUSD: costUSD)
+  }
+
+  // Copilot and Portkey records share the checks: a model, a timestamp in the cycle, and a responseId not seen
+  // before. nil when a check fails. A message that passes adds its responseId to seenResponseIds.
+  private static func modelAndTimestamp(
+    of message: Message, since cycleStart: Date, seenResponseIds: inout Set<String>
+  ) -> (model: String, timestamp: Date)? {
+    guard let model = message.model, let timestampMilliseconds = message.timestamp else { return nil }
     let timestamp = date(milliseconds: timestampMilliseconds)
     guard timestamp >= cycleStart else { return nil }
     if let responseId = message.responseId {
       guard seenResponseIds.insert(responseId).inserted else { return nil }
     }
-    let tokenCount = [message.usage?.input, message.usage?.output, message.usage?.cacheRead, message.usage?.cacheWrite]
-      .reduce(0) { $0 + ($1 ?? 0) }
-    let costUSD = PortkeyRecord.costUSD(stored: message.usage?.cost?.total, tokenCount: tokenCount)
-    return PortkeyRecord(model: model, timestamp: timestamp, source: source, costUSD: costUSD)
+    return (model, timestamp)
   }
 
   private static func date(milliseconds: Double) -> Date {
