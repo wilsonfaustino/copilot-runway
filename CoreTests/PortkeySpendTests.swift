@@ -105,6 +105,14 @@ private func expectUSD(_ actual: Double, _ expected: Double, sourceLocation: Sou
   }
 }
 
+@Test func portkeySpendFindsOneModelAndAgentCell() throws {
+  let portkey = try loadFixtureSessionCredits(withPortkey: true).portkey
+  let cell = try #require(portkey.cell(model: deepSeekModel, source: .opencode))
+  #expect(cell.requestCount == 2)
+  expectUSD(cell.usd, 0.01)
+  #expect(portkey.cell(model: glmModel, source: .omp) == nil)
+}
+
 // 0.032 of 0.035 USD is 91%. 0.035 USD over 6 priced requests is 0.0058 USD.
 @Test func portkeyInsightNamesTopModelShareAndCostPerRequest() throws {
   let portkey = try loadFixtureSessionCredits(withPortkey: true).portkey

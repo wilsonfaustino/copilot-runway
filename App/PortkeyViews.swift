@@ -219,7 +219,6 @@ struct PortkeyDashboardSection: View {
   }
 
   private var modelSourceTable: some View {
-    let cells = Dictionary(uniqueKeysWithValues: spend.byModelAndSource.map { ("\($0.model)|\($0.source.rawValue)", $0) })
     let sourceTotals = Dictionary(uniqueKeysWithValues: spend.bySource.map { ($0.source, $0.usd) })
     return VStack(alignment: .leading, spacing: Theme.Spacing.regular) {
       Text("By model and agent")
@@ -245,7 +244,7 @@ struct PortkeyDashboardSection: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             ForEach(PortkeyText.sources, id: \.self) { source in
-              if let cell = cells["\(modelSpend.model)|\(source.rawValue)"] {
+              if let cell = spend.cell(model: modelSpend.model, source: source) {
                 VStack(alignment: .trailing, spacing: 2) {
                   Text(PortkeySpend.formatted(cell.usd))
                   Text("\(cell.requestCount) req")

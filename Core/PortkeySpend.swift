@@ -81,6 +81,11 @@ public struct PortkeySpend: Equatable, Sendable {
 
   public var requestCount: Int { records.count }
 
+  // nil when the model has no request from the source.
+  public func cell(model: String, source: SessionSource) -> PortkeyModelSourceSpend? {
+    byModelAndSource.first { $0.model == model && $0.source == source }
+  }
+
   // nil when every request has a cost.
   public var unpricedNote: String? {
     switch unpricedCount {
