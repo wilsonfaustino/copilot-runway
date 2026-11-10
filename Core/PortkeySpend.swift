@@ -91,9 +91,9 @@ public struct PortkeySpend: Equatable, Sendable {
       + "about \(Self.formatted(averageUSDPerRequest, locale: locale)) per request."
   }
 
-  // Cents, for example "$0.73". An amount under 1 cent keeps a third decimal, for example "$0.004".
+  // Cents, for example "$0.73". An amount that rounds below 1 cent keeps a third decimal, for example "$0.004".
   public static func formatted(_ usd: Double, locale: Locale = .current) -> String {
-    let fractionLength = usd == 0 || abs(usd) >= 0.01 ? 2 : 3
+    let fractionLength = usd == 0 || abs(usd) >= 0.0095 ? 2 : 3
     return usd.formatted(.currency(code: "USD").precision(.fractionLength(fractionLength)).locale(locale))
   }
 

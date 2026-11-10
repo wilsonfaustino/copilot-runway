@@ -54,13 +54,14 @@ private func expectUSD(_ actual: Double, _ expected: Double, sourceLocation: Sou
 }
 
 // Fixture spend in the cycle. Pi: DeepSeek 0.012, GLM 0.002 (provider "PortKey"), DeepSeek with no cost, and DeepSeek
-// 0.004 also copied into omp. omp: the copy, then DeepSeek 0.006. OpenCode: DeepSeek 0.01, GLM 0.001.
+// 0.004 also copied into omp. omp: the copy, then DeepSeek 0.006. OpenCode: DeepSeek 0.01, GLM 0.001, DeepSeek with
+// no cost.
 // Pi also has DeepSeek 0.5 on 2026-09-30, before the cycle.
 @Test func portkeySpendTotalsComeFromStoredCosts() throws {
   let portkey = try loadFixtureSessionCredits(withPortkey: true).portkey
   expectUSD(portkey.totalUSD, 0.035)
-  #expect(portkey.requestCount == 7)
-  #expect(portkey.unpricedCount == 1)
+  #expect(portkey.requestCount == 8)
+  #expect(portkey.unpricedCount == 2)
   // Divided by the 6 priced requests.
   expectUSD(try #require(portkey.averageUSDPerRequest), 0.035 / 6)
 }
@@ -68,7 +69,7 @@ private func expectUSD(_ actual: Double, _ expected: Double, sourceLocation: Sou
 @Test func portkeySpendSplitsByModel() throws {
   let byModel = try loadFixtureSessionCredits(withPortkey: true).portkey.byModel
   #expect(byModel.map(\.model) == [deepSeekModel, glmModel])
-  #expect(byModel.map(\.requestCount) == [5, 2])
+  #expect(byModel.map(\.requestCount) == [6, 2])
   expectUSD(byModel[0].usd, 0.032)
   expectUSD(byModel[1].usd, 0.003)
 }
@@ -77,7 +78,7 @@ private func expectUSD(_ actual: Double, _ expected: Double, sourceLocation: Sou
 @Test func portkeySpendSplitsByAgent() throws {
   let bySource = try loadFixtureSessionCredits(withPortkey: true).portkey.bySource
   #expect(bySource.map(\.source) == [.pi, .opencode, .omp])
-  #expect(bySource.map(\.requestCount) == [4, 2, 1])
+  #expect(bySource.map(\.requestCount) == [4, 3, 1])
   expectUSD(bySource[0].usd, 0.018)
   expectUSD(bySource[1].usd, 0.011)
   expectUSD(bySource[2].usd, 0.006)
@@ -87,7 +88,7 @@ private func expectUSD(_ actual: Double, _ expected: Double, sourceLocation: Sou
   let cells = try loadFixtureSessionCredits(withPortkey: true).portkey.byModelAndSource
   #expect(cells.map(\.model) == [deepSeekModel, deepSeekModel, deepSeekModel, glmModel, glmModel])
   #expect(cells.map(\.source) == [.pi, .opencode, .omp, .pi, .opencode])
-  #expect(cells.map(\.requestCount) == [3, 1, 1, 1, 1])
+  #expect(cells.map(\.requestCount) == [3, 2, 1, 1, 1])
   for (cell, expectedUSD) in zip(cells, [0.016, 0.01, 0.006, 0.002, 0.001]) {
     expectUSD(cell.usd, expectedUSD)
   }
@@ -132,5 +133,7 @@ private func expectUSD(_ actual: Double, _ expected: Double, sourceLocation: Sou
 @Test func portkeyAmountsShowCentsOrTenthsOfACent() {
   #expect(PortkeySpend.formatted(0.73, locale: englishLocale) == "$0.73")
   #expect(PortkeySpend.formatted(0.004, locale: englishLocale) == "$0.004")
+  // Rounds to 1 cent, so it shows as cents.
+  #expect(PortkeySpend.formatted(0.0097, locale: englishLocale) == "$0.01")
   #expect(PortkeySpend.formatted(0, locale: englishLocale) == "$0.00")
 }
