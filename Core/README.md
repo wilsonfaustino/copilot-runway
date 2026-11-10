@@ -136,8 +136,10 @@ never count as Copilot credits. Checked on real data in November 2026.
   `@fireworks-ai-global/accounts/fireworks/models/deepseek-v4p1-flash-1017`.
 - Cost is the USD amount the agent stored: Pi and omp `message.usage.cost.total`, OpenCode `data.cost` on
   `assistant` rows. `PriceTable` and `prices.json` are not used. A message with no cost is unpriced: it counts as a
-  request and adds 0 USD (`PortkeySpend.unpricedCount`). A Pi `usage.cost` of another shape is ignored, so it never
-  drops the tokens of a Copilot message.
+  request and adds 0 USD (`PortkeySpend.unpricedCount`). A message with tokens and a cost of 0 or less is also
+  unpriced, because OpenCode writes `cost: 0` and Pi writes `cost.total: 0` when the agent has no price for the model.
+  A message with no tokens and a cost of 0 is free, so it is priced. A Pi `usage.cost` of another shape is ignored,
+  so it never drops the tokens of a Copilot message.
 - Each record has model id, timestamp, source (Pi, omp or OpenCode) and the optional cost. Prompt and answer text
   are never read.
 - Pi and omp records are unique by `responseId`, with the same set as Copilot records, so a message copied

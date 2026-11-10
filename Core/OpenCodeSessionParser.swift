@@ -145,11 +145,14 @@ public enum OpenCodeSessionParser {
           turn.records.append(UsageRecord(model: model, timestamp: timestamp, tokens: tokens(statement, firstColumn: 7)))
         }
       }
-      // The cost is data.cost in USD, as OpenCode stored it. NULL when the row has none: the record is unpriced.
+      // The cost is data.cost in USD, as OpenCode stored it. NULL, or 0 with tokens, when OpenCode has no price: the
+      // record is unpriced.
       if type == "assistant", let provider = text(statement, 5), PortkeyRecord.isPortkey(provider: provider),
         let model = text(statement, 6)
       {
-        let costUSD = sqlite3_column_type(statement, 15) == SQLITE_NULL ? nil : sqlite3_column_double(statement, 15)
+        let storedCostUSD = sqlite3_column_type(statement, 15) == SQLITE_NULL ? nil : sqlite3_column_double(statement, 15)
+        let rowTokens = tokens(statement, firstColumn: 7)
+        let costUSD = PortkeyRecord.costUSD(stored: storedCostUSD, tokenCount: rowTokens.promptTokens + rowTokens.output)
         portkeyRecords.append(PortkeyRecord(model: model, timestamp: timestamp, source: .opencode, costUSD: costUSD))
       }
     }

@@ -19,6 +19,13 @@ public struct PortkeyRecord: Equatable, Sendable {
   static func isPortkey(provider: String) -> Bool {
     provider.range(of: "portkey", options: .caseInsensitive) != nil
   }
+
+  // Agents write a cost of 0 when they have no price for the model. So a message with tokens and a cost of 0 or
+  // less is unpriced (nil), the same as a message with no cost.
+  static func costUSD(stored storedCostUSD: Double?, tokenCount: Int) -> Double? {
+    guard let storedCostUSD, storedCostUSD > 0 || tokenCount == 0 else { return nil }
+    return storedCostUSD
+  }
 }
 
 public struct PortkeyModelSpend: Equatable, Sendable {

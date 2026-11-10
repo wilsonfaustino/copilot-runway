@@ -18,20 +18,20 @@ private func makeRoot(copying sources: [URL]) throws -> URL {
   return root
 }
 
-// The Copilot fixtures of Pi, omp and OpenCode, plus the Portkey fixtures when withPortkey is true.
-private func loadFixtureSessionCredits(withPortkey: Bool) throws -> SessionCredits {
+// The Copilot fixtures of Pi, omp and OpenCode, plus the Portkey fixtures in portkeyFolder when withPortkey is true.
+private func loadFixtureSessionCredits(withPortkey: Bool, portkeyFolder: String = "portkey") throws -> SessionCredits {
   let piRoot = try makeRoot(
-    copying: [fixturesDirectory.appending(path: "pi/sessions")] + (withPortkey ? [fixturesDirectory.appending(path: "portkey/pi")] : [])
+    copying: [fixturesDirectory.appending(path: "pi/sessions")] + (withPortkey ? [fixturesDirectory.appending(path: "\(portkeyFolder)/pi")] : [])
   )
   let ompRoot = try makeRoot(
-    copying: [fixturesDirectory.appending(path: "omp/sessions")] + (withPortkey ? [fixturesDirectory.appending(path: "portkey/omp")] : [])
+    copying: [fixturesDirectory.appending(path: "omp/sessions")] + (withPortkey ? [fixturesDirectory.appending(path: "\(portkeyFolder)/omp")] : [])
   )
   let openCodeDirectory = try makeOpenCodeDataDirectory()
   defer {
     for directory in [piRoot, ompRoot, openCodeDirectory] { try? FileManager.default.removeItem(at: directory) }
   }
   if withPortkey {
-    let portkeySQL = try String(contentsOf: fixturesDirectory.appending(path: "portkey/opencode.sql"), encoding: .utf8)
+    let portkeySQL = try String(contentsOf: fixturesDirectory.appending(path: "\(portkeyFolder)/opencode.sql"), encoding: .utf8)
     var database: OpaquePointer?
     try #require(sqlite3_open(openCodeDirectory.appending(path: "opencode.db").path, &database) == SQLITE_OK)
     defer { sqlite3_close(database) }
@@ -64,6 +64,17 @@ private func expectUSD(_ actual: Double, _ expected: Double, sourceLocation: Sou
   #expect(portkey.unpricedCount == 2)
   // Divided by the 6 priced requests.
   expectUSD(try #require(portkey.averageUSDPerRequest), 0.035 / 6)
+}
+
+// Agents write a cost of 0 when they have no price for the model. Fixtures: Pi cost 0 with tokens, and cost 0 with
+// no tokens; omp cost 0 with tokens; OpenCode cost 0 with tokens, and 0.01.
+@Test func portkeyCostOfZeroWithTokensIsUnpriced() throws {
+  let portkey = try loadFixtureSessionCredits(withPortkey: true, portkeyFolder: "portkey-zero-cost").portkey
+  #expect(portkey.requestCount == 5)
+  #expect(portkey.unpricedCount == 3)
+  expectUSD(portkey.totalUSD, 0.01)
+  // The Pi message with no tokens is free, so it counts as priced: 0.01 USD over 2 priced requests.
+  expectUSD(try #require(portkey.averageUSDPerRequest), 0.005)
 }
 
 @Test func portkeySpendSplitsByModel() throws {

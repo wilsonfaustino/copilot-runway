@@ -126,7 +126,8 @@ public enum PiSessionParser {
     return UsageRecord(model: model, timestamp: timestamp, tokens: tokens)
   }
 
-  // The cost is usage.cost.total in USD, as the agent stored it. A message with no usage or cost is unpriced.
+  // The cost is usage.cost.total in USD, as the agent stored it. A message with no usage or cost, or with tokens and a
+  // cost of 0, is unpriced.
   private static func portkeyRecord(
     from message: Message,
     source: SessionSource,
@@ -143,7 +144,10 @@ public enum PiSessionParser {
     if let responseId = message.responseId {
       guard seenResponseIds.insert(responseId).inserted else { return nil }
     }
-    return PortkeyRecord(model: model, timestamp: timestamp, source: source, costUSD: message.usage?.cost?.total)
+    let tokenCount = [message.usage?.input, message.usage?.output, message.usage?.cacheRead, message.usage?.cacheWrite]
+      .reduce(0) { $0 + ($1 ?? 0) }
+    let costUSD = PortkeyRecord.costUSD(stored: message.usage?.cost?.total, tokenCount: tokenCount)
+    return PortkeyRecord(model: model, timestamp: timestamp, source: source, costUSD: costUSD)
   }
 
   private static func date(milliseconds: Double) -> Date {
