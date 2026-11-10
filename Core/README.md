@@ -8,6 +8,7 @@ The parsers keep only assistant messages billed through GitHub Copilot (provider
 `copilot` without BYOK in Copilot CLI and app sessions) with a timestamp at or after the cycle start (`Runway.cycleStart`). Each message becomes a
 `UsageRecord`: model id, timestamp, and tokens (input, cached input, cache write, output).
 Output always includes reasoning tokens, because reasoning bills at the output rate.
+Portkey messages are kept apart, as `PortkeyRecord`s (see Portkey below), never as `UsageRecord`s.
 
 Format reference: codeburn (MIT)
 [docs/providers/opencode.md](https://github.com/getagentseal/codeburn/blob/main/docs/providers/opencode.md) and
@@ -118,11 +119,36 @@ format to the same folder. Checked on CLI 1.0.105 and app 1.1.34 (embedded CLI 1
   `Turn.projectRoot`. When a database has no `session_v2` or `project` table, or the table lacks one of
   these columns, the query selects `NULL` instead and the turns get no folder.
 - One repo path can have two `project` ids (an old one and a new one), so projects group by name, never by id.
-- The queries select only time, agent, model, token and tool call fields (tool name, file path,
+- The queries select only time, agent, model, token, cost and tool call fields (tool name, file path,
   shell command) with `json_extract`, plus the session folder, parent session and project root columns
   above, so prompt and answer text never leaves the database. Session titles (`session_v2.title`) are not read.
 - Not read: the file based JSON store under `~/.local/share/opencode/storage/`
   (only older sessions on our machines).
+
+### Portkey (`PortkeyRecord`, `PortkeySpend`)
+
+Some sessions go through the Portkey gateway. Portkey bills in USD against its own budget, so these messages
+never count as Copilot credits. Checked on real data in November 2026.
+
+- A message is Portkey when its provider id contains `portkey`, in any letter case. Seen:
+  `message.provider = "portkey"` (Pi, omp) and `data.model.providerID = "portkey-openai-compatible"` (OpenCode).
+- Model ids are gateway paths, for example
+  `@fireworks-ai-global/accounts/fireworks/models/deepseek-v4p1-flash-1017`.
+- Cost is the USD amount the agent stored: Pi and omp `message.usage.cost.total`, OpenCode `data.cost` on
+  `assistant` rows. `PriceTable` and `prices.json` are not used. A message with no cost is unpriced: it counts as a
+  request and adds 0 USD (`PortkeySpend.unpricedCount`). A Pi `usage.cost` of another shape is ignored, so it never
+  drops the tokens of a Copilot message.
+- Each record has model id, timestamp, source (Pi, omp or OpenCode) and the optional cost. Prompt and answer text
+  are never read.
+- Pi and omp records are unique by `responseId`, with the same set as Copilot records, so a message copied
+  between `~/.pi` and `~/.omp` counts once, as Pi.
+- Portkey records are never part of a turn. A turn with only Portkey messages has no Copilot record and drops out.
+- `SessionCredits.load` returns them as `portkey`, with records before the cycle start left out. The Portkey cycle
+  is the Copilot cycle.
+- `PortkeySpend` gives the total, request count, unpriced count, average per priced request, spend by model, by
+  source and by model and source, and an insight sentence. `PortkeyBudget.usage` maps the spend and a monthly
+  budget in USD onto `CopilotUsage`, so `Runway` and `RunwayHealth` compute the Portkey runway with the Copilot
+  rules. No budget, or a budget of 0 or less, gives no usage.
 
 ## Turns and task categories
 
@@ -359,7 +385,9 @@ Both use local credits only. They are not in the GitHub numbers, the popover or 
 
 `ModelDisplayName.bundled` maps each id in `PriceTable.bundled` to the name GitHub writes on the
 [models and pricing page](https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing),
-for example `gpt-6.1-sol` to "GPT-6.1 Sol". `name(for:)` returns the id itself for an id not in the map.
+for example `gpt-6.1-sol` to "GPT-6.1 Sol". A second map names Portkey models by the last path part of their id,
+for example `glm-5p3-flash` to "GLM 5.3 Flash". `name(for:)` returns the last path part of the id (the id itself
+when it has no `/`) for an id not in either map.
 Display names appear in text and legends: the By model rows, the unpriced models note, the low cache hit
 note, the model efficiency note and "Copy summary". Keys, sorting, pricing and grouping use raw ids. The map
 has no override file. A new price table entry needs a new name, and a test checks that the two have the same ids.
