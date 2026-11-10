@@ -31,7 +31,12 @@ public struct WhatsNew: Equatable, Sendable {
   }
 
   // One entry per release with user-visible changes, keyed by version, at most maxLines lines. Add it in the release commit.
-  public static let bundledNotes: [String: [String]] = [:]
+  public static let bundledNotes: [String: [String]] = [
+    "1.2.0": [
+      "Portkey card: USD spend by model and agent, apart from Copilot credits.",
+      "Set a monthly Portkey budget in Settings to see its runway.",
+    ]
+  ]
 
   // isExistingUser separates a fresh install from an upgrade from a version older than this feature,
   // because both have no stored last-seen version.
