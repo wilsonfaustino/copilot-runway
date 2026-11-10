@@ -74,6 +74,7 @@ struct SettingsView: View {
     .onAppear {
       organizationText = usageStore.organization ?? ""
       portkeyBudgetText = portkeyBudgetUSD.map { $0.formatted(.number.grouping(.never)) } ?? ""
+      portkeyBudgetRefused = false
     }
     .onDisappear {
       usageStore.setOrganization(organizationText)
