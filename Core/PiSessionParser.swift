@@ -16,15 +16,20 @@ public enum PiSessionParser {
     since cycleStart: Date
   ) -> (turns: [Turn], hasUndecodableFile: Bool) {
     var seenResponseIds = Set<String>()
-    return turns(inDirectory: directory, source: source, since: cycleStart, seenResponseIds: &seenResponseIds)
+    var portkeyRecords: [PortkeyRecord] = []
+    return turns(
+      inDirectory: directory, source: source, since: cycleStart, seenResponseIds: &seenResponseIds, portkeyRecords: &portkeyRecords
+    )
   }
 
   // seenResponseIds is shared across calls, so a response in more than one root counts once, for the first root read.
+  // Copilot and Portkey records share it. Portkey messages in the cycle go to portkeyRecords, never into a turn.
   public static func turns(
     inDirectory directory: URL,
     source: SessionSource,
     since cycleStart: Date,
-    seenResponseIds: inout Set<String>
+    seenResponseIds: inout Set<String>,
+    portkeyRecords: inout [PortkeyRecord]
   ) -> (turns: [Turn], hasUndecodableFile: Bool) {
     guard let enumerator = FileManager.default.enumerator(
       at: directory,
@@ -37,7 +42,9 @@ public enum PiSessionParser {
       // A file last written before the cycle cannot hold messages from this cycle.
       if let modificationDate, modificationDate < cycleStart { continue }
       guard let fileData = try? Data(contentsOf: fileURL) else { continue }
-      guard let fileTurns = turns(fromJSONL: fileData, source: source, since: cycleStart, seenResponseIds: &seenResponseIds) else {
+      guard let fileTurns = turns(
+        fromJSONL: fileData, source: source, since: cycleStart, seenResponseIds: &seenResponseIds, portkeyRecords: &portkeyRecords
+      ) else {
         hasUndecodableFile = true
         continue
       }
@@ -52,7 +59,8 @@ public enum PiSessionParser {
     fromJSONL fileData: Data,
     source: SessionSource,
     since cycleStart: Date,
-    seenResponseIds: inout Set<String>
+    seenResponseIds: inout Set<String>,
+    portkeyRecords: inout [PortkeyRecord]
   ) -> [Turn]? {
     let decoder = JSONDecoder()
     let lines = fileData.split(separator: UInt8(ascii: "\n"))
@@ -78,6 +86,9 @@ public enum PiSessionParser {
         if let record = record(from: message, since: cycleStart, seenResponseIds: &seenResponseIds) {
           turn.records.append(record)
         }
+        if let portkeyRecord = portkeyRecord(from: message, source: source, since: cycleStart, seenResponseIds: &seenResponseIds) {
+          portkeyRecords.append(portkeyRecord)
+        }
         currentTurn = turn
       default:
         continue
@@ -96,15 +107,9 @@ public enum PiSessionParser {
   private static func record(from message: Message, since cycleStart: Date, seenResponseIds: inout Set<String>) -> UsageRecord? {
     guard
       message.provider == copilotProvider,
-      let model = message.model,
       let usage = message.usage,
-      let timestampMilliseconds = message.timestamp
+      let (model, timestamp) = modelAndTimestamp(of: message, since: cycleStart, seenResponseIds: &seenResponseIds)
     else { return nil }
-    let timestamp = date(milliseconds: timestampMilliseconds)
-    guard timestamp >= cycleStart else { return nil }
-    if let responseId = message.responseId {
-      guard seenResponseIds.insert(responseId).inserted else { return nil }
-    }
     let tokens = TokenUsage(
       input: usage.input ?? 0,
       cachedInput: usage.cacheRead ?? 0,
@@ -113,6 +118,38 @@ public enum PiSessionParser {
       output: usage.output ?? 0
     )
     return UsageRecord(model: model, timestamp: timestamp, tokens: tokens)
+  }
+
+  // The cost is usage.cost.total in USD, as the agent stored it. A message with no usage or cost, or with tokens and a
+  // cost of 0, is unpriced.
+  private static func portkeyRecord(
+    from message: Message,
+    source: SessionSource,
+    since cycleStart: Date,
+    seenResponseIds: inout Set<String>
+  ) -> PortkeyRecord? {
+    guard
+      let provider = message.provider, PortkeyRecord.isPortkey(provider: provider),
+      let (model, timestamp) = modelAndTimestamp(of: message, since: cycleStart, seenResponseIds: &seenResponseIds)
+    else { return nil }
+    let tokenCount = [message.usage?.input, message.usage?.output, message.usage?.cacheRead, message.usage?.cacheWrite]
+      .reduce(0) { $0 + ($1 ?? 0) }
+    let costUSD = PortkeyRecord.costUSD(stored: message.usage?.cost?.total, tokenCount: tokenCount)
+    return PortkeyRecord(model: model, timestamp: timestamp, source: source, costUSD: costUSD)
+  }
+
+  // Copilot and Portkey records share the checks: a model, a timestamp in the cycle, and a responseId not seen
+  // before. nil when a check fails. A message that passes adds its responseId to seenResponseIds.
+  private static func modelAndTimestamp(
+    of message: Message, since cycleStart: Date, seenResponseIds: inout Set<String>
+  ) -> (model: String, timestamp: Date)? {
+    guard let model = message.model, let timestampMilliseconds = message.timestamp else { return nil }
+    let timestamp = date(milliseconds: timestampMilliseconds)
+    guard timestamp >= cycleStart else { return nil }
+    if let responseId = message.responseId {
+      guard seenResponseIds.insert(responseId).inserted else { return nil }
+    }
+    return (model, timestamp)
   }
 
   private static func date(milliseconds: Double) -> Date {
@@ -199,5 +236,24 @@ public enum PiSessionParser {
     let output: Int?
     let cacheRead: Int?
     let cacheWrite: Int?
+    let cost: Cost?
+
+    enum CodingKeys: String, CodingKey {
+      case input, output, cacheRead, cacheWrite, cost
+    }
+
+    // A cost of another shape is ignored, so it never drops the token counts of a Copilot message.
+    init(from decoder: Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      input = try container.decodeIfPresent(Int.self, forKey: .input)
+      output = try container.decodeIfPresent(Int.self, forKey: .output)
+      cacheRead = try container.decodeIfPresent(Int.self, forKey: .cacheRead)
+      cacheWrite = try container.decodeIfPresent(Int.self, forKey: .cacheWrite)
+      cost = try? container.decodeIfPresent(Cost.self, forKey: .cost)
+    }
+  }
+
+  private struct Cost: Decodable {
+    let total: Double?
   }
 }

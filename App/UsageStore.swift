@@ -8,6 +8,8 @@ final class UsageStore {
   static let refreshInterval: Duration = .seconds(5 * 60)
   static let organizationKey = "githubOrganization"
   static let gaugeModeKey = "gaugeMode"
+  // USD, a Double. No value means no budget.
+  static let portkeyBudgetKey = "portkeyBudgetUSD"
   static let releaseCheckInterval: TimeInterval = 24 * 60 * 60
 
   private(set) var title = MenuBarTitle.placeholder
@@ -29,6 +31,7 @@ final class UsageStore {
   private(set) var lowCacheSentences: [String] = []
   private(set) var modelEfficiencyNote: String?
   private(set) var sessionsWarning: String?
+  private(set) var portkeySpend = PortkeySpend(records: [])
   private(set) var organization = UserDefaults.standard.string(forKey: organizationKey)
     .flatMap(GitHubOutcomesClient.normalizedOrganization)
   private(set) var outcomes: GitHubOutcomes?
@@ -143,6 +146,7 @@ final class UsageStore {
     lowCacheSentences = sessionCredits.lowCacheSentences
     modelEfficiencyNote = sessionCredits.modelEfficiencyNote
     sessionsWarning = sessionCredits.warning
+    portkeySpend = sessionCredits.portkey
   }
 
   #if DEBUG

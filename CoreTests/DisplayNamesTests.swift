@@ -38,3 +38,18 @@ import Testing
   #expect(ShareBreakdown.models(modelCredits, githubCredits: 150).items.map(\.name) == ["GPT-6.1 Sol", "grok-5"])
   #expect(ShareBreakdown.unpricedModelsNote(modelCredits) == "1 model has no price: Claude Sonnet 5.5")
 }
+
+@Test func portkeyModelsShowReadableNames() {
+  #expect(ModelDisplayName.portkeyName(for: "@fireworks-ai-global/accounts/fireworks/models/deepseek-v4p1-flash-1017") == "DeepSeek V4.1 Flash")
+  #expect(ModelDisplayName.portkeyName(for: "@fireworks-ai-global/accounts/fireworks/models/glm-5p3-flash") == "GLM 5.3 Flash")
+}
+
+@Test func unknownGatewayModelShowsTheLastPathPart() {
+  #expect(ModelDisplayName.portkeyName(for: "@fireworks-ai-global/accounts/fireworks/models/kimi-k4") == "kimi-k4")
+}
+
+// The last path part rule is for Portkey ids only. A Copilot id shows as itself.
+@Test func copilotIdWithSlashIsUnchanged() {
+  #expect(ModelDisplayName.name(for: "openai/gpt-7") == "openai/gpt-7")
+  #expect(ModelDisplayName.name(for: "fireworks/models/glm-5p3-flash") == "fireworks/models/glm-5p3-flash")
+}

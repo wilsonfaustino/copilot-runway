@@ -15,6 +15,7 @@ struct DashboardView: View {
   @State private var summaryCopied = false
   @Environment(\.openSettings) private var openSettings
   @AppStorage(Theme.taskPalettePreferenceKey) private var taskPalettePreference = TaskPalettePreference.unset
+  @AppStorage(UsageStore.portkeyBudgetKey) private var portkeyBudgetUSD: Double?
   @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiatesWithoutColor
 
   private var taskPalette: TaskPalette {
@@ -54,6 +55,7 @@ struct DashboardView: View {
           .fixedSize(horizontal: false, vertical: true)
           projectCard
           topSessionsCard
+          portkeySection(usage: usage)
         } else {
           Text(usageStore.errorMessage ?? "Loading usage from GitHub.")
             .foregroundStyle(.secondary)
@@ -298,6 +300,31 @@ struct DashboardView: View {
         ? []
         : ["\(projectCount == 1 ? "1 project" : "\(projectCount) projects"). Named from the repo root, so worktree sessions count with their repo."]
     )
+  }
+
+  // MARK: Portkey
+
+  // Demo mode shows fake data, so it ignores the real budget.
+  private var shownPortkeyBudgetUSD: Double? {
+    #if DEBUG
+    if DemoLaunch.isActive { return nil }
+    #endif
+    return portkeyBudgetUSD
+  }
+
+  @ViewBuilder
+  private func portkeySection(usage: CopilotUsage) -> some View {
+    let spend = usageStore.portkeySpend
+    if PortkeyBudget.showsBlock(requestCount: spend.requestCount, budgetUSD: shownPortkeyBudgetUSD) {
+      PortkeyDashboardSection(
+        spend: spend,
+        budgetStatus: PortkeyBudget.status(
+          spentUSD: spend.totalUSD, budgetUSD: shownPortkeyBudgetUSD, resetDate: usage.resetDate, now: .now
+        ),
+        dateRange: "\(day(Runway.cycleStart(resetDate: usage.resetDate))) to \(day(.now))"
+      )
+      .padding(.top, Theme.Spacing.regular)
+    }
   }
 
   // MARK: Top sessions

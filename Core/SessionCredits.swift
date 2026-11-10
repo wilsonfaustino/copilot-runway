@@ -19,6 +19,8 @@ public struct SessionCredits: Sendable {
   public let modelEfficiencyNote: String?
   // byDay against the same days of previousByDay, for the Daily burn chart. nil without enough last cycle data.
   public let cycleComparisonSentence: String?
+  // Portkey messages in the cycle, in USD. Never part of the Copilot aggregates above.
+  public let portkey: PortkeySpend
   public let warning: String?
 
   public static func load(
@@ -42,12 +44,17 @@ public struct SessionCredits: Sendable {
     let previousCycleStart = Runway.cycleStart(resetDate: cycleStart)
     // Pi and omp share one set, so a session copied between ~/.pi and ~/.omp counts once, as Pi.
     var seenResponseIds = Set<String>()
-    let piTurns = PiSessionParser.turns(inDirectory: piDirectory, source: .pi, since: previousCycleStart, seenResponseIds: &seenResponseIds)
+    var portkeyRecords: [PortkeyRecord] = []
+    let piTurns = PiSessionParser.turns(
+      inDirectory: piDirectory, source: .pi, since: previousCycleStart, seenResponseIds: &seenResponseIds, portkeyRecords: &portkeyRecords
+    )
     var turns = piTurns.turns
     if piTurns.hasUndecodableFile {
       warnings.append("Cannot read some Pi sessions.")
     }
-    let ompTurns = PiSessionParser.turns(inDirectory: ompDirectory, source: .omp, since: previousCycleStart, seenResponseIds: &seenResponseIds)
+    let ompTurns = PiSessionParser.turns(
+      inDirectory: ompDirectory, source: .omp, since: previousCycleStart, seenResponseIds: &seenResponseIds, portkeyRecords: &portkeyRecords
+    )
     turns += ompTurns.turns
     if ompTurns.hasUndecodableFile {
       warnings.append("Cannot read some omp sessions.")
@@ -58,7 +65,9 @@ public struct SessionCredits: Sendable {
       warnings.append("Cannot read some Copilot sessions.")
     }
     do {
-      turns += try OpenCodeSessionParser.turns(inDirectory: openCodeDirectory, since: previousCycleStart, splitAt: cycleStart)
+      let openCodeRead = try OpenCodeSessionParser.read(inDirectory: openCodeDirectory, since: previousCycleStart, splitAt: cycleStart)
+      turns += openCodeRead.turns
+      portkeyRecords += openCodeRead.portkeyRecords
     } catch {
       warnings.append("Cannot read OpenCode sessions.")
     }
@@ -68,6 +77,7 @@ public struct SessionCredits: Sendable {
       turns: turns,
       prices: prices,
       openCodeParents: openCodeParents,
+      portkeyRecords: portkeyRecords,
       cycleStart: cycleStart,
       now: now,
       warning: warnings.isEmpty ? nil : warnings.joined(separator: " ")
@@ -80,6 +90,7 @@ public struct SessionCredits: Sendable {
     turns: [Turn],
     prices: [String: ModelPrice],
     openCodeParents: [String: String] = [:],
+    portkeyRecords: [PortkeyRecord] = [],
     cycleStart: Date,
     now: Date,
     warning: String? = nil,
@@ -115,6 +126,7 @@ public struct SessionCredits: Sendable {
       lowCacheSentences: CacheHit.lowSentences(cacheHits: cacheHits, prices: prices),
       modelEfficiencyNote: ModelEfficiency.note(ModelEfficiency.byModel(turns: currentTurns, prices: prices)),
       cycleComparisonSentence: CycleComparison.compare(current: byDay, previous: previousByDay)?.sentence(locale: locale),
+      portkey: PortkeySpend(records: portkeyRecords.filter { $0.timestamp >= cycleStart }),
       warning: warning
     )
   }

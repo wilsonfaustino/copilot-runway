@@ -7,7 +7,7 @@ public enum OpenCodeReadError: Error, Equatable, Sendable {
 }
 
 // OpenCode keeps sessions in SQLite. See Core/README.md for the tables and fields.
-// The queries select only time, agent, model, token and tool call fields (tool name, file path,
+// The queries select only time, agent, model, token, cost and tool call fields (tool name, file path,
 // shell command), and the session folder, parent session and project root, so prompt and answer text
 // and session titles never leave the database.
 public enum OpenCodeSessionParser {
@@ -33,7 +33,7 @@ public enum OpenCodeSessionParser {
         json_extract(message.data, '$.tokens.input'), json_extract(message.data, '$.tokens.output'),
         json_extract(message.data, '$.tokens.reasoning'), json_extract(message.data, '$.tokens.cache.read'),
         json_extract(message.data, '$.tokens.cache.write'),
-        \(sessionColumns), \(readsProject ? "project.worktree" : "NULL")
+        \(sessionColumns), \(readsProject ? "project.worktree" : "NULL"), json_extract(message.data, '$.cost')
       FROM session_message AS message
         \(sessionJoin)
         \(projectJoin)
@@ -80,7 +80,23 @@ public enum OpenCodeSessionParser {
   // Only turns with at least one Copilot record in the cycle. Reads the 2.x table only, see Core/README.md.
   // Rows before splitAt build their own turns, so the turns from splitAt on equal a read since splitAt.
   public static func turns(inDirectory directory: URL = dataDirectory, since cycleStart: Date, splitAt: Date? = nil) throws -> [Turn] {
-    try databaseURLs(in: directory).flatMap { try turns(inDatabaseAt: $0, since: cycleStart, splitAt: splitAt) }
+    try read(inDirectory: directory, since: cycleStart, splitAt: splitAt).turns
+  }
+
+  // The turns, plus the Portkey assistant messages in the cycle. Portkey messages are never part of a turn.
+  public static func read(
+    inDirectory directory: URL = dataDirectory,
+    since cycleStart: Date,
+    splitAt: Date? = nil
+  ) throws -> (turns: [Turn], portkeyRecords: [PortkeyRecord]) {
+    var turns: [Turn] = []
+    var portkeyRecords: [PortkeyRecord] = []
+    for databaseURL in databaseURLs(in: directory) {
+      let databaseRead = try read(inDatabaseAt: databaseURL, since: cycleStart, splitAt: splitAt)
+      turns += databaseRead.turns
+      portkeyRecords += databaseRead.portkeyRecords
+    }
+    return (turns, portkeyRecords)
   }
 
   private static func databaseURLs(in directory: URL) -> [URL] {
@@ -90,10 +106,14 @@ public enum OpenCodeSessionParser {
       .map { directory.appending(path: $0) }
   }
 
-  static func turns(inDatabaseAt databaseURL: URL, since cycleStart: Date, splitAt: Date? = nil) throws -> [Turn] {
+  static func read(
+    inDatabaseAt databaseURL: URL,
+    since cycleStart: Date,
+    splitAt: Date? = nil
+  ) throws -> (turns: [Turn], portkeyRecords: [PortkeyRecord]) {
     let database = try openDatabase(at: databaseURL)
     defer { sqlite3_close(database) }
-    guard try tableExists(currentTable, in: database) else { return [] }
+    guard try tableExists(currentTable, in: database) else { return ([], []) }
     let sessionTurnQuery = turnQuery(
       hasSessionTable: try columnsExist(["id", "directory", "parent_id", "project_id"], in: "session_v2", database: database),
       hasProjectTable: try columnsExist(["id", "worktree"], in: "project", database: database)
@@ -110,6 +130,7 @@ public enum OpenCodeSessionParser {
 
     // Index 0 for rows from splitAt on, 1 for rows before it.
     var builders = [TurnBuilder(), TurnBuilder()]
+    var portkeyRecords: [PortkeyRecord] = []
     try forEachRow(query: sessionTurnQuery, in: database, since: cycleStartMilliseconds) { statement in
       guard let messageId = text(statement, 0), let sessionId = text(statement, 1), let type = text(statement, 2) else { return }
       let timestamp = Date(timeIntervalSince1970: Double(sqlite3_column_int64(statement, 3)) / 1000)
@@ -124,8 +145,18 @@ public enum OpenCodeSessionParser {
           turn.records.append(UsageRecord(model: model, timestamp: timestamp, tokens: tokens(statement, firstColumn: 7)))
         }
       }
+      // The cost is data.cost in USD, as OpenCode stored it. NULL, or 0 with tokens, when OpenCode has no price: the
+      // record is unpriced.
+      if type == "assistant", let provider = text(statement, 5), PortkeyRecord.isPortkey(provider: provider),
+        let model = text(statement, 6)
+      {
+        let storedCostUSD = sqlite3_column_type(statement, 15) == SQLITE_NULL ? nil : sqlite3_column_double(statement, 15)
+        let rowTokens = tokens(statement, firstColumn: 7)
+        let costUSD = PortkeyRecord.costUSD(stored: storedCostUSD, tokenCount: rowTokens.promptTokens + rowTokens.output)
+        portkeyRecords.append(PortkeyRecord(model: model, timestamp: timestamp, source: .opencode, costUSD: costUSD))
+      }
     }
-    return builders.flatMap { $0.finishedTurns() }.filter { !$0.records.isEmpty }
+    return (builders.flatMap { $0.finishedTurns() }.filter { !$0.records.isEmpty }, portkeyRecords)
   }
 
   // Groups rows in session order: a user row or a new session starts a turn.

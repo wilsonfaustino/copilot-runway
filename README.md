@@ -19,7 +19,7 @@ OpenCode, Pi, omp and Copilot CLI and app session files, so it needs no setup.
   The app does not store the token on disk or in `UserDefaults`, and does not log it.
   For `gh search`, gh reads its own login, so the app never reads the token.
 - Session files stay on your Mac. The OpenCode database opens read only, and the queries select
-  only time, agent, model, token and tool call fields, plus the session folder and project root.
+  only time, agent, model, token, cost and tool call fields, plus the session folder and project root.
   From each Pi and omp file, the app reads the session id and folder from the header line.
   To name a project, the app checks the session folder and its parents for a `.git` entry on disk.
   For a linked worktree, it reads the `.git` file to find the main repo.
@@ -118,6 +118,25 @@ Top categories (same local sessions):
 - Planning: 150 credits (12%)
 ```
 
+### Portkey
+
+When your Pi, omp or OpenCode sessions send messages through Portkey (any provider id that
+contains "portkey"), the popover shows a Portkey card under the Copilot numbers, and the
+Dashboard shows a Portkey section. The amounts are USD, not Copilot credits, and they never
+count in the Copilot gauge, runway, burn rate or breakdowns.
+
+- The card shows the spend this cycle, the request count, the spend by model and by agent, and
+  one insight sentence. The cycle is the Copilot cycle.
+- The Dashboard section shows the spend, the requests, the average cost per request, a model by
+  agent table and agent share bars.
+- The cost is the cost each agent stores in its session files. The app makes no call to Portkey.
+  A message without a stored cost, or with tokens and a cost of 0, counts as a request and adds
+  $0.00. A note under the amounts gives the number of these requests.
+- Set a monthly Portkey budget in Settings to see the dollars left, the days of runway and the
+  health color, with the Copilot rules.
+- The card is hidden when there are no Portkey messages this cycle and no budget.
+- The menu bar, notifications, "Copy summary" and the Share image stay Copilot-only.
+
 ### Task categories
 
 The app puts each turn of each local session in one category: Debugging, Implementation,
@@ -139,6 +158,7 @@ Open Settings with the gear button in the popover:
 - GitHub organization for outcomes. The status line under it shows if gh can search it.
 - Show credits spent instead of left. Off by default. When on, the menu bar, the popover ring,
   the dashboard, the Share card and Copy summary show the share of credits spent in the cycle.
+- Portkey monthly budget in USD. Empty means no budget. The field refuses a negative amount.
 - The GitHub account source ("From gh auth. No token stored.").
 - The path of the price override file.
 - An About section with the app version, the author, a Star on GitHub link and the license.

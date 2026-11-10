@@ -55,8 +55,20 @@ public enum ModelDisplayName {
     "kimi-k3": "Kimi K3",
   ]
 
+  // Portkey ids are gateway paths. Keys are the last path part.
+  static let portkey: [String: String] = [
+    "deepseek-v4p1-flash-1017": "DeepSeek V4.1 Flash",
+    "glm-5p3-flash": "GLM 5.3 Flash",
+  ]
+
   // An id with no name shows as itself.
   public static func name(for modelID: String) -> String {
     bundled[modelID] ?? modelID
+  }
+
+  // A Portkey id with no name shows as its last path part, which is the whole id when it has no "/".
+  public static func portkeyName(for modelID: String) -> String {
+    let lastPathPart = modelID.split(separator: "/").last.map(String.init) ?? modelID
+    return portkey[lastPathPart] ?? lastPathPart
   }
 }
