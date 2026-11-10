@@ -50,11 +50,18 @@ public enum PortkeyBudget {
     case refused
   }
 
-  // The Settings field. Empty or 0 means no budget. A negative amount or other text is refused.
+  // The Settings field. Empty or 0 means no budget. A negative or infinite amount, or any text that is not
+  // fully a number, is refused.
   public static func entry(from text: String, locale: Locale = .current) -> Entry {
     let trimmedText = text.trimmingCharacters(in: .whitespaces)
     if trimmedText.isEmpty { return .noBudget }
-    guard let amount = try? Double(trimmedText, format: .number.locale(locale)), amount >= 0 else { return .refused }
+    let numberFormatter = NumberFormatter()
+    numberFormatter.numberStyle = .decimal
+    numberFormatter.locale = locale
+    // number(from:) is nil unless the whole text is a number, so "10abc" does not save as 10.
+    guard let amount = numberFormatter.number(from: trimmedText)?.doubleValue, amount.isFinite, amount >= 0 else {
+      return .refused
+    }
     return amount == 0 ? .noBudget : .budget(amount)
   }
 

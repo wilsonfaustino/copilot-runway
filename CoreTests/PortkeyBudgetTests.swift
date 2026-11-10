@@ -102,3 +102,15 @@ private let portkeyNow = utcDate("2026-10-11T00:00:00Z")
   #expect(PortkeyBudget.showsBlock(requestCount: 3, budgetUSD: nil))
   #expect(PortkeyBudget.showsBlock(requestCount: 0, budgetUSD: 25))
 }
+
+// Runway.wholeDaysLeft traps on an infinite budget, so a budget too large for a Double is refused.
+@Test func infiniteBudgetTextIsRefused() {
+  #expect(PortkeyBudget.entry(from: "1e400", locale: usLocale) == .refused)
+  #expect(PortkeyBudget.entry(from: String(repeating: "9", count: 400), locale: usLocale) == .refused)
+}
+
+@Test func budgetTextWithTrailingTextIsRefused() {
+  #expect(PortkeyBudget.entry(from: "10abc", locale: usLocale) == .refused)
+  #expect(PortkeyBudget.entry(from: "50/month", locale: usLocale) == .refused)
+  #expect(PortkeyBudget.entry(from: "12 USD", locale: usLocale) == .refused)
+}
