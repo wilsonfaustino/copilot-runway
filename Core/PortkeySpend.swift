@@ -53,6 +53,15 @@ public struct PortkeySpend: Equatable, Sendable {
   public var requestCount: Int { records.count }
   public var unpricedCount: Int { records.filter { $0.costUSD == nil }.count }
 
+  // nil when every request has a cost.
+  public var unpricedNote: String? {
+    switch unpricedCount {
+    case 0: nil
+    case 1: "1 request has no price, so the total misses it."
+    case let count: "\(count) requests have no price, so the total misses them."
+    }
+  }
+
   // Over the priced requests only. nil when no request has a cost.
   public var averageUSDPerRequest: Double? {
     let pricedCount = requestCount - unpricedCount

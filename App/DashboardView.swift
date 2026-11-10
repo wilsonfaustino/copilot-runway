@@ -310,7 +310,9 @@ struct DashboardView: View {
     if PortkeyBudget.showsBlock(requestCount: spend.requestCount, budgetUSD: portkeyBudgetUSD) {
       PortkeyDashboardSection(
         spend: spend,
-        budgetStatus: PortkeyBudgetStatus(spend: spend, budgetUSD: portkeyBudgetUSD, resetDate: usage.resetDate, now: .now),
+        budgetStatus: PortkeyBudget.status(
+          spentUSD: spend.totalUSD, budgetUSD: portkeyBudgetUSD, resetDate: usage.resetDate, now: .now
+        ),
         dateRange: "\(day(Runway.cycleStart(resetDate: usage.resetDate))) to \(day(.now))"
       )
       .padding(.top, Theme.Spacing.regular)

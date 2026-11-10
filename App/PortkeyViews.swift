@@ -11,40 +11,11 @@ enum PortkeyText {
   static func requests(_ count: Int) -> String {
     count == 1 ? "1 request" : "\(count) requests"
   }
-
-  static func unpricedNote(_ count: Int) -> String? {
-    switch count {
-    case 0: nil
-    case 1: "1 request has no price, so the total misses it."
-    default: "\(count) requests have no price, so the total misses them."
-    }
-  }
-}
-
-// "$X of $Y left, N days" with the Copilot runway rules. nil without a budget.
-struct PortkeyBudgetStatus {
-  let text: String
-  let health: RunwayHealth
-
-  init?(spend: PortkeySpend, budgetUSD: Double?, resetDate: Date, now: Date) {
-    guard let budgetUSD, let usage = PortkeyBudget.usage(spentUSD: spend.totalUSD, budgetUSD: budgetUSD, resetDate: resetDate)
-    else { return nil }
-    // Over budget, the amount left stops at 0.
-    let leftText = "\(PortkeySpend.formatted(max(usage.creditsRemaining, 0))) of \(PortkeySpend.formatted(budgetUSD)) left"
-    let daysText =
-      switch Runway.wholeDaysLeft(usage: usage, now: now) {
-      case nil: "no spend yet"
-      case 1: "1 day"
-      case let wholeDays?: "\(wholeDays) days"
-      }
-    text = "\(leftText), \(daysText)"
-    health = RunwayHealth(usage: usage, now: now)
-  }
 }
 
 struct PortkeyCard: View {
   let spend: PortkeySpend
-  let budgetStatus: PortkeyBudgetStatus?
+  let budgetStatus: PortkeyBudget.Status?
 
   var body: some View {
     VStack(alignment: .leading, spacing: Theme.Spacing.regular) {
@@ -77,7 +48,7 @@ struct PortkeyCard: View {
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
         }
-        if let unpricedNote = PortkeyText.unpricedNote(spend.unpricedCount) {
+        if let unpricedNote = spend.unpricedNote {
           Text(unpricedNote)
             .captionStyle()
             .fixedSize(horizontal: false, vertical: true)
@@ -188,7 +159,7 @@ private struct PortkeyModelShareBar: View {
 
 struct PortkeyDashboardSection: View {
   let spend: PortkeySpend
-  let budgetStatus: PortkeyBudgetStatus?
+  let budgetStatus: PortkeyBudget.Status?
   let dateRange: String
 
   var body: some View {
@@ -225,7 +196,7 @@ struct PortkeyDashboardSection: View {
       Text("\(PortkeyText.costSourceNote) A message without a cost shows as \"no price\".")
         .captionStyle()
         .fixedSize(horizontal: false, vertical: true)
-      if let unpricedNote = PortkeyText.unpricedNote(spend.unpricedCount) {
+      if let unpricedNote = spend.unpricedNote {
         Text(unpricedNote)
           .captionStyle()
       }

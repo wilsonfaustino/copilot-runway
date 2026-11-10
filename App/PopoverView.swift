@@ -322,7 +322,7 @@ struct PopoverView: View {
       PortkeyCard(
         spend: spend,
         budgetStatus: usageStore.usage.flatMap {
-          PortkeyBudgetStatus(spend: spend, budgetUSD: portkeyBudgetUSD, resetDate: $0.resetDate, now: now)
+          PortkeyBudget.status(spentUSD: spend.totalUSD, budgetUSD: portkeyBudgetUSD, resetDate: $0.resetDate, now: now)
         }
       )
     }

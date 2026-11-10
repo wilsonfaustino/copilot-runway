@@ -50,6 +50,31 @@ private let portkeyNow = utcDate("2026-10-11T00:00:00Z")
   #expect(RunwayHealth(usage: usage, now: portkeyNow) == .healthy)
 }
 
+@Test func budgetStatusIsNilWithoutABudget() {
+  #expect(PortkeyBudget.status(spentUSD: 4, budgetUSD: nil, resetDate: portkeyResetDate, now: portkeyNow) == nil)
+}
+
+@Test func budgetStatusUnderBudgetGivesDollarsAndDaysLeft() {
+  let status = PortkeyBudget.status(spentUSD: 4, budgetUSD: 10, resetDate: portkeyResetDate, now: portkeyNow, locale: usLocale)
+  #expect(status == PortkeyBudget.Status(text: "$6.00 of $10.00 left, 15 days", health: .short))
+}
+
+@Test func budgetStatusOverBudgetStopsAtZero() {
+  let status = PortkeyBudget.status(spentUSD: 12, budgetUSD: 10, resetDate: portkeyResetDate, now: portkeyNow, locale: usLocale)
+  #expect(status == PortkeyBudget.Status(text: "$0.00 of $10.00 left, 0 days", health: .critical))
+}
+
+@Test func budgetStatusWithNoSpendShowsTheFullBudget() {
+  let status = PortkeyBudget.status(spentUSD: 0, budgetUSD: 10, resetDate: portkeyResetDate, now: portkeyNow, locale: usLocale)
+  #expect(status == PortkeyBudget.Status(text: "$10.00 of $10.00 left, no spend yet", health: .healthy))
+}
+
+@Test func budgetStatusUsesSingularDay() {
+  // 5 of 5.60 USD in 10 days: 0.5 USD/day, 0.60 USD left, 1.2 days.
+  let status = PortkeyBudget.status(spentUSD: 5, budgetUSD: 5.6, resetDate: portkeyResetDate, now: portkeyNow, locale: usLocale)
+  #expect(status?.text == "$0.60 of $5.60 left, 1 day")
+}
+
 // Copilot-only users see no Portkey block.
 @Test func blockIsHiddenWithNoRequestsAndNoBudget() {
   #expect(PortkeyBudget.showsBlock(requestCount: 0, budgetUSD: nil) == false)

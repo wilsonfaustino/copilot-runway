@@ -137,3 +137,12 @@ private func expectUSD(_ actual: Double, _ expected: Double, sourceLocation: Sou
   #expect(PortkeySpend.formatted(0.0097, locale: englishLocale) == "$0.01")
   #expect(PortkeySpend.formatted(0, locale: englishLocale) == "$0.00")
 }
+
+@Test func unpricedNoteCountsRequestsWithNoCost() {
+  let now = Date(timeIntervalSince1970: 0)
+  let priced = PortkeyRecord(model: glmModel, timestamp: now, source: .pi, costUSD: 0.01)
+  let unpriced = PortkeyRecord(model: glmModel, timestamp: now, source: .pi, costUSD: nil)
+  #expect(PortkeySpend(records: [priced]).unpricedNote == nil)
+  #expect(PortkeySpend(records: [priced, unpriced]).unpricedNote == "1 request has no price, so the total misses it.")
+  #expect(PortkeySpend(records: [unpriced, unpriced]).unpricedNote == "2 requests have no price, so the total misses them.")
+}
