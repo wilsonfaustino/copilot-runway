@@ -50,8 +50,12 @@ public enum PortkeyBudget {
     case refused
   }
 
-  // The Settings field. Empty or 0 means no budget. A negative or infinite amount, or any text that is not
-  // fully a number, is refused.
+  // Runway.wholeDaysLeft converts the days left to Int, which traps above Int.max. With this cap, a spend of
+  // 1e-12 USD a day or more stays below it, and no real monthly budget comes near it.
+  public static let maximumBudgetUSD: Double = 1_000_000
+
+  // The Settings field. Empty or 0 means no budget. A negative amount, an amount above maximumBudgetUSD, or any
+  // text that is not fully a number, is refused.
   public static func entry(from text: String, locale: Locale = .current) -> Entry {
     let trimmedText = text.trimmingCharacters(in: .whitespaces)
     if trimmedText.isEmpty { return .noBudget }
@@ -59,7 +63,7 @@ public enum PortkeyBudget {
     numberFormatter.numberStyle = .decimal
     numberFormatter.locale = locale
     // number(from:) is nil unless the whole text is a number, so "10abc" does not save as 10.
-    guard let amount = numberFormatter.number(from: trimmedText)?.doubleValue, amount.isFinite, amount >= 0 else {
+    guard let amount = numberFormatter.number(from: trimmedText)?.doubleValue, (0...maximumBudgetUSD).contains(amount) else {
       return .refused
     }
     return amount == 0 ? .noBudget : .budget(amount)

@@ -92,7 +92,7 @@ struct SettingsView: View {
         .disabled(DemoLaunch.isActive)
         #endif
       if portkeyBudgetRefused {
-        Label("Enter an amount of 0 or more, or leave the field empty.", systemImage: "exclamationmark.triangle")
+        Label("Enter an amount from 0 to 1,000,000, or leave the field empty.", systemImage: "exclamationmark.triangle")
           .font(.callout)
           .foregroundStyle(Theme.accent(.critical))
       }

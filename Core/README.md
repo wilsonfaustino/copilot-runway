@@ -150,7 +150,8 @@ never count as Copilot credits. Checked on real data in November 2026.
 - `PortkeySpend` gives the total, request count, unpriced count, average per priced request, spend by model, by
   source and by model and source, and an insight sentence. `PortkeyBudget.usage` maps the spend and a monthly
   budget in USD onto `CopilotUsage`, so `Runway` and `RunwayHealth` compute the Portkey runway with the Copilot
-  rules. No budget, or a budget of 0 or less, gives no usage.
+  rules. No budget, or a budget of 0 or less, gives no usage. `PortkeyBudget.entry` refuses text that is not
+  fully a number, and amounts above `maximumBudgetUSD` (1,000,000 USD), so the days left always fit in an `Int`.
 
 ## Turns and task categories
 

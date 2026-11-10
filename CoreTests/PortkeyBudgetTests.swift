@@ -114,3 +114,17 @@ private let portkeyNow = utcDate("2026-10-11T00:00:00Z")
   #expect(PortkeyBudget.entry(from: "50/month", locale: usLocale) == .refused)
   #expect(PortkeyBudget.entry(from: "12 USD", locale: usLocale) == .refused)
 }
+
+// A finite budget can still give more days than Int holds, which traps in Runway.wholeDaysLeft.
+@Test func budgetTextAboveTheMaximumIsRefused() {
+  #expect(PortkeyBudget.entry(from: "100000000000000000000", locale: usLocale) == .refused)
+  #expect(PortkeyBudget.entry(from: "1000001", locale: usLocale) == .refused)
+  #expect(PortkeyBudget.entry(from: "1,000,000", locale: usLocale) == .budget(1_000_000))
+}
+
+@Test func maximumBudgetWithTinySpendGivesAStatus() {
+  let status = PortkeyBudget.status(
+    spentUSD: 0.000001, budgetUSD: 1_000_000, resetDate: portkeyResetDate, now: portkeyNow, locale: usLocale
+  )
+  #expect(status?.health == .healthy)
+}
