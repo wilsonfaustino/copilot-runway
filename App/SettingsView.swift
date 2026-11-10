@@ -7,6 +7,9 @@ struct SettingsView: View {
   @AppStorage(RunwayNotifier.enabledKey) private var runwayNotificationsEnabled = true
   @AppStorage(Theme.taskPalettePreferenceKey) private var taskPalettePreference = TaskPalettePreference.unset
   @AppStorage(UsageStore.gaugeModeKey) private var gaugeMode = GaugeMode.left
+  @AppStorage(UsageStore.portkeyBudgetKey) private var portkeyBudgetUSD: Double?
+  @State private var portkeyBudgetText = ""
+  @State private var portkeyBudgetRefused = false
   @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiatesWithoutColor
 
   private var organizationStatus: SettingsOrganizationStatus {
@@ -45,6 +48,7 @@ struct SettingsView: View {
       notificationsSection
       gaugeSection
       chartsSection
+      portkeySection
       Section {
         LabeledContent("GitHub account") {
           Label("From gh auth. No token stored.", systemImage: "text.alignleft")
@@ -67,8 +71,54 @@ struct SettingsView: View {
     .formStyle(.grouped)
     .frame(width: 480)
     .fixedSize(horizontal: false, vertical: true)
-    .onAppear { organizationText = usageStore.organization ?? "" }
-    .onDisappear { usageStore.setOrganization(organizationText) }
+    .onAppear {
+      organizationText = usageStore.organization ?? ""
+      portkeyBudgetText = portkeyBudgetUSD.map { $0.formatted(.number.grouping(.never)) } ?? ""
+    }
+    .onDisappear {
+      usageStore.setOrganization(organizationText)
+      savePortkeyBudget()
+    }
+  }
+
+  private var portkeySection: some View {
+    Section {
+      TextField("Portkey monthly budget (USD)", text: $portkeyBudgetText, prompt: Text("No budget"))
+        .textFieldStyle(.roundedBorder)
+        .onSubmit { savePortkeyBudget() }
+        #if DEBUG
+        // Demo mode must not write the real preference.
+        .disabled(DemoLaunch.isActive)
+        #endif
+      if portkeyBudgetRefused {
+        Label("Enter an amount of 0 or more, or leave the field empty.", systemImage: "exclamationmark.triangle")
+          .font(.callout)
+          .foregroundStyle(Theme.accent(.critical))
+      }
+    } header: {
+      Text("Portkey")
+    } footer: {
+      Text("Optional. With a budget, the Portkey block shows the dollars left and the days of runway. Empty means no budget.")
+        .captionStyle()
+        .padding(.top, Theme.Spacing.small)
+    }
+  }
+
+  // A refused entry keeps the saved budget.
+  private func savePortkeyBudget() {
+    #if DEBUG
+    if DemoLaunch.isActive { return }
+    #endif
+    switch PortkeyBudget.entry(from: portkeyBudgetText) {
+    case .noBudget:
+      portkeyBudgetUSD = nil
+      portkeyBudgetRefused = false
+    case .budget(let amount):
+      portkeyBudgetUSD = amount
+      portkeyBudgetRefused = false
+    case .refused:
+      portkeyBudgetRefused = true
+    }
   }
 
   private var notificationsSection: some View {

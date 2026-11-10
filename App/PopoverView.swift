@@ -11,6 +11,7 @@ struct PopoverView: View {
   }
   @AppStorage("localOnlyNoticeDismissed") private var localOnlyNoticeDismissed = false
   @AppStorage("whatsNewLastSeenVersion") private var whatsNewLastSeenVersion: String?
+  @AppStorage(UsageStore.portkeyBudgetKey) private var portkeyBudgetUSD: Double?
   @Environment(\.openWindow) private var openWindow
   @Environment(\.openSettings) private var openSettings
   @State private var openCount = 0
@@ -47,6 +48,10 @@ struct PopoverView: View {
         Label(sessionsWarning, systemImage: "exclamationmark.circle")
           .captionStyle()
           .fixedSize(horizontal: false, vertical: true)
+      }
+      // The Share image stays Copilot-only.
+      if !forShare {
+        portkeyCard(now: now)
       }
       if forShare {
         Text("Copilot Runway · \(now.formatted(.dateTime.month(.abbreviated).day()))")
@@ -307,6 +312,19 @@ struct PopoverView: View {
           }
         )
       }
+    }
+  }
+
+  @ViewBuilder
+  private func portkeyCard(now: Date) -> some View {
+    let spend = usageStore.portkeySpend
+    if PortkeyBudget.showsBlock(requestCount: spend.requestCount, budgetUSD: portkeyBudgetUSD) {
+      PortkeyCard(
+        spend: spend,
+        budgetStatus: usageStore.usage.flatMap {
+          PortkeyBudgetStatus(spend: spend, budgetUSD: portkeyBudgetUSD, resetDate: $0.resetDate, now: now)
+        }
+      )
     }
   }
 

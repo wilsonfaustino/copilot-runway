@@ -124,6 +124,17 @@ enum Theme {
     Dictionary(uniqueKeysWithValues: zip(breakdown.items.prefix(ProjectName.namedProjectLimit).map(\.id), projectRamp))
   }
 
+  // Portkey models by USD rank: teal, then violet, from the approved design. Light values are darker so they keep
+  // contrast on a white background. Models past the ramp take the Other models gray.
+  private static let portkeyModelRamp = [
+    Color(nsColor: dynamicColor(dark: 0x3FC1B0, light: 0x00796B)),
+    Color(nsColor: dynamicColor(dark: 0xB9A2FF, light: 0x6E4FD0)),
+  ]
+
+  static func portkeyModelColor(rank: Int) -> Color {
+    portkeyModelRamp.indices.contains(rank) ? portkeyModelRamp[rank] : otherModelsColor
+  }
+
   // System grays switch with the appearance. The stripes, not a hue, tell the gap from the solid Other models gray.
   static let otherModelsColor = Color(nsColor: .tertiaryLabelColor)
   static let notInLocalSessionsStripe = Color(nsColor: .systemGray)
