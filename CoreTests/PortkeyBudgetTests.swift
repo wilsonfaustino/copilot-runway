@@ -49,3 +49,31 @@ private let portkeyNow = utcDate("2026-10-11T00:00:00Z")
   #expect(Runway.wholeDaysLeft(usage: usage, now: portkeyNow) == nil)
   #expect(RunwayHealth(usage: usage, now: portkeyNow) == .healthy)
 }
+
+// Copilot-only users see no Portkey block.
+@Test func blockIsHiddenWithNoRequestsAndNoBudget() {
+  #expect(PortkeyBudget.showsBlock(requestCount: 0, budgetUSD: nil) == false)
+  #expect(PortkeyBudget.showsBlock(requestCount: 0, budgetUSD: 0) == false)
+}
+
+@Test func emptyBudgetTextMeansNoBudget() {
+  #expect(PortkeyBudget.entry(from: "", locale: usLocale) == .noBudget)
+  #expect(PortkeyBudget.entry(from: "  ", locale: usLocale) == .noBudget)
+  #expect(PortkeyBudget.entry(from: "0", locale: usLocale) == .noBudget)
+}
+
+@Test func budgetTextGivesTheBudget() {
+  #expect(PortkeyBudget.entry(from: "25", locale: usLocale) == .budget(25))
+  #expect(PortkeyBudget.entry(from: " 1,000.50 ", locale: usLocale) == .budget(1000.5))
+  #expect(PortkeyBudget.entry(from: "12,5", locale: Locale(identifier: "pt_BR")) == .budget(12.5))
+}
+
+@Test func negativeOrNonNumberBudgetTextIsRefused() {
+  #expect(PortkeyBudget.entry(from: "-5", locale: usLocale) == .refused)
+  #expect(PortkeyBudget.entry(from: "ten", locale: usLocale) == .refused)
+}
+
+@Test func blockShowsWithRequestsOrBudget() {
+  #expect(PortkeyBudget.showsBlock(requestCount: 3, budgetUSD: nil))
+  #expect(PortkeyBudget.showsBlock(requestCount: 0, budgetUSD: 25))
+}
