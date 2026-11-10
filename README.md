@@ -130,7 +130,8 @@ count in the Copilot gauge, runway, burn rate or breakdowns.
 - The Dashboard section shows the spend, the requests, the average cost per request, a model by
   agent table and agent share bars.
 - The cost is the cost each agent stores in its session files. The app makes no call to Portkey.
-  A message without a stored cost counts as "no price".
+  A message without a stored cost, or with tokens and a cost of 0, counts as a request and adds
+  $0.00. A note under the amounts gives the number of these requests.
 - Set a monthly Portkey budget in Settings to see the dollars left, the days of runway and the
   health color, with the Copilot rules.
 - The card is hidden when there are no Portkey messages this cycle and no budget.
