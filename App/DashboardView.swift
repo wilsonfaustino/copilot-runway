@@ -304,14 +304,22 @@ struct DashboardView: View {
 
   // MARK: Portkey
 
+  // Demo mode shows fake data, so it ignores the real budget.
+  private var shownPortkeyBudgetUSD: Double? {
+    #if DEBUG
+    if DemoLaunch.isActive { return nil }
+    #endif
+    return portkeyBudgetUSD
+  }
+
   @ViewBuilder
   private func portkeySection(usage: CopilotUsage) -> some View {
     let spend = usageStore.portkeySpend
-    if PortkeyBudget.showsBlock(requestCount: spend.requestCount, budgetUSD: portkeyBudgetUSD) {
+    if PortkeyBudget.showsBlock(requestCount: spend.requestCount, budgetUSD: shownPortkeyBudgetUSD) {
       PortkeyDashboardSection(
         spend: spend,
         budgetStatus: PortkeyBudget.status(
-          spentUSD: spend.totalUSD, budgetUSD: portkeyBudgetUSD, resetDate: usage.resetDate, now: .now
+          spentUSD: spend.totalUSD, budgetUSD: shownPortkeyBudgetUSD, resetDate: usage.resetDate, now: .now
         ),
         dateRange: "\(day(Runway.cycleStart(resetDate: usage.resetDate))) to \(day(.now))"
       )

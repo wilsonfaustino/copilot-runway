@@ -315,14 +315,22 @@ struct PopoverView: View {
     }
   }
 
+  // Demo mode shows fake data, so it ignores the real budget.
+  private var shownPortkeyBudgetUSD: Double? {
+    #if DEBUG
+    if DemoLaunch.isActive { return nil }
+    #endif
+    return portkeyBudgetUSD
+  }
+
   @ViewBuilder
   private func portkeyCard(now: Date) -> some View {
     let spend = usageStore.portkeySpend
-    if PortkeyBudget.showsBlock(requestCount: spend.requestCount, budgetUSD: portkeyBudgetUSD) {
+    if PortkeyBudget.showsBlock(requestCount: spend.requestCount, budgetUSD: shownPortkeyBudgetUSD) {
       PortkeyCard(
         spend: spend,
         budgetStatus: usageStore.usage.flatMap {
-          PortkeyBudget.status(spentUSD: spend.totalUSD, budgetUSD: portkeyBudgetUSD, resetDate: $0.resetDate, now: now)
+          PortkeyBudget.status(spentUSD: spend.totalUSD, budgetUSD: shownPortkeyBudgetUSD, resetDate: $0.resetDate, now: now)
         }
       )
     }
