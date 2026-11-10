@@ -387,9 +387,10 @@ Both use local credits only. They are not in the GitHub numbers, the popover or 
 
 `ModelDisplayName.bundled` maps each id in `PriceTable.bundled` to the name GitHub writes on the
 [models and pricing page](https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing),
-for example `gpt-6.1-sol` to "GPT-6.1 Sol". A second map names Portkey models by the last path part of their id,
-for example `glm-5p3-flash` to "GLM 5.3 Flash". `name(for:)` returns the last path part of the id (the id itself
-when it has no `/`) for an id not in either map.
+for example `gpt-6.1-sol` to "GPT-6.1 Sol". `name(for:)` returns the id itself for an id not in the map.
+A second map names Portkey models by the last path part of their id, for example `glm-5p3-flash` to
+"GLM 5.3 Flash". `portkeyName(for:)` uses only that map, and returns the last path part of the id (the id itself
+when it has no `/`) for an id not in it. The Portkey views and the Portkey insight use `portkeyName(for:)`.
 Display names appear in text and legends: the By model rows, the unpriced models note, the low cache hit
 note, the model efficiency note and "Copy summary". Keys, sorting, pricing and grouping use raw ids. The map
 has no override file. A new price table entry needs a new name, and a test checks that the two have the same ids.

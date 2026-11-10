@@ -40,10 +40,16 @@ import Testing
 }
 
 @Test func portkeyModelsShowReadableNames() {
-  #expect(ModelDisplayName.name(for: "@fireworks-ai-global/accounts/fireworks/models/deepseek-v4p1-flash-1017") == "DeepSeek V4.1 Flash")
-  #expect(ModelDisplayName.name(for: "@fireworks-ai-global/accounts/fireworks/models/glm-5p3-flash") == "GLM 5.3 Flash")
+  #expect(ModelDisplayName.portkeyName(for: "@fireworks-ai-global/accounts/fireworks/models/deepseek-v4p1-flash-1017") == "DeepSeek V4.1 Flash")
+  #expect(ModelDisplayName.portkeyName(for: "@fireworks-ai-global/accounts/fireworks/models/glm-5p3-flash") == "GLM 5.3 Flash")
 }
 
 @Test func unknownGatewayModelShowsTheLastPathPart() {
-  #expect(ModelDisplayName.name(for: "@fireworks-ai-global/accounts/fireworks/models/kimi-k4") == "kimi-k4")
+  #expect(ModelDisplayName.portkeyName(for: "@fireworks-ai-global/accounts/fireworks/models/kimi-k4") == "kimi-k4")
+}
+
+// The last path part rule is for Portkey ids only. A Copilot id shows as itself.
+@Test func copilotIdWithSlashIsUnchanged() {
+  #expect(ModelDisplayName.name(for: "openai/gpt-7") == "openai/gpt-7")
+  #expect(ModelDisplayName.name(for: "fireworks/models/glm-5p3-flash") == "fireworks/models/glm-5p3-flash")
 }

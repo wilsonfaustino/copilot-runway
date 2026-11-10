@@ -89,7 +89,7 @@ struct PortkeyCard: View {
           RoundedRectangle(cornerRadius: 2)
             .fill(Theme.portkeyModelColor(rank: rank))
             .frame(width: 8, height: 8)
-          Text(ModelDisplayName.name(for: modelSpend.model))
+          Text(ModelDisplayName.portkeyName(for: modelSpend.model))
             .lineLimit(1)
           Spacer()
           Text("\(percents[rank])%")
@@ -241,7 +241,7 @@ struct PortkeyDashboardSection: View {
               RoundedRectangle(cornerRadius: 2)
                 .fill(Theme.portkeyModelColor(rank: rank))
                 .frame(width: 8, height: 8)
-              Text(ModelDisplayName.name(for: modelSpend.model))
+              Text(ModelDisplayName.portkeyName(for: modelSpend.model))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             ForEach(PortkeyText.sources, id: \.self) { source in

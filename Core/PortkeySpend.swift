@@ -103,7 +103,7 @@ public struct PortkeySpend: Equatable, Sendable {
   public func insightSentence(locale: Locale = .current) -> String? {
     guard totalUSD > 0, let topModel = byModel.first, let averageUSDPerRequest else { return nil }
     let share = Credits.sharePercent(topModel.usd, of: totalUSD)
-    return "\(ModelDisplayName.name(for: topModel.model)) is \(share)% of Portkey spend, "
+    return "\(ModelDisplayName.portkeyName(for: topModel.model)) is \(share)% of Portkey spend, "
       + "about \(Self.formatted(averageUSDPerRequest, locale: locale)) per request."
   }
 

@@ -61,9 +61,14 @@ public enum ModelDisplayName {
     "glm-5p3-flash": "GLM 5.3 Flash",
   ]
 
-  // An id with no name shows as its last path part, which is the whole id when it has no "/".
+  // An id with no name shows as itself.
   public static func name(for modelID: String) -> String {
+    bundled[modelID] ?? modelID
+  }
+
+  // A Portkey id with no name shows as its last path part, which is the whole id when it has no "/".
+  public static func portkeyName(for modelID: String) -> String {
     let lastPathPart = modelID.split(separator: "/").last.map(String.init) ?? modelID
-    return bundled[modelID] ?? portkey[lastPathPart] ?? lastPathPart
+    return portkey[lastPathPart] ?? lastPathPart
   }
 }
