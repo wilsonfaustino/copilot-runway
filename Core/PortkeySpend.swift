@@ -51,14 +51,35 @@ public struct PortkeyModelSourceSpend: Equatable, Sendable {
 // requests and add 0 USD.
 public struct PortkeySpend: Equatable, Sendable {
   public let records: [PortkeyRecord]
+  public let totalUSD: Double
+  public let unpricedCount: Int
+  // Highest spend first, then by id.
+  public let byModel: [PortkeyModelSpend]
+  // Highest spend first, then by source.
+  public let bySource: [PortkeySourceSpend]
+  // Cells of the model by agent table: models in byModel order, then highest spend first within a model.
+  public let byModelAndSource: [PortkeyModelSourceSpend]
 
   public init(records: [PortkeyRecord]) {
     self.records = records
+    totalUSD = Self.usd(of: records)
+    unpricedCount = records.filter { $0.costUSD == nil }.count
+    let byModel = Dictionary(grouping: records, by: \.model)
+      .map { PortkeyModelSpend(model: $0.key, usd: Self.usd(of: $0.value), requestCount: $0.value.count) }
+      .sorted { ($1.usd, $0.model) < ($0.usd, $1.model) }
+    self.byModel = byModel
+    bySource = Dictionary(grouping: records, by: \.source)
+      .map { PortkeySourceSpend(source: $0.key, usd: Self.usd(of: $0.value), requestCount: $0.value.count) }
+      .sorted { ($1.usd, $0.source.rawValue) < ($0.usd, $1.source.rawValue) }
+    let modelRank = Dictionary(uniqueKeysWithValues: byModel.enumerated().map { ($0.element.model, $0.offset) })
+    byModelAndSource = Dictionary(grouping: records) { ModelSourceKey(model: $0.model, source: $0.source) }
+      .map { PortkeyModelSourceSpend(model: $0.key.model, source: $0.key.source, usd: Self.usd(of: $0.value), requestCount: $0.value.count) }
+      .sorted {
+        (modelRank[$0.model]!, $1.usd, $0.source.rawValue) < (modelRank[$1.model]!, $0.usd, $1.source.rawValue)
+      }
   }
 
-  public var totalUSD: Double { Self.usd(of: records) }
   public var requestCount: Int { records.count }
-  public var unpricedCount: Int { records.filter { $0.costUSD == nil }.count }
 
   // nil when every request has a cost.
   public var unpricedNote: String? {
@@ -73,30 +94,6 @@ public struct PortkeySpend: Equatable, Sendable {
   public var averageUSDPerRequest: Double? {
     let pricedCount = requestCount - unpricedCount
     return pricedCount > 0 ? totalUSD / Double(pricedCount) : nil
-  }
-
-  // Highest spend first, then by id.
-  public var byModel: [PortkeyModelSpend] {
-    Dictionary(grouping: records, by: \.model)
-      .map { PortkeyModelSpend(model: $0.key, usd: Self.usd(of: $0.value), requestCount: $0.value.count) }
-      .sorted { ($1.usd, $0.model) < ($0.usd, $1.model) }
-  }
-
-  // Highest spend first, then by source.
-  public var bySource: [PortkeySourceSpend] {
-    Dictionary(grouping: records, by: \.source)
-      .map { PortkeySourceSpend(source: $0.key, usd: Self.usd(of: $0.value), requestCount: $0.value.count) }
-      .sorted { ($1.usd, $0.source.rawValue) < ($0.usd, $1.source.rawValue) }
-  }
-
-  // Cells of the model by agent table: models in byModel order, then highest spend first within a model.
-  public var byModelAndSource: [PortkeyModelSourceSpend] {
-    let modelRank = Dictionary(uniqueKeysWithValues: byModel.enumerated().map { ($0.element.model, $0.offset) })
-    return Dictionary(grouping: records) { ModelSourceKey(model: $0.model, source: $0.source) }
-      .map { PortkeyModelSourceSpend(model: $0.key.model, source: $0.key.source, usd: Self.usd(of: $0.value), requestCount: $0.value.count) }
-      .sorted {
-        (modelRank[$0.model]!, $1.usd, $0.source.rawValue) < (modelRank[$1.model]!, $0.usd, $1.source.rawValue)
-      }
   }
 
   // For example "DeepSeek V4.1 Flash is 99% of Portkey spend, about $0.004 per request." nil with no spend.
