@@ -135,7 +135,8 @@ count in the Copilot gauge, runway, burn rate or breakdowns.
 - Set a monthly Portkey budget in Settings to see the dollars left, the days of runway and the
   health color, with the Copilot rules.
 - The card is hidden when there are no Portkey messages this cycle and no budget.
-- The menu bar, notifications, "Copy summary" and the Share image stay Copilot-only.
+- The Share image shows the card when the popover shows it.
+- The menu bar, notifications and "Copy summary" stay Copilot-only.
 
 ### Task categories
 

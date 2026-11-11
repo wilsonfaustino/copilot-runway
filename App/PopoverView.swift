@@ -49,10 +49,7 @@ struct PopoverView: View {
           .captionStyle()
           .fixedSize(horizontal: false, vertical: true)
       }
-      // The Share image stays Copilot-only.
-      if !forShare {
-        portkeyCard(now: now)
-      }
+      portkeyCard(now: now)
       if forShare {
         Text("Copilot Runway · \(now.formatted(.dateTime.month(.abbreviated).day()))")
           .captionStyle()
