@@ -16,6 +16,7 @@ enum PortkeyText {
 struct PortkeyCard: View {
   let spend: PortkeySpend
   let budgetStatus: PortkeyBudget.Status?
+  var showsCostSourceNote = true
 
   var body: some View {
     VStack(alignment: .leading, spacing: Theme.Spacing.regular) {
@@ -55,9 +56,11 @@ struct PortkeyCard: View {
         }
       }
       .cardStyle(padding: Theme.Spacing.section)
-      Text(PortkeyText.costSourceNote)
-        .captionStyle()
-        .fixedSize(horizontal: false, vertical: true)
+      if showsCostSourceNote {
+        Text(PortkeyText.costSourceNote)
+          .captionStyle()
+          .fixedSize(horizontal: false, vertical: true)
+      }
     }
   }
 

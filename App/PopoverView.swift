@@ -328,7 +328,8 @@ struct PopoverView: View {
         spend: spend,
         budgetStatus: usageStore.usage.flatMap {
           PortkeyBudget.status(spentUSD: spend.totalUSD, budgetUSD: shownPortkeyBudgetUSD, resetDate: $0.resetDate, now: now)
-        }
+        },
+        showsCostSourceNote: !forShare
       )
     }
   }
