@@ -49,10 +49,7 @@ struct PopoverView: View {
           .captionStyle()
           .fixedSize(horizontal: false, vertical: true)
       }
-      // The Share image stays Copilot-only.
-      if !forShare {
-        portkeyCard(now: now)
-      }
+      portkeyCard(now: now)
       if forShare {
         Text("Copilot Runway · \(now.formatted(.dateTime.month(.abbreviated).day()))")
           .captionStyle()
@@ -331,7 +328,8 @@ struct PopoverView: View {
         spend: spend,
         budgetStatus: usageStore.usage.flatMap {
           PortkeyBudget.status(spentUSD: spend.totalUSD, budgetUSD: shownPortkeyBudgetUSD, resetDate: $0.resetDate, now: now)
-        }
+        },
+        showsCostSourceNote: !forShare
       )
     }
   }
