@@ -110,3 +110,11 @@ func premiumResponse(entitlement: Int, creditsUsed: Int, quotaRemaining: Double,
     try CopilotUsageClient.usage(from: Data(), statusCode: 302)
   }
 }
+
+@Test func errorMessagesTellTheUserWhatToDo() {
+  #expect(CopilotUsageError.ghNotFound.message == "GitHub CLI not found. Install it with: brew install gh")
+  #expect(CopilotUsageError.notLoggedIn.message == "Not logged in to GitHub. Run: gh auth login")
+  #expect(CopilotUsageError.network.message == "Cannot reach api.github.com. Check your connection.")
+  #expect(CopilotUsageError.httpStatus(503).message == "GitHub returned HTTP 503.")
+  #expect(CopilotUsageError.invalidResponse.message == "GitHub returned an unexpected response.")
+}
