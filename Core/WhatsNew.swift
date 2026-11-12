@@ -32,6 +32,10 @@ public struct WhatsNew: Equatable, Sendable {
 
   // One entry per release with user-visible changes, keyed by version, at most maxLines lines. Add it in the release commit.
   public static let bundledNotes: [String: [String]] = [
+    "1.2.1": [
+      "Share image now includes the Portkey card.",
+      "Settings window resizes in height and scrolls on small screens.",
+    ],
     "1.2.0": [
       "Portkey card: USD spend by model and agent, apart from Copilot credits.",
       "Set a monthly Portkey budget in Settings to see its runway.",
