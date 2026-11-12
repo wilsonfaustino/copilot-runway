@@ -70,7 +70,8 @@ struct SettingsView: View {
     }
     .formStyle(.grouped)
     .frame(width: 480)
-    .fixedSize(horizontal: false, vertical: true)
+    .frame(minHeight: 320, maxHeight: .infinity)
+    .background(HeightResizableWindow())
     .onAppear {
       organizationText = usageStore.organization ?? ""
       portkeyBudgetText = portkeyBudgetUSD.map { $0.formatted(.number.grouping(.never)) } ?? ""
@@ -250,5 +251,75 @@ struct SettingsView: View {
           .controlSize(.small)
       }
     }
+  }
+}
+
+// The Settings scene creates a window without .resizable, so the frame range alone does not let the user resize it.
+// SwiftUI clears the style bit again right after attach, so it is added in the async pass that also fits the window
+// once to the Form content. Later content changes and manual resizes are left alone. Screen changes only pull the
+// frame back inside the visible frame.
+private struct HeightResizableWindow: NSViewRepresentable {
+  func makeNSView(context: Context) -> NSView { WindowConfiguringView() }
+
+  func updateNSView(_ nsView: NSView, context: Context) {}
+
+  private final class WindowConfiguringView: NSView {
+    private var observers: [NSObjectProtocol] = []
+
+    override func viewDidMoveToWindow() {
+      stopObserving()
+      guard let window else { return }
+      let center = NotificationCenter.default
+      observers = [
+        center.addObserver(forName: NSWindow.didChangeScreenNotification, object: window, queue: .main) { [weak self, weak window] _ in
+          self?.keepInsideVisibleFrame(window)
+        },
+        center.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self, weak window] _ in
+          self?.keepInsideVisibleFrame(window)
+        },
+      ]
+      DispatchQueue.main.async { [weak self, weak window] in
+        guard let self, let window, self.window === window else { return }
+        self.fitToContent(window)
+      }
+    }
+
+    deinit { stopObserving() }
+
+    private func stopObserving() {
+      observers.forEach(NotificationCenter.default.removeObserver)
+      observers = []
+    }
+
+    private func fitToContent(_ window: NSWindow) {
+      window.styleMask.insert(.resizable)
+      window.contentView?.layoutSubtreeIfNeeded()
+      if let scrollView = window.contentView?.firstDescendant(ofType: NSScrollView.self), let contentView = scrollView.documentView {
+        var fittedFrame = window.frame
+        fittedFrame.size.height += contentView.frame.height + scrollView.contentInsets.top + scrollView.contentInsets.bottom - scrollView.contentView.bounds.height
+        fittedFrame.origin.y = window.frame.maxY - fittedFrame.height
+        window.setFrame(fittedFrame, display: false)
+      }
+      keepInsideVisibleFrame(window)
+    }
+
+    // Checks the origin as well as the height, because a short enough window can still hang below the screen.
+    private func keepInsideVisibleFrame(_ window: NSWindow?) {
+      guard let window, self.window === window, let visibleFrame = window.screen?.visibleFrame else { return }
+      var fittedFrame = window.frame
+      fittedFrame.size.height = min(fittedFrame.height, visibleFrame.height)
+      fittedFrame.origin.y = min(max(fittedFrame.origin.y, visibleFrame.minY), visibleFrame.maxY - fittedFrame.height)
+      fittedFrame.origin.x = min(max(fittedFrame.origin.x, visibleFrame.minX), visibleFrame.maxX - fittedFrame.width)
+      if fittedFrame != window.frame { window.setFrame(fittedFrame, display: true) }
+    }
+  }
+}
+
+private extension NSView {
+  func firstDescendant<ViewType: NSView>(ofType type: ViewType.Type) -> ViewType? {
+    for subview in subviews {
+      if let match = subview as? ViewType ?? subview.firstDescendant(ofType: type) { return match }
+    }
+    return nil
   }
 }
