@@ -196,7 +196,7 @@ struct PortkeyDashboardSection: View {
         modelSourceTable
         agentBars
       }
-      Text("\(PortkeyText.costSourceNote) A message without a cost counts as a request and adds $0.00.")
+      Text("\(PortkeyText.costSourceNote) A message without a cost counts as a request and adds \(PortkeySpend.formatted(0)).")
         .captionStyle()
         .fixedSize(horizontal: false, vertical: true)
       if let unpricedNote = spend.unpricedNote {
