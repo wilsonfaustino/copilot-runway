@@ -27,7 +27,7 @@ public struct DemoScenario: Sendable {
 
   public let name: Name
   public let now: Date
-  public let usage: CopilotUsage
+  public let usage: QuotaUsage
   public let turns: [Turn]
   // The last cycle, for the Daily burn ghost line. Kept apart from turns, which hold only this cycle.
   public let previousTurns: [Turn]
@@ -43,7 +43,7 @@ public struct DemoScenario: Sendable {
     let creditsRemaining = shape.entitlement - shape.creditsUsed
     self.name = name
     self.now = now
-    usage = CopilotUsage(
+    usage = QuotaUsage(
       creditsUsed: shape.creditsUsed,
       entitlement: shape.entitlement,
       creditsRemaining: creditsRemaining,

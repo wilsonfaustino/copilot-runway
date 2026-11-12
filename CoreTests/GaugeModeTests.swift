@@ -3,7 +3,7 @@ import Testing
 
 // 6100 of 12000 used gives 49% left and 51% spent, so a swapped formula fails.
 private let asymmetricUsage = makeUsage(creditsUsed: 6100)
-private let unlimitedUsage = CopilotUsage(
+private let unlimitedUsage = QuotaUsage(
   creditsUsed: 50, entitlement: 0, creditsRemaining: 0, percentRemaining: 100, isUnlimited: true,
   resetDate: utcDate("2026-11-01T00:00:00Z"))
 

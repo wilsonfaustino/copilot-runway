@@ -2,9 +2,9 @@ import Core
 import Foundation
 import Testing
 
-func makeUsage(creditsUsed: Double, entitlement: Double = 12000, isUnlimited: Bool = false) -> CopilotUsage {
+func makeUsage(creditsUsed: Double, entitlement: Double = 12000, isUnlimited: Bool = false) -> QuotaUsage {
   let creditsRemaining = entitlement - creditsUsed
-  return CopilotUsage(
+  return QuotaUsage(
     creditsUsed: creditsUsed,
     entitlement: entitlement,
     creditsRemaining: creditsRemaining,

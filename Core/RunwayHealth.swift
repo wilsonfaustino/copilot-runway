@@ -7,7 +7,7 @@ public enum RunwayHealth: Equatable, Sendable {
   case unavailable
 
   // Critical wins over short. A plan with no limit or no burn yet has no run-out, so it is healthy.
-  public init(usage: CopilotUsage, now: Date) {
+  public init(usage: QuotaUsage, now: Date) {
     guard let daysLeft = Runway.daysLeft(usage: usage, now: now),
       let runOutDate = Runway.runOutDate(usage: usage, now: now)
     else {
@@ -24,7 +24,7 @@ public enum RunwayHealth: Equatable, Sendable {
   }
 
   // The last good usage can be stale, so any fetch error makes the health unavailable.
-  public init(usage: CopilotUsage?, hasError: Bool, now: Date) {
+  public init(usage: QuotaUsage?, hasError: Bool, now: Date) {
     guard let usage, !hasError else {
       self = .unavailable
       return

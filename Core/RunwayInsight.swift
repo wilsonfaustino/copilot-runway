@@ -8,7 +8,7 @@ public enum RunwayInsight {
     case beforeReset(runOutDate: Date, daysBeforeReset: Int)
   }
 
-  private static func runOutOutlook(usage: CopilotUsage, now: Date) -> RunOutOutlook? {
+  private static func runOutOutlook(usage: QuotaUsage, now: Date) -> RunOutOutlook? {
     guard now < usage.resetDate, let estimatedRunOut = Runway.runOutDate(usage: usage, now: now) else { return nil }
     // Overage gives a run-out in the past, but the credits ran out by now at the latest.
     let runOutDate = max(estimatedRunOut, now)
@@ -21,7 +21,7 @@ public enum RunwayInsight {
     return .beforeReset(runOutDate: runOutDate, daysBeforeReset: daysBeforeReset)
   }
 
-  public static func runOutSentence(usage: CopilotUsage, now: Date, locale: Locale = .current) -> String? {
+  public static func runOutSentence(usage: QuotaUsage, now: Date, locale: Locale = .current) -> String? {
     let resetText = day(usage.resetDate, locale: locale)
     switch runOutOutlook(usage: usage, now: now) {
     case nil: return nil
@@ -32,19 +32,19 @@ public enum RunwayInsight {
     }
   }
 
-  public static func limitSentence(usage: CopilotUsage, locale: Locale = .current) -> String {
+  public static func limitSentence(usage: QuotaUsage, locale: Locale = .current) -> String {
     "You used all credits for this cycle. Resets \(day(usage.resetDate, locale: locale))."
   }
 
   // The highest average burn from now on that still reaches the reset with credits left.
-  public static func requiredDailyBurn(usage: CopilotUsage, now: Date) -> Double? {
+  public static func requiredDailyBurn(usage: QuotaUsage, now: Date) -> Double? {
     guard !usage.isUnlimited, now < usage.resetDate else { return nil }
     let daysUntilReset = usage.resetDate.timeIntervalSince(now) / Runway.secondsPerDay
     return max(usage.creditsRemaining, 0) / daysUntilReset
   }
 
   // "N credits/day of headroom" or "N credits/day over budget". nil when Runway.dailyHeadroom is nil.
-  public static func headroomText(usage: CopilotUsage, now: Date, locale: Locale = .current) -> String? {
+  public static func headroomText(usage: QuotaUsage, now: Date, locale: Locale = .current) -> String? {
     guard let headroom = Runway.dailyHeadroom(usage: usage, now: now) else { return nil }
     let creditsText = Credits.formatted(abs(headroom), locale: locale)
     return headroom >= 0 ? "\(creditsText) credits/day of headroom" : "\(creditsText) credits/day over budget"
@@ -60,7 +60,7 @@ public enum RunwayInsight {
   // The dashboard banner. The headline names the state, the detail adds what to do next and the top category.
   // A past cycle with credits used has no run-out sentence, so it falls through to the reset sentence.
   public static func banner(
-    usage: CopilotUsage,
+    usage: QuotaUsage,
     errorMessage: String?,
     categoryCredits: [CategoryCredits],
     now: Date,
@@ -98,7 +98,7 @@ public enum RunwayInsight {
 
   // The lines under the popover runway figure. Each line must fit about 30 characters next to the ring,
   // so the headroom text goes on a second line. nil when there is nothing useful to say.
-  public static func popoverSentence(usage: CopilotUsage, now: Date, locale: Locale = .current) -> String? {
+  public static func popoverSentence(usage: QuotaUsage, now: Date, locale: Locale = .current) -> String? {
     let headroomLine = headroomText(usage: usage, now: now, locale: locale).map { "\n\($0)." } ?? ""
     switch runOutOutlook(usage: usage, now: now) {
     case .pastReset?: return "Lasts past the \(day(usage.resetDate, locale: locale)) reset.\(headroomLine)"

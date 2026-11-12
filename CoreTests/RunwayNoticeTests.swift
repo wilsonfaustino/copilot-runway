@@ -4,7 +4,7 @@ import Testing
 
 // makeUsage resets at 2026-11-01 with 12000 credits, so 80% is 9600.
 
-func runwayNotices(usage: CopilotUsage?, now: String, sentKeys: Set<String> = []) -> [RunwayNotice] {
+func runwayNotices(usage: QuotaUsage?, now: String, sentKeys: Set<String> = []) -> [RunwayNotice] {
   RunwayNotice.toSend(usage: usage, now: utcDate(now), sentKeys: sentKeys, locale: usLocale)
 }
 
@@ -96,7 +96,7 @@ func runwayNotices(usage: CopilotUsage?, now: String, sentKeys: Set<String> = []
 @Test func newResetDateFiresAgain() {
   let lastCycleKeys = Set(runwayNotices(usage: makeUsage(creditsUsed: 9600), now: "2026-10-29T00:00:00Z").map(\.key))
   #expect(lastCycleKeys == ["used80-2026-11-01"])
-  let nextCycleUsage = CopilotUsage(
+  let nextCycleUsage = QuotaUsage(
     creditsUsed: 9600,
     entitlement: 12000,
     creditsRemaining: 2400,

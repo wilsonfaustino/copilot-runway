@@ -33,7 +33,7 @@ public struct RunwayNotice: Equatable, Sendable {
   // critical needs credits left and limitReached needs none, so the two never fire for the same refresh.
   // Missing usage, an unlimited plan, and usage from a past cycle give no notices.
   public static func toSend(
-    usage: CopilotUsage?,
+    usage: QuotaUsage?,
     now: Date,
     sentKeys: Set<String>,
     locale: Locale = .current

@@ -17,7 +17,7 @@ final class RunwayNotifier: NSObject, UNUserNotificationCenterDelegate {
     UNUserNotificationCenter.current().delegate = self
   }
 
-  func sendDueNotices(usage: CopilotUsage) async {
+  func sendDueNotices(usage: QuotaUsage) async {
     // The @AppStorage default is true, and a missing key reads as false through bool(forKey:).
     guard UserDefaults.standard.object(forKey: Self.enabledKey) as? Bool ?? true, !isSending else { return }
     let sentKeys = Set(UserDefaults.standard.stringArray(forKey: Self.sentKeysKey) ?? [])
@@ -37,7 +37,7 @@ final class RunwayNotifier: NSObject, UNUserNotificationCenterDelegate {
   }
 
   #if DEBUG
-  func sendTestNotice(usage: CopilotUsage?) async {
+  func sendTestNotice(usage: QuotaUsage?) async {
     // Demo mode asks for no permission and posts no notice.
     guard !DemoLaunch.isActive, await isAuthorized() else { return }
     let notice = usage.flatMap { RunwayNotice.toSend(usage: $0, now: .now, sentKeys: []).first }
