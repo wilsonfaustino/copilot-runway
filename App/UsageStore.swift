@@ -17,7 +17,7 @@ final class UsageStore {
   private(set) var errorMessage: String?
   private(set) var usageError: CopilotUsageError?
   private(set) var lastRefresh: Date?
-  private(set) var usage: CopilotUsage?
+  private(set) var usage: QuotaUsage?
   private(set) var modelCredits: [ModelCredits] = []
   private(set) var categoryCredits: [CategoryCredits] = []
   private(set) var modelCategoryCredits: [ModelCategoryCredits] = []

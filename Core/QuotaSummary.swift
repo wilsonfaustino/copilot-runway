@@ -6,7 +6,7 @@ public enum QuotaSummary {
   static let topCount = 3
 
   public static func text(
-    usage: CopilotUsage,
+    usage: QuotaUsage,
     now: Date,
     modelCredits: [ModelCredits],
     categoryCredits: [CategoryCredits],
@@ -45,7 +45,7 @@ public enum QuotaSummary {
     return lines.joined(separator: "\n")
   }
 
-  static func runOutLine(usage: CopilotUsage, now: Date) -> String {
+  static func runOutLine(usage: QuotaUsage, now: Date) -> String {
     guard let runOutDate = Runway.runOutDate(usage: usage, now: now) else {
       return "Projected run-out: none, no credits used yet"
     }

@@ -108,7 +108,7 @@ struct DashboardView: View {
 
   // MARK: Insight banner
 
-  private func insightBanner(usage: CopilotUsage, health: RunwayHealth) -> some View {
+  private func insightBanner(usage: QuotaUsage, health: RunwayHealth) -> some View {
     let accent = Theme.accent(health)
     let (headline, detail) = RunwayInsight.banner(
       usage: usage, errorMessage: usageStore.errorMessage, categoryCredits: usageStore.categoryCredits, now: .now
@@ -160,7 +160,7 @@ struct DashboardView: View {
       .monospacedDigit()
   }
 
-  private func runwayCard(usage: CopilotUsage, health: RunwayHealth) -> some View {
+  private func runwayCard(usage: QuotaUsage, health: RunwayHealth) -> some View {
     kpiCard("Runway") {
       if usage.isUnlimited {
         Text("∞").bigFigureStyle(size: 34)
@@ -179,7 +179,7 @@ struct DashboardView: View {
     }
   }
 
-  private func remainingCard(usage: CopilotUsage, health: RunwayHealth) -> some View {
+  private func remainingCard(usage: QuotaUsage, health: RunwayHealth) -> some View {
     let gaugeMode = usageStore.gaugeMode
     return kpiCard(gaugeMode == .spent ? "Spent" : "Remaining") {
       if usage.isUnlimited {
@@ -193,7 +193,7 @@ struct DashboardView: View {
     }
   }
 
-  private func outcomesCard(usage: CopilotUsage) -> some View {
+  private func outcomesCard(usage: QuotaUsage) -> some View {
     kpiCard("Credits per PR authored") {
       if usageStore.organization == nil {
         Text("--").bigFigureStyle(size: 34)
@@ -248,7 +248,7 @@ struct DashboardView: View {
     )
   }
 
-  private func modelCard(usage: CopilotUsage) -> some View {
+  private func modelCard(usage: QuotaUsage) -> some View {
     let breakdown = ShareBreakdown.models(
       usageStore.modelCredits, githubCredits: usage.creditsUsed, namedModelLimit: ShareBreakdown.taskSplitModelLimit
     )
@@ -274,7 +274,7 @@ struct DashboardView: View {
     )
   }
 
-  private func agentCard(usage: CopilotUsage) -> some View {
+  private func agentCard(usage: QuotaUsage) -> some View {
     let sourceCredits = usageStore.sourceCredits
     let breakdown = ShareBreakdown.local(entries: sourceCredits.map { ($0.source.displayName, $0.credits) })
     let creditsPerDay = sourceCredits.map { source in
@@ -313,7 +313,7 @@ struct DashboardView: View {
   }
 
   @ViewBuilder
-  private func portkeySection(usage: CopilotUsage) -> some View {
+  private func portkeySection(usage: QuotaUsage) -> some View {
     let spend = usageStore.portkeySpend
     if PortkeyBudget.showsBlock(requestCount: spend.requestCount, budgetUSD: shownPortkeyBudgetUSD) {
       PortkeyDashboardSection(

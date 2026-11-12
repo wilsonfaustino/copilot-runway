@@ -225,16 +225,16 @@ struct PopoverView: View {
     }
   }
 
-  private func wholeDaysLeft(usage: CopilotUsage?, now: Date) -> Int? {
+  private func wholeDaysLeft(usage: QuotaUsage?, now: Date) -> Int? {
     usage.flatMap { Runway.wholeDaysLeft(usage: $0, now: now) }
   }
 
-  private func daysFigure(usage: CopilotUsage?, now: Date) -> String {
+  private func daysFigure(usage: QuotaUsage?, now: Date) -> String {
     if usage?.isUnlimited == true { return "∞" }
     return wholeDaysLeft(usage: usage, now: now).map(String.init) ?? "--"
   }
 
-  private func daysCaption(usage: CopilotUsage?, now: Date) -> String {
+  private func daysCaption(usage: QuotaUsage?, now: Date) -> String {
     wholeDaysLeft(usage: usage, now: now) == 1 ? "day of runway" : "days of runway"
   }
 

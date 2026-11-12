@@ -1,6 +1,6 @@
 import Foundation
 
-public struct CopilotUsage: Equatable, Sendable {
+public struct QuotaUsage: Equatable, Sendable {
   public let creditsUsed: Double
   public let entitlement: Double
   public let creditsRemaining: Double

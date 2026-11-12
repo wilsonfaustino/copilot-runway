@@ -3,7 +3,7 @@ import Foundation
 public enum MenuBarTitle {
   public static let placeholder = "--% · --d"
 
-  public static func title(usage: CopilotUsage, now: Date, mode: GaugeMode = .left) -> String {
+  public static func title(usage: QuotaUsage, now: Date, mode: GaugeMode = .left) -> String {
     if usage.isUnlimited { return "∞" }
     let gaugePercent = Runway.wholeGaugePercent(usage: usage, mode: mode)
     let daysLabel = Runway.wholeDaysLeft(usage: usage, now: now).map { "\($0)d" } ?? "--d"
@@ -12,7 +12,7 @@ public enum MenuBarTitle {
 
   // The share of credits left, 0...1, from the same percent the title shows. No usage yet gives 0.
   // An unlimited plan gives 1, to match its infinity title.
-  public static func remainingFraction(usage: CopilotUsage?) -> Double {
+  public static func remainingFraction(usage: QuotaUsage?) -> Double {
     guard let usage else { return 0 }
     if usage.isUnlimited { return 1 }
     return min(max(usage.percentRemaining / 100, 0), 1)
@@ -20,7 +20,7 @@ public enum MenuBarTitle {
 
   // The fraction the gauges draw. Spent is 1 minus the clamped left fraction, so overage fills the gauge.
   // No usage yet and an unlimited plan both give an empty spent gauge.
-  public static func gaugeFraction(usage: CopilotUsage?, mode: GaugeMode) -> Double {
+  public static func gaugeFraction(usage: QuotaUsage?, mode: GaugeMode) -> Double {
     switch mode {
     case .left: return remainingFraction(usage: usage)
     case .spent:

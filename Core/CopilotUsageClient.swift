@@ -9,7 +9,7 @@ public enum CopilotUsageClient {
   // A wake refresh can run before Wi-Fi is back, so the request waits for a connection up to this limit.
   static let resourceTimeout: TimeInterval = 30
 
-  public static func fetchCurrentUsage() async throws(CopilotUsageError) -> CopilotUsage {
+  public static func fetchCurrentUsage() async throws(CopilotUsageError) -> QuotaUsage {
     guard let ghPath = ghPaths.first(where: FileManager.default.isExecutableFile(atPath:)) else {
       throw CopilotUsageError.ghNotFound
     }
@@ -39,7 +39,7 @@ public enum CopilotUsageClient {
     return request
   }
 
-  public static func usage(from data: Data, statusCode: Int) throws(CopilotUsageError) -> CopilotUsage {
+  public static func usage(from data: Data, statusCode: Int) throws(CopilotUsageError) -> QuotaUsage {
     if statusCode == 401 { throw CopilotUsageError.notLoggedIn }
     // RedirectRefusal stops every redirect, so a 3xx arrives here as the final response.
     if (300..<400).contains(statusCode) { throw CopilotUsageError.invalidResponse }
@@ -57,7 +57,7 @@ public enum CopilotUsageClient {
     // so used goes above the entitlement.
     let hasEntitlement = !premium.unlimited && premium.entitlement > 0
     let creditsUsed = hasEntitlement ? max(premium.entitlement - premium.quotaRemaining, 0) : premium.creditsUsed
-    return CopilotUsage(
+    return QuotaUsage(
       creditsUsed: creditsUsed,
       entitlement: premium.entitlement,
       creditsRemaining: premium.quotaRemaining,
