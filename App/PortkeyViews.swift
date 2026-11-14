@@ -13,10 +13,25 @@ enum PortkeyText {
   }
 }
 
+struct PortkeySetupPromptButton: View {
+  let records: [PortkeyRecord]
+
+  var body: some View {
+    Button {
+      NSPasteboard.general.clearContents()
+      NSPasteboard.general.setString(PortkeySetupPrompt.text(records: records), forType: .string)
+    } label: {
+      Label("Copy setup prompt", systemImage: "doc.on.doc")
+    }
+    .controlSize(.small)
+  }
+}
+
 struct PortkeyCard: View {
   let spend: PortkeySpend
   let budgetStatus: PortkeyBudget.Status?
   var showsCostSourceNote = true
+  var showsSetupPrompt = true
 
   var body: some View {
     VStack(alignment: .leading, spacing: Theme.Spacing.regular) {
@@ -51,6 +66,12 @@ struct PortkeyCard: View {
         }
         if let unpricedNote = spend.unpricedNote {
           Text(unpricedNote)
+            .captionStyle()
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        if showsSetupPrompt && !PortkeySetupPrompt.unpricedModels(in: spend.records).isEmpty {
+          PortkeySetupPromptButton(records: spend.records)
+          Text(PortkeySetupPrompt.disclaimer)
             .captionStyle()
             .fixedSize(horizontal: false, vertical: true)
         }
