@@ -14,12 +14,20 @@ public enum RunwayHealth: Equatable, Sendable {
       self = .healthy
       return
     }
-    if daysLeft < 1 {
+    if daysLeft < 1 && Self.runsOutBeforeReset(runOutDate, usage: usage, days: days) {
       self = .critical
     } else if runOutDate < usage.resetDate {
       self = .short
     } else {
       self = .healthy
+    }
+  }
+
+  // Under 1 workday can span the weekend before the reset, so workday mode also needs the run-out before the reset.
+  private static func runsOutBeforeReset(_ runOutDate: Date, usage: QuotaUsage, days: RunwayDays) -> Bool {
+    switch days {
+    case .calendar: true
+    case .workdays: runOutDate < usage.resetDate
     }
   }
 

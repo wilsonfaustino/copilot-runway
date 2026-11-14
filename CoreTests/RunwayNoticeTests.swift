@@ -139,3 +139,10 @@ func runwayNotices(usage: QuotaUsage?, now: String, sentKeys: Set<String> = []) 
   )
   #expect(notices.contains { $0.title == "Runway is short: 5 workdays left" })
 }
+
+@Test func workdayRunOutAfterResetSendsNoCriticalNotice() {
+  let usage = makeUsage(creditsUsed: 290, entitlement: 300, resetDate: utcDate("2027-02-01T00:00:00Z"))
+  let sentNotices = RunwayNotice.toSend(
+    usage: usage, now: utcDate("2027-01-29T12:00:00Z"), sentKeys: [], days: utcWorkdays)
+  #expect(!sentNotices.map(\.kind).contains(.critical))
+}

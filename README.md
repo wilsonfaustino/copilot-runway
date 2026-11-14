@@ -41,7 +41,7 @@ example `92%`. A runway glyph next to the title changes color with the runway he
 |---|---|---|
 | Healthy | The credits last past the reset date, or the plan has no limit, or no credits are used yet | Blue |
 | Short | The credits run out before the reset date | Orange |
-| Critical | Less than 1 day of runway | Red |
+| Critical | Less than 1 day of runway. With Count only weekdays on, the run-out must also fall before the reset | Red |
 | Unavailable | No data yet | Gray |
 
 Other titles:

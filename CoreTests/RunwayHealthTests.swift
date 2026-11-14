@@ -63,3 +63,22 @@ import Testing
   #expect(RunwayHealth(usage: usage, hasError: true, now: now) == .unavailable)
   #expect(RunwayHealth(usage: usage, hasError: false, now: now) == .healthy)
 }
+
+// Fri 2027-01-29 noon, reset Mon 2027-02-01. 290 of 300 used: under 1 day left either way, but in
+// workdays the weekend pushes the run-out to the reset or later.
+private let fridayBeforeReset = utcDate("2027-01-29T12:00:00Z")
+private let mondayReset = utcDate("2027-02-01T00:00:00Z")
+
+@Test func workdayRunOutAtOrAfterResetIsHealthyEvenUnderOneWorkday() {
+  let usage = makeUsage(creditsUsed: 290, entitlement: 300, resetDate: mondayReset)
+  #expect(RunwayHealth(usage: usage, now: fridayBeforeReset, days: utcWorkdays) == .healthy)
+  #expect(RunwayHealth(usage: usage, now: fridayBeforeReset, days: .calendar) == .critical)
+}
+
+@Test func daysReachesRunwayHealth() {
+  // 285 of 300 used: calendar has 1.5 days left and runs out Sun 2027-01-31 (short).
+  // Workdays skip the weekend, so the run-out lands on Mon 2027-02-01 or later (healthy).
+  let usage = makeUsage(creditsUsed: 285, entitlement: 300, resetDate: mondayReset)
+  #expect(RunwayHealth(usage: usage, now: fridayBeforeReset, days: .calendar) == .short)
+  #expect(RunwayHealth(usage: usage, now: fridayBeforeReset, days: utcWorkdays) == .healthy)
+}
