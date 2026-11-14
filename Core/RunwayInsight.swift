@@ -13,11 +13,11 @@ public enum RunwayInsight {
     // Overage gives a run-out in the past, but the credits ran out by now at the latest.
     let runOutDate = max(estimatedRunOut, now)
     guard runOutDate < usage.resetDate else { return .pastReset }
-    // Count whole days from UTC day starts so the number matches the two dates in the sentence.
+    // Count calendar days in UTC so the number matches the two dates in the sentence, in both day modes.
     let calendar = Runway.utcCalendar
-    let daysBeforeReset = Int(
-      days.dayCount(from: calendar.startOfDay(for: runOutDate), to: calendar.startOfDay(for: usage.resetDate)).rounded()
-    )
+    let daysBeforeReset = calendar.dateComponents(
+      [.day], from: calendar.startOfDay(for: runOutDate), to: calendar.startOfDay(for: usage.resetDate)
+    ).day ?? 0
     return .beforeReset(runOutDate: runOutDate, daysBeforeReset: daysBeforeReset)
   }
 
@@ -27,7 +27,7 @@ public enum RunwayInsight {
     case nil: return nil
     case .pastReset?: return "At this pace your credits last past the reset on \(resetText)."
     case .beforeReset(let runOutDate, let daysBeforeReset)?:
-      let daysText = "\(daysBeforeReset) \(days.dayWord(count: daysBeforeReset))"
+      let daysText = daysBeforeReset == 1 ? "1 day" : "\(daysBeforeReset) days"
       return "At this pace you run out on \(day(runOutDate, locale: locale)), \(daysText) before the reset on \(resetText)."
     }
   }
@@ -111,7 +111,7 @@ public enum RunwayInsight {
     // The figure above already says "Lasts the cycle" with the reset day, so only the headroom line is left.
     case .pastReset?: return headroomText(usage: usage, now: now, locale: locale, days: days).map { "\($0)." }
     case .beforeReset(let runOutDate, let daysBeforeReset)?:
-      let daysText = "\(daysBeforeReset) \(days.dayWord(count: daysBeforeReset))"
+      let daysText = daysBeforeReset == 1 ? "1 day" : "\(daysBeforeReset) days"
       return "Runs out \(day(runOutDate, locale: locale)), \(daysText) early.\(headroomLine)"
     case nil: break
     }
