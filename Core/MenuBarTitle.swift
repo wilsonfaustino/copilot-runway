@@ -6,6 +6,7 @@ public enum MenuBarTitle {
   public static func title(usage: QuotaUsage, now: Date, mode: GaugeMode = .left) -> String {
     if usage.isUnlimited { return "∞" }
     let gaugePercent = Runway.wholeGaugePercent(usage: usage, mode: mode)
+    if Runway.lastsTheCycle(usage: usage, now: now) { return "\(gaugePercent)%" }
     let daysLabel = Runway.wholeDaysLeft(usage: usage, now: now).map { "\($0)d" } ?? "--d"
     return "\(gaugePercent)% · \(daysLabel)"
   }

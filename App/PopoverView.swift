@@ -204,7 +204,7 @@ struct PopoverView: View {
       VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
         HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
           Text(daysFigure(usage: usage, now: now))
-            .bigFigureStyle(size: 40)
+            .bigFigureStyle(size: lastsTheCycle(usage: usage, now: now) ? 24 : 40)
             .foregroundStyle(accent)
             // Early in a cycle the burn is tiny, so the day count can have 4 or more digits.
             .lineLimit(1)
@@ -229,13 +229,19 @@ struct PopoverView: View {
     usage.flatMap { Runway.wholeDaysLeft(usage: $0, now: now) }
   }
 
+  private func lastsTheCycle(usage: QuotaUsage?, now: Date) -> Bool {
+    usage.map { Runway.lastsTheCycle(usage: $0, now: now) } ?? false
+  }
+
   private func daysFigure(usage: QuotaUsage?, now: Date) -> String {
     if usage?.isUnlimited == true { return "∞" }
+    if lastsTheCycle(usage: usage, now: now) { return "Lasts the cycle" }
     return wholeDaysLeft(usage: usage, now: now).map(String.init) ?? "--"
   }
 
   private func daysCaption(usage: QuotaUsage?, now: Date) -> String {
-    wholeDaysLeft(usage: usage, now: now) == 1 ? "day of runway" : "days of runway"
+    if let usage, lastsTheCycle(usage: usage, now: now) { return RunwayInsight.resetCaption(usage: usage) }
+    return wholeDaysLeft(usage: usage, now: now) == 1 ? "day of runway" : "days of runway"
   }
 
   private func statCards(now: Date) -> some View {

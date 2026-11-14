@@ -104,3 +104,24 @@ func makeUsage(creditsUsed: Double, entitlement: Double = 12000, isUnlimited: Bo
 @Test func lastCycleDayIsTheDayBeforeReset() {
   #expect(Runway.lastCycleDay(resetDate: utcDate("2026-11-01T00:00:00Z")) == utcDate("2026-10-31T00:00:00Z"))
 }
+
+@Test func lastsTheCycleFalseWhenRunOutBeforeReset() {
+  // 600/day, 6000 left -> runs out Oct 21.
+  #expect(!Runway.lastsTheCycle(usage: makeUsage(creditsUsed: 6000), now: utcDate("2026-10-11T00:00:00Z")))
+}
+
+@Test func lastsTheCycleTrueWhenRunOutEqualsReset() {
+  // 100/day, 2100 left -> runs out exactly Nov 1.
+  #expect(Runway.lastsTheCycle(usage: makeUsage(creditsUsed: 1000, entitlement: 3100), now: utcDate("2026-10-11T00:00:00Z")))
+}
+
+@Test func lastsTheCycleTrueWhenRunOutAfterReset() {
+  #expect(Runway.lastsTheCycle(usage: makeUsage(creditsUsed: 1000), now: utcDate("2026-10-11T00:00:00Z")))
+}
+
+@Test func lastsTheCycleFalseWithoutBurnUnlimitedOrStale() {
+  let now = utcDate("2026-10-11T00:00:00Z")
+  #expect(!Runway.lastsTheCycle(usage: makeUsage(creditsUsed: 0), now: now))
+  #expect(!Runway.lastsTheCycle(usage: makeUsage(creditsUsed: 500, entitlement: 0, isUnlimited: true), now: now))
+  #expect(!Runway.lastsTheCycle(usage: makeUsage(creditsUsed: 1000), now: utcDate("2026-11-01T00:00:00Z")))
+}

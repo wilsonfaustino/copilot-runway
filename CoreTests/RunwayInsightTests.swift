@@ -179,14 +179,15 @@ let usLocale = Locale(identifier: "en_US")
   let sentence = RunwayInsight.popoverSentence(
     usage: makeUsage(creditsUsed: 1000), now: utcDate("2026-10-11T00:00:00Z"), locale: usLocale
   )
-  #expect(sentence == "Lasts past the Nov 1 reset.\n424 credits/day of headroom.")
+  // The figure and caption already say the credits last the cycle, so only the headroom line is left.
+  #expect(sentence == "424 credits/day of headroom.")
 }
 
 @Test func popoverSentenceDatesFollowLocale() {
   let sentence = RunwayInsight.popoverSentence(
-    usage: makeUsage(creditsUsed: 1000), now: utcDate("2026-10-11T00:00:00Z"), locale: Locale(identifier: "en_GB")
+    usage: makeUsage(creditsUsed: 6000), now: utcDate("2026-10-11T00:00:00Z"), locale: Locale(identifier: "en_GB")
   )
-  #expect(sentence == "Lasts past the 1 Nov reset.\n424 credits/day of headroom.")
+  #expect(sentence?.hasPrefix("Runs out 21 Oct, 11 days early.") == true)
 }
 
 @Test func popoverSentenceForUnlimitedPlan() {
@@ -290,4 +291,8 @@ let usLocale = Locale(identifier: "en_US")
   let usage = makeUsage(creditsUsed: 6000)
   #expect(Runway.dailyHeadroom(usage: usage, now: usage.resetDate) == nil)
   #expect(RunwayInsight.headroomText(usage: usage, now: usage.resetDate, locale: usLocale) == nil)
+}
+
+@Test func resetCaptionShowsUTCResetDay() {
+  #expect(RunwayInsight.resetCaption(usage: makeUsage(creditsUsed: 1000), locale: Locale(identifier: "en_US")) == "Resets Nov 1")
 }

@@ -165,6 +165,11 @@ struct DashboardView: View {
       if usage.isUnlimited {
         Text("∞").bigFigureStyle(size: 34)
         kpiDetail("Unlimited plan")
+      } else if Runway.lastsTheCycle(usage: usage, now: .now) {
+        Text("Lasts the cycle")
+          .bigFigureStyle(size: 22)
+          .foregroundStyle(Theme.accent(health))
+        kpiDetail(RunwayInsight.resetCaption(usage: usage))
       } else if let wholeDays = Runway.wholeDaysLeft(usage: usage, now: .now),
         let runOutDate = Runway.runOutDate(usage: usage, now: .now)
       {

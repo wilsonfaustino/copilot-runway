@@ -73,3 +73,10 @@ import Testing
   let title = MenuBarTitle.title(usage: makeUsage(creditsUsed: 12500), now: utcDate("2026-10-21T00:00:00Z"))
   #expect(title == "0% · 0d")
 }
+
+@Test func titleDropsDaysWhenCreditsLastTheCycle() {
+  // 100/day, 11000 left -> 110 days, past the Nov 1 reset.
+  let now = utcDate("2026-10-11T00:00:00Z")
+  #expect(MenuBarTitle.title(usage: makeUsage(creditsUsed: 1000), now: now) == "92%")
+  #expect(MenuBarTitle.title(usage: makeUsage(creditsUsed: 1000), now: now, mode: .spent) == "8%")
+}
