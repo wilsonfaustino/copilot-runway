@@ -209,6 +209,7 @@ struct DashboardView: View {
           .lineLimit(3)
           .fixedSize(horizontal: false, vertical: true)
         Button("Open Settings") {
+          usageStore.settingsTab = .sources
           openSettings()
           NSApplication.shared.activate()
         }

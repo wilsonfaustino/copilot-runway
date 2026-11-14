@@ -278,6 +278,7 @@ struct PopoverView: View {
     )
     if usageStore.organization == nil && !forShare {
       Button {
+        usageStore.settingsTab = .sources
         openSettings()
         NSApplication.shared.activate()
         closePopover()

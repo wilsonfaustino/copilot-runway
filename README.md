@@ -158,18 +158,22 @@ you authored. See [Credits per PR authored](#credits-per-pr-authored-1).
 
 ### Settings
 
-Open Settings with the gear button in the popover:
+Open Settings with the gear button in the popover. It has 4 tabs:
 
-- GitHub organization for outcomes. The status line under it shows if gh can search it.
-- Show credits spent instead of left. Off by default. When on, the menu bar, the popover ring,
-  the dashboard, the Share card and Copy summary show the share of credits spent in the cycle.
-- Count only weekdays. Off by default. When on, the burn rate, run-out date, runway and the
-  Portkey days of runway count Monday to Friday only, in your local time zone. The text says
-  "workday" instead of "day". Saturdays and Sundays do not add to the burn rate or use up runway.
-- Portkey monthly budget in USD. Empty means no budget. The field refuses a negative amount.
-- The GitHub account source ("From gh auth. No token stored.").
-- The path of the price override file.
-- An About section with the app version, the author, a Star on GitHub link and the license.
+- General: Open at login, Runway notifications and Colorblind-safe task colors.
+- Runway:
+  - Gauge shows. Two picture tiles, Credits left (the default) and Credits spent, drawn with
+    your current usage. With Credits spent, the menu bar, the popover ring, the dashboard, the
+    Share card and Copy summary show the share of credits spent in the cycle.
+  - Count only weekdays. Off by default. When on, the burn rate, run-out date, runway and the
+    Portkey days of runway count Monday to Friday only, in your local time zone. The text says
+    "workday" instead of "day". Saturdays and Sundays do not add to the burn rate or use up runway.
+- Sources:
+  - The GitHub account source ("From gh auth. No token stored.").
+  - GitHub organization for outcomes. The status line under it shows if gh can search it.
+  - Portkey monthly budget in USD. Empty means no budget. The field refuses a negative amount.
+  - The path of the price override file.
+- About: the app version, the author, a Star on GitHub link and the license.
 
 ## Screenshots
 
