@@ -46,6 +46,16 @@ public struct DaysOffGrid {
     return workdays
   }
 
+  // A plain click toggles the day. A shift-click marks the range from the last clicked day, or toggles when there is none.
+  public static func clicking(
+    _ day: LocalDay, in markedDays: Set<LocalDay>, isShift: Bool, lastClicked: LocalDay?
+  ) -> Set<LocalDay> {
+    if isShift, let lastClicked {
+      return markedDays.union(range(from: lastClicked, to: day))
+    }
+    return markedDays.symmetricDifference([day])
+  }
+
   private static func noonUTC(of day: LocalDay) -> Date {
     utcCalendar.date(from: DateComponents(year: day.year, month: day.month, day: day.day, hour: 12))!
   }

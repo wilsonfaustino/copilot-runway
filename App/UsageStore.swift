@@ -9,6 +9,8 @@ final class UsageStore {
   static let organizationKey = "githubOrganization"
   static let gaugeModeKey = "gaugeMode"
   static let countWeekdaysOnlyKey = "countWeekdaysOnly"
+  // An array of yyyy-MM-dd strings, local dates the workday math skips like weekends.
+  static let daysOffKey = "daysOff"
   // USD, a Double. No value means no budget.
   static let portkeyBudgetKey = "portkeyBudgetUSD"
   static let releaseCheckInterval: TimeInterval = 24 * 60 * 60
@@ -92,7 +94,12 @@ final class UsageStore {
   }
 
   private static func savedRunwayDays() -> RunwayDays {
-    UserDefaults.standard.bool(forKey: countWeekdaysOnlyKey) ? .workdays(.autoupdatingCurrent) : .calendar
+    UserDefaults.standard.bool(forKey: countWeekdaysOnlyKey)
+      ? .workdays(.autoupdatingCurrent, daysOff: savedDaysOff()) : .calendar
+  }
+
+  static func savedDaysOff() -> Set<LocalDay> {
+    Set((UserDefaults.standard.stringArray(forKey: daysOffKey) ?? []).compactMap(LocalDay.init(string:)))
   }
 
   // didChangeNotification fires for every setting, so only a new mode or day unit changes the store.

@@ -41,3 +41,26 @@ private func day(_ string: String) -> LocalDay { LocalDay(string: string)! }
   #expect(DaysOffGrid.range(from: day("2026-11-24"), to: day("2026-11-24")) == [day("2026-11-24")])
   #expect(DaysOffGrid.range(from: day("2026-11-21"), to: day("2026-11-22")).isEmpty)
 }
+
+@Test func plainClickTogglesTheDay() {
+  let marked: Set<LocalDay> = [day("2026-11-20")]
+  #expect(DaysOffGrid.clicking(day("2026-11-24"), in: marked, isShift: false, lastClicked: day("2026-11-20"))
+    == [day("2026-11-20"), day("2026-11-24")])
+  #expect(DaysOffGrid.clicking(day("2026-11-20"), in: marked, isShift: false, lastClicked: nil).isEmpty)
+}
+
+@Test func shiftClickAddsTheWorkdaysFromTheLastClickedDay() {
+  let marked: Set<LocalDay> = [day("2026-11-20")]
+  #expect(DaysOffGrid.clicking(day("2026-11-24"), in: marked, isShift: true, lastClicked: day("2026-11-20"))
+    == [day("2026-11-20"), day("2026-11-23"), day("2026-11-24")])
+}
+
+@Test func shiftClickKeepsMarkedDaysInTheRange() {
+  let marked: Set<LocalDay> = [day("2026-11-23"), day("2026-11-24")]
+  #expect(DaysOffGrid.clicking(day("2026-11-25"), in: marked, isShift: true, lastClicked: day("2026-11-23"))
+    == [day("2026-11-23"), day("2026-11-24"), day("2026-11-25")])
+}
+
+@Test func shiftClickWithNoLastClickedDayToggles() {
+  #expect(DaysOffGrid.clicking(day("2026-11-24"), in: [], isShift: true, lastClicked: nil) == [day("2026-11-24")])
+}

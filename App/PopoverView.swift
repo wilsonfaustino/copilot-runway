@@ -226,6 +226,13 @@ struct PopoverView: View {
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
         }
+        if !forShare, let usage, case .workdays(_, let daysOff) = usageStore.runwayDays {
+          let daysOffCount = DaysOffGrid.inCycle(daysOff, resetDate: usage.resetDate).count
+          if daysOffCount > 0 {
+            Label("Excludes \(daysOffCount) \(daysOffCount == 1 ? "day" : "days") off", systemImage: "calendar")
+              .captionStyle()
+          }
+        }
       }
       .accessibilityElement(children: .combine)
     }

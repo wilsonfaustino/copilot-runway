@@ -167,7 +167,29 @@ struct SettingsRunwayTab: View {
           #endif
         SettingsCaption("Burn rate and run-out skip Saturdays and Sundays.")
       }
+      SettingsDivider()
+      SettingsRow(label: "Days off") {
+        Group {
+          if let resetDate = usageStore.usage?.resetDate {
+            DaysOffCalendar(resetDate: resetDate)
+          }
+          SettingsCaption(
+            countWeekdaysOnly
+              ? "Click a workday to mark it off. Shift-click marks a range. Days off do not count toward burn rate or runway. Resets with the cycle."
+              : "Turn on Count only weekdays to mark days off.")
+        }
+        .disabled(!daysOffEditable)
+        .opacity(daysOffEditable ? 1 : 0.5)
+      }
     }
+  }
+
+  private var daysOffEditable: Bool {
+    #if DEBUG
+    // Demo mode must not write the real preference.
+    if DemoLaunch.isActive { return false }
+    #endif
+    return countWeekdaysOnly
   }
 
   private func gaugeTileButton(mode: GaugeMode, title: String) -> some View {
@@ -194,6 +216,128 @@ struct SettingsRunwayTab: View {
     .buttonStyle(.plain)
     .accessibilityLabel("\(title), \(tile.percent) percent\(tile.isSample ? ", sample" : "")")
     .accessibilityAddTraits(isSelected ? .isSelected : [])
+  }
+}
+
+// The cycle month as a 7-column calendar. Click marks or unmarks a workday, shift-click marks a range.
+private struct DaysOffCalendar: View {
+  let resetDate: Date
+  @State private var markedDays: Set<LocalDay> = []
+  @State private var lastClicked: LocalDay?
+
+  private static let cellWidth: CGFloat = 32
+  private static let cellHeight: CGFloat = 24
+  private static let cellSpacing: CGFloat = 4
+
+  private static let gregorianCalendar: Calendar = {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.locale = .current
+    return calendar
+  }()
+
+  var body: some View {
+    let grid = DaysOffGrid(resetDate: resetDate, firstWeekday: Calendar.current.firstWeekday)
+    let today = LocalDay(date: .now, timeZone: .autoupdatingCurrent)
+    VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+      HStack {
+        Text(header(grid: grid))
+          .font(.system(size: 12, weight: .semibold))
+        Spacer()
+        Button("Clear") { save([]) }
+          .controlSize(.small)
+          .disabled(markedDays.isEmpty)
+      }
+      .frame(width: Self.cellWidth * 7 + Self.cellSpacing * 6)
+      VStack(alignment: .leading, spacing: Self.cellSpacing) {
+        HStack(spacing: Self.cellSpacing) {
+          ForEach(Array(weekdayInitials.enumerated()), id: \.offset) { _, initial in
+            Text(initial)
+              .captionStyle()
+              .frame(width: Self.cellWidth, height: Self.cellHeight)
+          }
+        }
+        ForEach(Array(weeks(grid: grid).enumerated()), id: \.offset) { _, week in
+          HStack(spacing: Self.cellSpacing) {
+            ForEach(Array(week.enumerated()), id: \.offset) { _, cell in
+              if let cell {
+                dayButton(cell: cell, today: today)
+              } else {
+                Color.clear.frame(width: Self.cellWidth, height: Self.cellHeight)
+              }
+            }
+          }
+        }
+      }
+    }
+    .onChange(of: resetDate, initial: true) {
+      markedDays = DaysOffGrid.inCycle(UsageStore.savedDaysOff(), resetDate: resetDate)
+      lastClicked = nil
+    }
+  }
+
+  private func header(grid: DaysOffGrid) -> String {
+    let firstDay = grid.cells[0].day
+    let monthName = Self.gregorianCalendar.monthSymbols[firstDay.month - 1]
+    return "\(monthName) \(firstDay.year) · \(markedDays.count) \(markedDays.count == 1 ? "day" : "days") off"
+  }
+
+  private var weekdayInitials: [String] {
+    let symbols = Calendar.current.veryShortWeekdaySymbols
+    let firstIndex = Calendar.current.firstWeekday - 1
+    return Array(symbols[firstIndex...] + symbols[..<firstIndex])
+  }
+
+  // Leading blanks and trailing blanks are nil, so every week has 7 slots.
+  private func weeks(grid: DaysOffGrid) -> [[DaysOffGrid.Cell?]] {
+    var slots: [DaysOffGrid.Cell?] = Array(repeating: nil, count: grid.leadingBlanks) + grid.cells
+    slots += Array(repeating: nil, count: (7 - slots.count % 7) % 7)
+    return stride(from: 0, to: slots.count, by: 7).map { Array(slots[$0..<$0 + 7]) }
+  }
+
+  private func dayButton(cell: DaysOffGrid.Cell, today: LocalDay) -> some View {
+    let isDayOff = markedDays.contains(cell.day)
+    return Button {
+      let isShift = NSEvent.modifierFlags.contains(.shift)
+      save(DaysOffGrid.clicking(cell.day, in: markedDays, isShift: isShift, lastClicked: lastClicked))
+      lastClicked = cell.day
+    } label: {
+      Text("\(cell.day.day)")
+        .font(.system(size: 11))
+        .monospacedDigit()
+        .foregroundStyle(isDayOff ? Color.white : (cell.isWeekend ? Color.secondary.opacity(0.5) : Color.primary))
+        .frame(width: Self.cellWidth, height: Self.cellHeight)
+        .background(isDayOff ? Color.accentColor : Color.clear, in: RoundedRectangle(cornerRadius: 5))
+        .overlay {
+          if cell.day == today {
+            RoundedRectangle(cornerRadius: 5).strokeBorder(Color.accentColor, lineWidth: 1)
+          }
+        }
+        .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .disabled(cell.isWeekend)
+    .accessibilityLabel(accessibilityLabel(cell: cell, isDayOff: isDayOff))
+    .accessibilityAddTraits(isDayOff ? .isSelected : [])
+  }
+
+  // "November 20, day off", "November 21, weekend", or the date alone for a plain workday.
+  private func accessibilityLabel(cell: DaysOffGrid.Cell, isDayOff: Bool) -> String {
+    let date = "\(Self.gregorianCalendar.monthSymbols[cell.day.month - 1]) \(cell.day.day)"
+    if cell.isWeekend { return "\(date), weekend" }
+    return isDayOff ? "\(date), day off" : date
+  }
+
+  // Keeps only marks in this cycle, so marks from past cycles drop on the next write.
+  private func save(_ days: Set<LocalDay>) {
+    #if DEBUG
+    if DemoLaunch.isActive { return }
+    #endif
+    markedDays = days
+    if days.isEmpty {
+      UserDefaults.standard.removeObject(forKey: UsageStore.daysOffKey)
+    } else {
+      UserDefaults.standard.set(days.sorted().map(\.string), forKey: UsageStore.daysOffKey)
+    }
   }
 }
 
