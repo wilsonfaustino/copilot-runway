@@ -17,11 +17,11 @@ final class RunwayNotifier: NSObject, UNUserNotificationCenterDelegate {
     UNUserNotificationCenter.current().delegate = self
   }
 
-  func sendDueNotices(usage: QuotaUsage) async {
+  func sendDueNotices(usage: QuotaUsage, days: RunwayDays) async {
     // The @AppStorage default is true, and a missing key reads as false through bool(forKey:).
     guard UserDefaults.standard.object(forKey: Self.enabledKey) as? Bool ?? true, !isSending else { return }
     let sentKeys = Set(UserDefaults.standard.stringArray(forKey: Self.sentKeysKey) ?? [])
-    let notices = RunwayNotice.toSend(usage: usage, now: .now, sentKeys: sentKeys)
+    let notices = RunwayNotice.toSend(usage: usage, now: .now, sentKeys: sentKeys, days: days)
     guard !notices.isEmpty else { return }
     isSending = true
     defer { isSending = false }
@@ -37,11 +37,11 @@ final class RunwayNotifier: NSObject, UNUserNotificationCenterDelegate {
   }
 
   #if DEBUG
-  func sendTestNotice(usage: QuotaUsage?) async {
+  func sendTestNotice(usage: QuotaUsage?, days: RunwayDays) async {
     // Demo mode asks for no permission and posts no notice.
     guard !DemoLaunch.isActive, await isAuthorized() else { return }
-    let notice = usage.flatMap { RunwayNotice.toSend(usage: $0, now: .now, sentKeys: []).first }
-    let runOutSentence = usage.flatMap { RunwayInsight.runOutSentence(usage: $0, now: .now) }
+    let notice = usage.flatMap { RunwayNotice.toSend(usage: $0, now: .now, sentKeys: [], days: days).first }
+    let runOutSentence = usage.flatMap { RunwayInsight.runOutSentence(usage: $0, now: .now, days: days) }
     await post(
       identifier: "test",
       title: notice?.title ?? "Test notice",

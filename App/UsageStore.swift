@@ -8,12 +8,14 @@ final class UsageStore {
   static let refreshInterval: Duration = .seconds(5 * 60)
   static let organizationKey = "githubOrganization"
   static let gaugeModeKey = "gaugeMode"
+  static let countWeekdaysOnlyKey = "countWeekdaysOnly"
   // USD, a Double. No value means no budget.
   static let portkeyBudgetKey = "portkeyBudgetUSD"
   static let releaseCheckInterval: TimeInterval = 24 * 60 * 60
 
   private(set) var title = MenuBarTitle.placeholder
   private(set) var gaugeMode = UsageStore.savedGaugeMode()
+  private(set) var runwayDays = UsageStore.savedRunwayDays()
   private(set) var errorMessage: String?
   private(set) var usageError: CopilotUsageError?
   private(set) var lastRefresh: Date?
@@ -87,13 +89,19 @@ final class UsageStore {
     UserDefaults.standard.string(forKey: gaugeModeKey).flatMap(GaugeMode.init(rawValue:)) ?? .left
   }
 
-  // didChangeNotification fires for every setting, so only a new mode changes the store.
+  private static func savedRunwayDays() -> RunwayDays {
+    UserDefaults.standard.bool(forKey: countWeekdaysOnlyKey) ? .workdays(.current) : .calendar
+  }
+
+  // didChangeNotification fires for every setting, so only a new mode or day unit changes the store.
   private func reloadGaugeMode() {
     let savedMode = Self.savedGaugeMode()
-    guard savedMode != gaugeMode else { return }
+    let savedDays = Self.savedRunwayDays()
+    guard savedMode != gaugeMode || savedDays != runwayDays else { return }
     gaugeMode = savedMode
+    runwayDays = savedDays
     if usageError == nil, let usage {
-      title = MenuBarTitle.title(usage: usage, now: .now, mode: savedMode)
+      title = MenuBarTitle.title(usage: usage, now: .now, mode: savedMode, days: savedDays)
     }
   }
 
@@ -110,13 +118,13 @@ final class UsageStore {
     Task { await refreshReleaseIfDue() }
     do throws(CopilotUsageError) {
       let usage = try await CopilotUsageClient.fetchCurrentUsage()
-      title = MenuBarTitle.title(usage: usage, now: .now, mode: gaugeMode)
+      title = MenuBarTitle.title(usage: usage, now: .now, mode: gaugeMode, days: runwayDays)
       errorMessage = nil
       usageError = nil
       lastRefresh = .now
       self.usage = usage
       // Not awaited, because a permission prompt can stay open and must not stop the poll.
-      Task { await runwayNotifier.sendDueNotices(usage: usage) }
+      Task { await runwayNotifier.sendDueNotices(usage: usage, days: runwayDays) }
     } catch {
       title = MenuBarTitle.title(error: error)
       errorMessage = error.message
@@ -153,7 +161,7 @@ final class UsageStore {
   // No usage poll, release check, outcomes fetch, session files or run-out notices.
   private func applyDemo(_ demoScenario: DemoScenario) {
     usage = demoScenario.usage
-    title = MenuBarTitle.title(usage: demoScenario.usage, now: .now, mode: gaugeMode)
+    title = MenuBarTitle.title(usage: demoScenario.usage, now: .now, mode: gaugeMode, days: runwayDays)
     lastRefresh = .now
     outcomes = demoScenario.outcomes
     copilotReviewCount = demoScenario.copilotReviewCount
@@ -165,7 +173,7 @@ final class UsageStore {
     usage.map {
       QuotaSummary.text(
         usage: $0, now: .now, modelCredits: modelCredits, categoryCredits: categoryCredits, outcomes: outcomes,
-        gaugeMode: gaugeMode)
+        gaugeMode: gaugeMode, days: runwayDays)
     }
   }
 

@@ -23,7 +23,7 @@ struct DashboardView: View {
   }
 
   var body: some View {
-    let health = RunwayHealth(usage: usageStore.usage, hasError: usageStore.usageError != nil, now: .now)
+    let health = RunwayHealth(usage: usageStore.usage, hasError: usageStore.usageError != nil, now: .now, days: usageStore.runwayDays)
     ScrollView {
       VStack(alignment: .leading, spacing: Theme.Spacing.panel) {
         if let usage = usageStore.usage {
@@ -32,9 +32,9 @@ struct DashboardView: View {
             runwayCard(usage: usage, health: health)
             remainingCard(usage: usage, health: health)
             kpiCard("Average daily burn") {
-              Text(Credits.formatted(Runway.averageDailyBurn(usage: usage, now: .now)))
+              Text(Credits.formatted(Runway.averageDailyBurn(usage: usage, now: .now, days: usageStore.runwayDays)))
                 .bigFigureStyle(size: 34)
-              kpiDetail("credits per day")
+              kpiDetail("credits per \(usageStore.runwayDays.dayWord())")
             }
             outcomesCard(usage: usage)
           }
@@ -44,7 +44,8 @@ struct DashboardView: View {
             previousDailyCredits: usageStore.previousDailyCredits,
             comparisonSentence: usageStore.cycleComparisonSentence,
             cycleDayCount: Runway.cycleDayCount(resetDate: usage.resetDate),
-            averageDailyBurn: Runway.averageDailyBurn(usage: usage, now: .now),
+            averageDailyBurn: Runway.averageDailyBurn(usage: usage, now: .now, days: usageStore.runwayDays),
+            runwayDays: usageStore.runwayDays,
             health: health
           )
           HStack(alignment: .top, spacing: Theme.Spacing.regular) {
@@ -111,7 +112,8 @@ struct DashboardView: View {
   private func insightBanner(usage: QuotaUsage, health: RunwayHealth) -> some View {
     let accent = Theme.accent(health)
     let (headline, detail) = RunwayInsight.banner(
-      usage: usage, errorMessage: usageStore.errorMessage, categoryCredits: usageStore.categoryCredits, now: .now
+      usage: usage, errorMessage: usageStore.errorMessage, categoryCredits: usageStore.categoryCredits, now: .now,
+      days: usageStore.runwayDays
     )
     return HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.regular) {
       Image(systemName: bannerSymbolName(health: health))
@@ -165,15 +167,15 @@ struct DashboardView: View {
       if usage.isUnlimited {
         Text("∞").bigFigureStyle(size: 34)
         kpiDetail("Unlimited plan")
-      } else if Runway.lastsTheCycle(usage: usage, now: .now) {
+      } else if Runway.lastsTheCycle(usage: usage, now: .now, days: usageStore.runwayDays) {
         Text("Lasts the cycle")
           .bigFigureStyle(size: 22)
           .foregroundStyle(Theme.accent(health))
         kpiDetail(RunwayInsight.resetCaption(usage: usage))
-      } else if let wholeDays = Runway.wholeDaysLeft(usage: usage, now: .now),
-        let runOutDate = Runway.runOutDate(usage: usage, now: .now)
+      } else if let wholeDays = Runway.wholeDaysLeft(usage: usage, now: .now, days: usageStore.runwayDays),
+        let runOutDate = Runway.runOutDate(usage: usage, now: .now, days: usageStore.runwayDays)
       {
-        Text(wholeDays == 1 ? "1 day" : "\(wholeDays) days")
+        Text("\(wholeDays) \(usageStore.runwayDays.dayWord(count: wholeDays))")
           .bigFigureStyle(size: 34)
           .foregroundStyle(Theme.accent(health))
         kpiDetail("Run-out \(day(max(runOutDate, .now)))")
@@ -283,7 +285,7 @@ struct DashboardView: View {
     let sourceCredits = usageStore.sourceCredits
     let breakdown = ShareBreakdown.local(entries: sourceCredits.map { ($0.source.displayName, $0.credits) })
     let creditsPerDay = sourceCredits.map { source in
-      "\(source.source.displayName): \(Credits.formatted(Runway.averageDailyBurn(credits: source.credits, resetDate: usage.resetDate, now: .now))) credits/day."
+      "\(source.source.displayName): \(Credits.formatted(Runway.averageDailyBurn(credits: source.credits, resetDate: usage.resetDate, now: .now, days: usageStore.runwayDays))) credits/\(usageStore.runwayDays.dayWord())."
     }
     return shareCard(
       title: "By agent",
@@ -324,7 +326,7 @@ struct DashboardView: View {
       PortkeyDashboardSection(
         spend: spend,
         budgetStatus: PortkeyBudget.status(
-          spentUSD: spend.totalUSD, budgetUSD: shownPortkeyBudgetUSD, resetDate: usage.resetDate, now: .now
+          spentUSD: spend.totalUSD, budgetUSD: shownPortkeyBudgetUSD, resetDate: usage.resetDate, now: .now, days: usageStore.runwayDays
         ),
         dateRange: "\(day(Runway.cycleStart(resetDate: usage.resetDate))) to \(day(.now))"
       )
@@ -495,6 +497,7 @@ private struct DailyBurnChart: View {
   let comparisonSentence: String?
   let cycleDayCount: Int
   let averageDailyBurn: Double
+  let runwayDays: RunwayDays
   let health: RunwayHealth
   @State private var selectedDayPosition: Double?
 
@@ -551,7 +554,7 @@ private struct DailyBurnChart: View {
             }
             HStack(spacing: Theme.Spacing.small) {
               legendLine(color: averageColor, style: StrokeStyle(lineWidth: 2, dash: [3, 2]))
-              Text("GitHub average, \(Credits.formatted(averageDailyBurn))/day")
+              Text("GitHub average, \(Credits.formatted(averageDailyBurn))/\(runwayDays.dayWord())")
             }
           }
           .captionStyle()
@@ -602,7 +605,7 @@ private struct DailyBurnChart: View {
           .foregroundStyle(averageColor)
           .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 4]))
           .accessibilityLabel("GitHub average")
-          .accessibilityValue("\(Credits.formatted(averageDailyBurn)) credits per day")
+          .accessibilityValue("\(Credits.formatted(averageDailyBurn)) credits per \(runwayDays.dayWord())")
         if let selectedIndex {
           RuleMark(x: .value("Day", Self.dayPosition(selectedIndex)))
             .foregroundStyle(.secondary.opacity(0.4))

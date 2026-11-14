@@ -62,7 +62,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         image?.isTemplate = true
         button.image = image
       } else {
-        let health = RunwayHealth(usage: usageStore.usage, hasError: false, now: .now)
+        let health = RunwayHealth(usage: usageStore.usage, hasError: false, now: .now, days: usageStore.runwayDays)
         let gaugeFraction = MenuBarTitle.gaugeFraction(usage: usageStore.usage, mode: usageStore.gaugeMode)
         button.image = RunwayGlyph.menuBarImage(gaugeFraction: gaugeFraction, health: health)
       }

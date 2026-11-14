@@ -8,6 +8,7 @@ struct SettingsView: View {
   @AppStorage(RunwayNotifier.enabledKey) private var runwayNotificationsEnabled = true
   @AppStorage(Theme.taskPalettePreferenceKey) private var taskPalettePreference = TaskPalettePreference.unset
   @AppStorage(UsageStore.gaugeModeKey) private var gaugeMode = GaugeMode.left
+  @AppStorage(UsageStore.countWeekdaysOnlyKey) private var countWeekdaysOnly = false
   @AppStorage(UsageStore.portkeyBudgetKey) private var portkeyBudgetUSD: Double?
   @State private var portkeyBudgetText = ""
   @State private var portkeyBudgetRefused = false
@@ -180,7 +181,7 @@ struct SettingsView: View {
       #if DEBUG
       if !DemoLaunch.isActive {
         Button("Send test notice") {
-          Task { await usageStore.runwayNotifier.sendTestNotice(usage: usageStore.usage) }
+          Task { await usageStore.runwayNotifier.sendTestNotice(usage: usageStore.usage, days: usageStore.runwayDays) }
         }
         .controlSize(.small)
       }
@@ -209,10 +210,15 @@ struct SettingsView: View {
         // Demo mode must not write the real preference.
         .disabled(DemoLaunch.isActive)
         #endif
+      Toggle("Count only weekdays", isOn: $countWeekdaysOnly)
+        .toggleStyle(.switch)
+        #if DEBUG
+        .disabled(DemoLaunch.isActive)
+        #endif
     } header: {
       Text("Gauge")
     } footer: {
-      Text("Applies to the menu bar, the popover ring, the dashboard and Copy summary. The color still follows the runway.")
+      Text("Applies to the menu bar, the popover ring, the dashboard and Copy summary. The color still follows the runway. Burn rate and run-out skip Saturdays and Sundays.")
         .captionStyle()
         .padding(.top, Theme.Spacing.small)
     }

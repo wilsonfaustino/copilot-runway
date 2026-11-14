@@ -22,7 +22,7 @@ struct PopoverView: View {
 
   var body: some View {
     let now = Date.now
-    let health = RunwayHealth(usage: usageStore.usage, hasError: usageStore.usageError != nil, now: now)
+    let health = RunwayHealth(usage: usageStore.usage, hasError: usageStore.usageError != nil, now: now, days: usageStore.runwayDays)
     VStack(alignment: .leading, spacing: Theme.Spacing.section) {
       header
       if !forShare && !localOnlyNoticeDismissed {
@@ -213,7 +213,7 @@ struct PopoverView: View {
           Text(daysCaption(usage: usage, now: now))
             .font(.system(size: 15, weight: .semibold))
         }
-        if let usage, let insight = RunwayInsight.popoverSentence(usage: usage, now: now) {
+        if let usage, let insight = RunwayInsight.popoverSentence(usage: usage, now: now, days: usageStore.runwayDays) {
           Text(insight)
             .font(.system(size: 12.5))
             .foregroundStyle(.secondary)
@@ -226,11 +226,11 @@ struct PopoverView: View {
   }
 
   private func wholeDaysLeft(usage: QuotaUsage?, now: Date) -> Int? {
-    usage.flatMap { Runway.wholeDaysLeft(usage: $0, now: now) }
+    usage.flatMap { Runway.wholeDaysLeft(usage: $0, now: now, days: usageStore.runwayDays) }
   }
 
   private func lastsTheCycle(usage: QuotaUsage?, now: Date) -> Bool {
-    usage.map { Runway.lastsTheCycle(usage: $0, now: now) } ?? false
+    usage.map { Runway.lastsTheCycle(usage: $0, now: now, days: usageStore.runwayDays) } ?? false
   }
 
   private func daysFigure(usage: QuotaUsage?, now: Date) -> String {
@@ -241,7 +241,8 @@ struct PopoverView: View {
 
   private func daysCaption(usage: QuotaUsage?, now: Date) -> String {
     if let usage, lastsTheCycle(usage: usage, now: now) { return RunwayInsight.resetCaption(usage: usage) }
-    return wholeDaysLeft(usage: usage, now: now) == 1 ? "day of runway" : "days of runway"
+    let wholeDays = wholeDaysLeft(usage: usage, now: now)
+    return "\(usageStore.runwayDays.dayWord(count: wholeDays ?? 0)) of runway"
   }
 
   private func statCards(now: Date) -> some View {
@@ -254,8 +255,8 @@ struct PopoverView: View {
       )
       StatCard(
         title: "Daily burn",
-        value: usage.map { Credits.formatted(Runway.averageDailyBurn(usage: $0, now: now)) } ?? "--",
-        detail: "credits/day"
+        value: usage.map { Credits.formatted(Runway.averageDailyBurn(usage: $0, now: now, days: usageStore.runwayDays)) } ?? "--",
+        detail: "credits/\(usageStore.runwayDays.dayWord())"
       )
       perPRCard
     }
@@ -333,7 +334,7 @@ struct PopoverView: View {
       PortkeyCard(
         spend: spend,
         budgetStatus: usageStore.usage.flatMap {
-          PortkeyBudget.status(spentUSD: spend.totalUSD, budgetUSD: shownPortkeyBudgetUSD, resetDate: $0.resetDate, now: now)
+          PortkeyBudget.status(spentUSD: spend.totalUSD, budgetUSD: shownPortkeyBudgetUSD, resetDate: $0.resetDate, now: now, days: usageStore.runwayDays)
         },
         showsCostSourceNote: !forShare
       )
