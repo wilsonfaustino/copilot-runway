@@ -202,9 +202,14 @@ struct PopoverView: View {
         isStatic: forShare
       )
       VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
+        // "Lasts the cycle" leaves no room for the caption beside it, so the caption goes underneath.
+        let lastsTheCycle = lastsTheCycle(usage: usage, now: now)
+        let figureLayout = lastsTheCycle
+          ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
+          : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: Theme.Spacing.small))
+        figureLayout {
           Text(daysFigure(usage: usage, now: now))
-            .bigFigureStyle(size: lastsTheCycle(usage: usage, now: now) ? 24 : 40)
+            .bigFigureStyle(size: lastsTheCycle ? 24 : 40)
             .foregroundStyle(accent)
             // Early in a cycle the burn is tiny, so the day count can have 4 or more digits.
             .lineLimit(1)
@@ -212,6 +217,7 @@ struct PopoverView: View {
             .layoutPriority(1)
           Text(daysCaption(usage: usage, now: now))
             .font(.system(size: 15, weight: .semibold))
+            .lineLimit(1)
         }
         if let usage, let insight = RunwayInsight.popoverSentence(usage: usage, now: now, days: usageStore.runwayDays) {
           Text(insight)
