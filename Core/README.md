@@ -445,13 +445,14 @@ has no override file. A new price table entry needs a new name, and a test check
 
 ## Workday counting (`RunwayDays`)
 
-`RunwayDays` is `.calendar` or `.workdays(TimeZone)`. The runway math takes it as a trailing
+`RunwayDays` is `.calendar` or `.workdays(TimeZone, daysOff:)`. The runway math takes it as a trailing
 `days:` parameter that defaults to `.calendar`. The app passes `.workdays(.current)` when
-"Count only weekdays" is on.
+"Count only weekdays" is on. `daysOff` is a set of `LocalDay` dates (empty by default) that count
+as non-workdays, like weekends. Each date is matched in the given time zone.
 
 - `dayCount(from:to:)` counts the time that falls on Monday to Friday, in the given time zone. A
   weekend adds nothing. Calendar mode counts all elapsed time.
-- `date(addingDays:to:)` is the reverse. It skips Saturdays and Sundays and returns the earliest
+- `date(addingDays:to:)` is the reverse. It skips Saturdays, Sundays and days off and returns the earliest
   instant that has the wanted count of workdays after the start.
 - The average burn counts at least 1 day or workday of elapsed time, so the first hours of a cycle
   do not inflate it. The minimum is 1 workday in workday mode.
