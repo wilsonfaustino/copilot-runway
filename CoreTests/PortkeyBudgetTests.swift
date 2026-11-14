@@ -128,3 +128,10 @@ private let portkeyNow = utcDate("2026-10-11T00:00:00Z")
   )
   #expect(status?.health == .healthy)
 }
+
+@Test func statusCountsWorkdays() {
+  let status = PortkeyBudget.status(
+    spentUSD: 7, budgetUSD: 12, resetDate: portkeyResetDate, now: portkeyNow, locale: usLocale, days: utcWorkdays
+  )
+  #expect(status?.text.hasSuffix(", 5 workdays") == true)
+}

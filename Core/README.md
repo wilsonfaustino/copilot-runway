@@ -443,6 +443,23 @@ has no override file. A new price table entry needs a new name, and a test check
 - Missing usage, an unlimited plan, and usage from a past cycle (now at or after the reset)
   give no notices.
 
+## Workday counting (`RunwayDays`)
+
+`RunwayDays` is `.calendar` or `.workdays(TimeZone)`. The runway math takes it as a trailing
+`days:` parameter that defaults to `.calendar`. The app passes `.workdays(.current)` when
+"Count only weekdays" is on.
+
+- `dayCount(from:to:)` counts the time that falls on Monday to Friday, in the given time zone. A
+  weekend adds nothing. Calendar mode counts all elapsed time.
+- `date(addingDays:to:)` is the reverse. It skips Saturdays and Sundays and returns the earliest
+  instant that has the wanted count of workdays after the start.
+- The average burn counts at least 1 day or workday of elapsed time, so the first hours of a cycle
+  do not inflate it. The minimum is 1 workday in workday mode.
+- `dailyHeadroom` is nil when no workday is left before the reset, for example on a weekend
+  before a Monday reset.
+- `dayWord(count:)` gives "day" or "workday", with an "s" unless the count is 1. Core text uses it.
+- "N days before the reset" in the run-out sentences is calendar days in both modes.
+
 ## Quota summary (`QuotaSummary`)
 
 "Copy summary" puts this plain text on the clipboard. It holds only numbers, dates, model names and

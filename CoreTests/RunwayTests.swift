@@ -2,7 +2,10 @@ import Core
 import Foundation
 import Testing
 
-func makeUsage(creditsUsed: Double, entitlement: Double = 12000, isUnlimited: Bool = false) -> QuotaUsage {
+func makeUsage(
+  creditsUsed: Double, entitlement: Double = 12000, isUnlimited: Bool = false,
+  resetDate: Date = utcDate("2026-11-01T00:00:00Z")
+) -> QuotaUsage {
   let creditsRemaining = entitlement - creditsUsed
   return QuotaUsage(
     creditsUsed: creditsUsed,
@@ -10,7 +13,7 @@ func makeUsage(creditsUsed: Double, entitlement: Double = 12000, isUnlimited: Bo
     creditsRemaining: creditsRemaining,
     percentRemaining: entitlement > 0 ? creditsRemaining / entitlement * 100 : 0,
     isUnlimited: isUnlimited,
-    resetDate: utcDate("2026-11-01T00:00:00Z")
+    resetDate: resetDate
   )
 }
 
@@ -124,4 +127,30 @@ func makeUsage(creditsUsed: Double, entitlement: Double = 12000, isUnlimited: Bo
   #expect(!Runway.lastsTheCycle(usage: makeUsage(creditsUsed: 0), now: now))
   #expect(!Runway.lastsTheCycle(usage: makeUsage(creditsUsed: 500, entitlement: 0, isUnlimited: true), now: now))
   #expect(!Runway.lastsTheCycle(usage: makeUsage(creditsUsed: 1000), now: utcDate("2026-11-01T00:00:00Z")))
+}
+
+@Test func workdayAverageCountsOnlyWorkdays() {
+  let usage = makeUsage(creditsUsed: 7000)
+  let now = utcDate("2026-10-11T00:00:00Z")
+  #expect(Runway.averageDailyBurn(usage: usage, now: now, days: utcWorkdays) == 1000)
+  #expect(Runway.wholeDaysLeft(usage: usage, now: now, days: utcWorkdays) == 5)
+  // 5 workdays from Monday Oct 12 end on Friday Oct 16 at midnight.
+  #expect(Runway.runOutDate(usage: usage, now: now, days: utcWorkdays) == utcDate("2026-10-17T00:00:00Z"))
+  #expect(abs(Runway.dailyHeadroom(usage: usage, now: now, days: utcWorkdays)! - (5000.0 / 15 - 1000)) < 1e-9)
+}
+
+@Test func workdayAverageHoldsOverTheWeekend() {
+  let usage = makeUsage(creditsUsed: 7000)
+  #expect(Runway.averageDailyBurn(usage: usage, now: utcDate("2026-10-10T00:00:00Z"), days: utcWorkdays)
+    == Runway.averageDailyBurn(usage: usage, now: utcDate("2026-10-11T23:00:00Z"), days: utcWorkdays))
+}
+
+@Test func headroomIsNilWhenOnlyAWeekendIsLeft() {
+  #expect(Runway.dailyHeadroom(usage: makeUsage(creditsUsed: 6000), now: utcDate("2026-10-31T00:00:00Z"), days: utcWorkdays) == nil)
+}
+
+@Test func workdayAverageCountsAtLeastOneWorkday() {
+  // The Aug 1 2026 cycle starts on a Saturday, so no workday has passed by Sunday noon.
+  let usage = makeUsage(creditsUsed: 300, resetDate: utcDate("2026-09-01T00:00:00Z"))
+  #expect(Runway.averageDailyBurn(usage: usage, now: utcDate("2026-08-02T12:00:00Z"), days: utcWorkdays) == 300)
 }

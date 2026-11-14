@@ -41,7 +41,7 @@ example `92%`. A runway glyph next to the title changes color with the runway he
 |---|---|---|
 | Healthy | The credits last past the reset date, or the plan has no limit, or no credits are used yet | Blue |
 | Short | The credits run out before the reset date | Orange |
-| Critical | Less than 1 day of runway | Red |
+| Critical | Less than 1 day of runway. With Count only weekdays on, the run-out must also fall before the reset | Red |
 | Unavailable | No data yet | Gray |
 
 Other titles:
@@ -162,6 +162,9 @@ Open Settings with the gear button in the popover:
 - GitHub organization for outcomes. The status line under it shows if gh can search it.
 - Show credits spent instead of left. Off by default. When on, the menu bar, the popover ring,
   the dashboard, the Share card and Copy summary show the share of credits spent in the cycle.
+- Count only weekdays. Off by default. When on, the burn rate, run-out date, runway and the
+  Portkey days of runway count Monday to Friday only, in your local time zone. The text says
+  "workday" instead of "day". Saturdays and Sundays do not add to the burn rate or use up runway.
 - Portkey monthly budget in USD. Empty means no budget. The field refuses a negative amount.
 - The GitHub account source ("From gh auth. No token stored.").
 - The path of the price override file.

@@ -36,11 +36,12 @@ public struct RunwayNotice: Equatable, Sendable {
     usage: QuotaUsage?,
     now: Date,
     sentKeys: Set<String>,
-    locale: Locale = .current
+    locale: Locale = .current,
+    days: RunwayDays = .calendar
   ) -> [RunwayNotice] {
     guard let usage, !usage.isUnlimited, usage.entitlement > 0, now < usage.resetDate else { return [] }
-    let health = RunwayHealth(usage: usage, now: now)
-    let runOutSentence = RunwayInsight.runOutSentence(usage: usage, now: now, locale: locale) ?? ""
+    let health = RunwayHealth(usage: usage, now: now, days: days)
+    let runOutSentence = RunwayInsight.runOutSentence(usage: usage, now: now, locale: locale, days: days) ?? ""
     return Kind.allCases.compactMap { kind in
       let key = key(kind: kind, resetDate: usage.resetDate)
       guard !sentKeys.contains(key) else { return nil }
@@ -49,12 +50,12 @@ public struct RunwayNotice: Equatable, Sendable {
         guard usage.creditsUsed >= usage.entitlement * usedShareThreshold else { return nil }
         return RunwayNotice(kind: kind, key: key, title: "80% of credits used", body: runOutSentence)
       case .short:
-        guard health == .short, let daysLeft = Runway.wholeDaysLeft(usage: usage, now: now) else { return nil }
-        let daysText = daysLeft == 1 ? "1 day" : "\(daysLeft) days"
+        guard health == .short, let daysLeft = Runway.wholeDaysLeft(usage: usage, now: now, days: days) else { return nil }
+        let daysText = "\(daysLeft) \(days.dayWord(count: daysLeft))"
         return RunwayNotice(kind: kind, key: key, title: "Runway is short: \(daysText) left", body: runOutSentence)
       case .critical:
         guard health == .critical, usage.creditsRemaining > 0 else { return nil }
-        return RunwayNotice(kind: kind, key: key, title: "Runway is critical: under 1 day left", body: runOutSentence)
+        return RunwayNotice(kind: kind, key: key, title: "Runway is critical: under 1 \(days.dayWord()) left", body: runOutSentence)
       case .limitReached:
         guard usage.creditsRemaining <= 0 else { return nil }
         return RunwayNotice(

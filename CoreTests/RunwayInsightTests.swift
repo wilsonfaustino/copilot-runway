@@ -296,3 +296,20 @@ let usLocale = Locale(identifier: "en_US")
 @Test func resetCaptionShowsUTCResetDay() {
   #expect(RunwayInsight.resetCaption(usage: makeUsage(creditsUsed: 1000), locale: Locale(identifier: "en_US")) == "Resets Nov 1")
 }
+
+@Test func headroomTextUsesWorkdays() {
+  let text = RunwayInsight.headroomText(usage: makeUsage(creditsUsed: 7000), now: utcDate("2026-10-11T00:00:00Z"), locale: usLocale, days: utcWorkdays)
+  #expect(text == "667 credits/workday over budget")
+}
+
+@Test func bannerTargetUsesWorkdays() {
+  let banner = RunwayInsight.banner(usage: makeUsage(creditsUsed: 7000), errorMessage: nil, categoryCredits: [], now: utcDate("2026-10-11T00:00:00Z"), locale: usLocale, days: utcWorkdays)
+  #expect(banner.detail.hasPrefix("To reach Nov 1, keep the burn under 333 credits/workday. 667 credits/workday over budget."))
+}
+
+@Test func runOutSentenceKeepsCalendarDaysBeforeResetInWorkdayMode() {
+  let sentence = RunwayInsight.runOutSentence(
+    usage: makeUsage(creditsUsed: 7000), now: utcDate("2026-10-11T00:00:00Z"), locale: usLocale, days: utcWorkdays
+  )
+  #expect(sentence == "At this pace you run out on Oct 17, 15 days before the reset on Nov 1.")
+}

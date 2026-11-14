@@ -80,3 +80,7 @@ import Testing
   #expect(MenuBarTitle.title(usage: makeUsage(creditsUsed: 1000), now: now) == "92%")
   #expect(MenuBarTitle.title(usage: makeUsage(creditsUsed: 1000), now: now, mode: .spent) == "8%")
 }
+
+@Test func titleShowsWorkdaysLeft() {
+  #expect(MenuBarTitle.title(usage: makeUsage(creditsUsed: 7000), now: utcDate("2026-10-11T00:00:00Z"), days: utcWorkdays) == "42% · 5d")
+}

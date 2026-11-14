@@ -25,38 +25,40 @@ public enum Runway {
   }
 
   // Elapsed time counts as at least one day, so the first hours of a cycle do not inflate the burn.
-  public static func averageDailyBurn(credits: Double, resetDate: Date, now: Date) -> Double {
-    let elapsedDays = now.timeIntervalSince(cycleStart(resetDate: resetDate)) / secondsPerDay
+  public static func averageDailyBurn(credits: Double, resetDate: Date, now: Date, days: RunwayDays = .calendar) -> Double {
+    let elapsedDays = days.dayCount(from: cycleStart(resetDate: resetDate), to: now)
     return credits / max(elapsedDays, 1)
   }
 
-  public static func averageDailyBurn(usage: QuotaUsage, now: Date) -> Double {
-    averageDailyBurn(credits: usage.creditsUsed, resetDate: usage.resetDate, now: now)
+  public static func averageDailyBurn(usage: QuotaUsage, now: Date, days: RunwayDays = .calendar) -> Double {
+    averageDailyBurn(credits: usage.creditsUsed, resetDate: usage.resetDate, now: now, days: days)
   }
 
   // The burn that spends the remaining credits exactly by the reset. It uses the real fractional days until the
   // reset, so the sign of dailyHeadroom always agrees with runOutDate against the reset date.
-  public static func allowedDailyBurn(usage: QuotaUsage, now: Date) -> Double {
-    let daysUntilReset = usage.resetDate.timeIntervalSince(now) / secondsPerDay
+  public static func allowedDailyBurn(usage: QuotaUsage, now: Date, days: RunwayDays = .calendar) -> Double {
+    let daysUntilReset = days.dayCount(from: now, to: usage.resetDate)
     return usage.creditsRemaining / daysUntilReset
   }
 
   // allowedDailyBurn minus averageDailyBurn: above 0 is room to spare, below 0 is over budget.
-  // nil for unlimited plans, with no credits used or left, and at or after the reset.
-  public static func dailyHeadroom(usage: QuotaUsage, now: Date) -> Double? {
-    guard !usage.isUnlimited, usage.creditsUsed > 0, usage.creditsRemaining > 0, now < usage.resetDate else { return nil }
-    return allowedDailyBurn(usage: usage, now: now) - averageDailyBurn(usage: usage, now: now)
+  // nil for unlimited plans, with no credits used or left, at or after the reset, and with no counted day left.
+  public static func dailyHeadroom(usage: QuotaUsage, now: Date, days: RunwayDays = .calendar) -> Double? {
+    guard !usage.isUnlimited, usage.creditsUsed > 0, usage.creditsRemaining > 0, now < usage.resetDate,
+      days.dayCount(from: now, to: usage.resetDate) > 0
+    else { return nil }
+    return allowedDailyBurn(usage: usage, now: now, days: days) - averageDailyBurn(usage: usage, now: now, days: days)
   }
 
   // daysLeft = remaining / averageDailyBurn over the current billing cycle.
-  public static func daysLeft(usage: QuotaUsage, now: Date) -> Double? {
+  public static func daysLeft(usage: QuotaUsage, now: Date, days: RunwayDays = .calendar) -> Double? {
     guard !usage.isUnlimited, usage.creditsUsed > 0 else { return nil }
-    return usage.creditsRemaining / averageDailyBurn(usage: usage, now: now)
+    return usage.creditsRemaining / averageDailyBurn(usage: usage, now: now, days: days)
   }
 
   // Floored and never below 0, so overage shows 0 days. The menu bar, popover and dashboard all use it.
-  public static func wholeDaysLeft(usage: QuotaUsage, now: Date) -> Int? {
-    daysLeft(usage: usage, now: now).map { max(Int($0.rounded(.down)), 0) }
+  public static func wholeDaysLeft(usage: QuotaUsage, now: Date, days: RunwayDays = .calendar) -> Int? {
+    daysLeft(usage: usage, now: now, days: days).map { max(Int($0.rounded(.down)), 0) }
   }
 
   // Rounded and never below 0, so overage shows 0%. The menu bar, popover and dashboard all use it.
@@ -73,14 +75,14 @@ public enum Runway {
   }
 
   // The moment the remaining credits reach 0 at the average daily burn. It can fall after the reset date.
-  public static func runOutDate(usage: QuotaUsage, now: Date) -> Date? {
-    daysLeft(usage: usage, now: now).map { now.addingTimeInterval($0 * secondsPerDay) }
+  public static func runOutDate(usage: QuotaUsage, now: Date, days: RunwayDays = .calendar) -> Date? {
+    daysLeft(usage: usage, now: now, days: days).map { days.date(addingDays: $0, to: now) }
   }
 
   // True when the credits reach the reset, so a days-left number would point past it. A run-out on the reset
   // counts, to match RunwayHealth, which is short only when the run-out is before the reset.
-  public static func lastsTheCycle(usage: QuotaUsage, now: Date) -> Bool {
-    guard !usage.isUnlimited, now < usage.resetDate, let runOutDate = runOutDate(usage: usage, now: now) else {
+  public static func lastsTheCycle(usage: QuotaUsage, now: Date, days: RunwayDays = .calendar) -> Bool {
+    guard !usage.isUnlimited, now < usage.resetDate, let runOutDate = runOutDate(usage: usage, now: now, days: days) else {
       return false
     }
     return runOutDate >= usage.resetDate

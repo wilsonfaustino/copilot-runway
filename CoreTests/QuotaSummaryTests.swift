@@ -117,3 +117,10 @@ let summaryCategoryCredits = [
     Average daily burn: 50 credits/day
     """)
 }
+
+@Test func summaryNamesWorkdayBurn() {
+  let text = QuotaSummary.text(
+    usage: makeUsage(creditsUsed: 7000), now: summaryNow, modelCredits: [], categoryCredits: [], days: utcWorkdays
+  )
+  #expect(text.split(separator: "\n").contains("Average workday burn: 1,000 credits/workday"))
+}
