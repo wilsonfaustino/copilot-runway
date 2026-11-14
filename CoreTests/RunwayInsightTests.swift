@@ -291,3 +291,7 @@ let usLocale = Locale(identifier: "en_US")
   #expect(Runway.dailyHeadroom(usage: usage, now: usage.resetDate) == nil)
   #expect(RunwayInsight.headroomText(usage: usage, now: usage.resetDate, locale: usLocale) == nil)
 }
+
+@Test func resetCaptionShowsUTCResetDay() {
+  #expect(RunwayInsight.resetCaption(usage: makeUsage(creditsUsed: 1000), locale: Locale(identifier: "en_US")) == "Resets Nov 1")
+}

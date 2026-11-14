@@ -112,6 +112,10 @@ public enum RunwayInsight {
     return nil
   }
 
+  public static func resetCaption(usage: QuotaUsage, locale: Locale = .current) -> String {
+    "Resets \(day(usage.resetDate, locale: locale))"
+  }
+
   // The billing cycle resets at midnight UTC, so dates show the UTC day.
   static func day(_ date: Date, locale: Locale) -> String {
     var dayStyle = Date.FormatStyle(locale: locale, calendar: Runway.utcCalendar, timeZone: Runway.utcCalendar.timeZone)

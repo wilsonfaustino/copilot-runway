@@ -76,4 +76,13 @@ public enum Runway {
   public static func runOutDate(usage: QuotaUsage, now: Date) -> Date? {
     daysLeft(usage: usage, now: now).map { now.addingTimeInterval($0 * secondsPerDay) }
   }
+
+  // True when the credits reach the reset, so a days-left number would point past it. A run-out on the reset
+  // counts, to match RunwayHealth, which is short only when the run-out is before the reset.
+  public static func lastsTheCycle(usage: QuotaUsage, now: Date) -> Bool {
+    guard !usage.isUnlimited, now < usage.resetDate, let runOutDate = runOutDate(usage: usage, now: now) else {
+      return false
+    }
+    return runOutDate >= usage.resetDate
+  }
 }
