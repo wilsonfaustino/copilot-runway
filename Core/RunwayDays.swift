@@ -71,6 +71,12 @@ public enum RunwayDays: Equatable, Sendable {
     return cursor
   }
 
+  // The settings keep marks from past cycles, but only the days off in the cycle that ends at resetDate count.
+  public func keepingDaysOff(inCycleEndingAt resetDate: Date) -> RunwayDays {
+    guard case .workdays(let timeZone, let daysOff) = self else { return self }
+    return .workdays(timeZone, daysOff: DaysOffGrid.inCycle(daysOff, resetDate: resetDate))
+  }
+
   public func dayWord(count: Int = 1) -> String {
     let singular: String
     switch self {

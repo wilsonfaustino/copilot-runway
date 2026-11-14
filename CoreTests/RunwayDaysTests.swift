@@ -122,3 +122,21 @@ private func localDays(_ strings: String...) -> Set<LocalDay> {
   #expect(days.date(addingDays: 1, to: start) == utcDate("2026-11-24T00:00:00Z"))
   #expect(days.date(addingDays: 10, to: start) == utcDate("2026-12-05T00:00:00Z"))
 }
+
+@Test func aDayOffFromThePastCycleDoesNotChangeTheBurn() {
+  // The December cycle starts at 00:00Z on December 1, which is still Monday 2026-11-30 at 21:00 in Sao Paulo.
+  // Without the November mark, 3h of November 30 plus all of December 1 give 1.125 workdays: 90 / 1.125 = 80.
+  let usage = makeUsage(creditsUsed: 90, resetDate: utcDate("2027-01-01T00:00:00Z"))
+  let now = utcDate("2026-12-02T03:00:00Z")
+  let days = RunwayDays.workdays(saoPauloTimeZone, daysOff: localDays("2026-11-30"))
+    .keepingDaysOff(inCycleEndingAt: usage.resetDate)
+  #expect(days == RunwayDays.workdays(saoPauloTimeZone))
+  #expect(abs(Runway.averageDailyBurn(usage: usage, now: now, days: days) - 80) < 1e-9)
+}
+
+@Test func daysOffInTheCycleStayAndCalendarModeIsUnchanged() {
+  let reset = utcDate("2026-12-01T00:00:00Z")
+  let days = RunwayDays.workdays(utcTimeZone, daysOff: localDays("2026-10-30", "2026-11-20"))
+  #expect(days.keepingDaysOff(inCycleEndingAt: reset) == RunwayDays.workdays(utcTimeZone, daysOff: localDays("2026-11-20")))
+  #expect(RunwayDays.calendar.keepingDaysOff(inCycleEndingAt: reset) == .calendar)
+}
