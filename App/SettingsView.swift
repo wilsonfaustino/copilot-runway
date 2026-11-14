@@ -1,4 +1,5 @@
 import Core
+import ServiceManagement
 import SwiftUI
 
 struct SettingsView: View {
@@ -10,6 +11,7 @@ struct SettingsView: View {
   @AppStorage(UsageStore.portkeyBudgetKey) private var portkeyBudgetUSD: Double?
   @State private var portkeyBudgetText = ""
   @State private var portkeyBudgetRefused = false
+  @State private var loginItemStatus = SMAppService.mainApp.status
   @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiatesWithoutColor
 
   private var organizationStatus: SettingsOrganizationStatus {
@@ -32,6 +34,7 @@ struct SettingsView: View {
 
   var body: some View {
     Form {
+      generalSection
       Section {
         // Saved on Return or when the window closes, not on each key, because every save runs GitHub searches.
         TextField("GitHub organization", text: $organizationText, prompt: Text("your-org"))
@@ -72,7 +75,11 @@ struct SettingsView: View {
     .frame(width: 480)
     .frame(minHeight: 320, maxHeight: .infinity)
     .background(HeightResizableWindow())
+    .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+      loginItemStatus = SMAppService.mainApp.status
+    }
     .onAppear {
+      loginItemStatus = SMAppService.mainApp.status
       organizationText = usageStore.organization ?? ""
       portkeyBudgetText = portkeyBudgetUSD.map { $0.formatted(.number.grouping(.never)) } ?? ""
       portkeyBudgetRefused = false
@@ -80,6 +87,45 @@ struct SettingsView: View {
     .onDisappear {
       usageStore.setOrganization(organizationText)
       savePortkeyBudget()
+    }
+  }
+
+  private var opensAtLogin: Binding<Bool> {
+    Binding(
+      get: { loginItemStatus == .enabled },
+      set: { shouldOpen in
+        do {
+          if shouldOpen {
+            try SMAppService.mainApp.register()
+          } else {
+            try SMAppService.mainApp.unregister()
+          }
+        } catch {}
+        loginItemStatus = SMAppService.mainApp.status
+      }
+    )
+  }
+
+  private var generalSection: some View {
+    Section {
+      Toggle("Open at login", isOn: opensAtLogin)
+        .toggleStyle(.switch)
+        #if DEBUG
+        // Demo mode must not register a login item.
+        .disabled(DemoLaunch.isActive)
+        #endif
+      if loginItemStatus == .requiresApproval {
+        Text("Approval needed in Login Items.")
+          .captionStyle()
+        Button("Open Login Items") { SMAppService.openSystemSettingsLoginItems() }
+          .controlSize(.small)
+      }
+    } header: {
+      Text("General")
+    } footer: {
+      Text("Starts Copilot Runway when you log in. You can also change this in System Settings > General > Login Items.")
+        .captionStyle()
+        .padding(.top, Theme.Spacing.small)
     }
   }
 
