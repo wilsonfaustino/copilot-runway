@@ -27,6 +27,26 @@ private let utcWorkdays = RunwayDays.workdays(TimeZone(identifier: "UTC")!)
   #expect(utcWorkdays.date(addingDays: 0.5, to: utcDate("2026-10-10T00:00:00Z")) == utcDate("2026-10-12T12:00:00Z"))
 }
 
+@Test func addingWorkdaysEndingOnABoundaryReturnsTheEndOfTheLastWorkday() {
+  #expect(utcWorkdays.date(addingDays: 5, to: utcDate("2026-10-10T00:00:00Z")) == utcDate("2026-10-17T00:00:00Z"))
+  #expect(utcWorkdays.date(addingDays: 5, to: utcDate("2026-10-09T12:00:00Z")) == utcDate("2026-10-16T12:00:00Z"))
+  #expect(utcWorkdays.date(addingDays: 5, to: utcDate("2026-10-11T00:00:00Z")) == utcDate("2026-10-17T00:00:00Z"))
+}
+
+@Test func addingWorkdaysRoundTripsWithDayCount() {
+  let start = utcDate("2026-10-07T09:00:00Z")
+  for workdayCount in [7.0, 12.5, 40.0] {
+    let end = utcWorkdays.date(addingDays: workdayCount, to: start)
+    #expect(abs(utcWorkdays.dayCount(from: start, to: end) - workdayCount) < 1e-9)
+  }
+}
+
+@Test func addingWorkdaysFollowsTheTimeZone() {
+  // Sao Paulo is UTC-3: Friday 19:00 local leaves 5h of Friday, then 7h of Monday from 03:00Z.
+  let saoPaulo = RunwayDays.workdays(TimeZone(identifier: "America/Sao_Paulo")!)
+  #expect(saoPaulo.date(addingDays: 0.5, to: utcDate("2026-10-09T22:00:00Z")) == utcDate("2026-10-12T10:00:00Z"))
+}
+
 @Test func addingNegativeDaysUsesCalendarTime() {
   #expect(utcWorkdays.date(addingDays: -2, to: utcDate("2026-10-12T00:00:00Z")) == utcDate("2026-10-10T00:00:00Z"))
 }

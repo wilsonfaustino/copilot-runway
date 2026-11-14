@@ -34,15 +34,18 @@ public enum RunwayDays: Equatable, Sendable {
     var remainingDays = days
 
     // Whole weeks first: a huge count (early in a cycle, or a large Portkey budget) would otherwise walk day by day for ages.
-    let wholeWeeks = (remainingDays / Self.workdaysPerWeek).rounded(.down)
+    // Stop one week short so the walk ends the count inside a workday, at the earliest instant.
+    let wholeWeeks = (remainingDays / Self.workdaysPerWeek).rounded(.up) - 1
     if wholeWeeks > 0 {
       if !Self.isWorkday(cursor, in: calendar) {
         cursor = Self.nextWorkdayStart(from: cursor, in: calendar)
       }
-      let jumped = wholeWeeks < Self.maxCalendarWeekJump
-        ? calendar.date(byAdding: .day, value: Int(wholeWeeks) * 7, to: cursor)
-        : nil
-      cursor = jumped ?? cursor.addingTimeInterval(wholeWeeks * 7 * Self.secondsPerDay)
+      if wholeWeeks >= Self.maxCalendarWeekJump {
+        // Far beyond any real cycle: calendar math is slow here, so ignore the sub-week remainder's weekends.
+        return cursor.addingTimeInterval((wholeWeeks * 7 + remainingDays - wholeWeeks * Self.workdaysPerWeek) * Self.secondsPerDay)
+      }
+      cursor = calendar.date(byAdding: .day, value: Int(wholeWeeks) * 7, to: cursor)
+        ?? cursor.addingTimeInterval(wholeWeeks * 7 * Self.secondsPerDay)
       remainingDays -= wholeWeeks * Self.workdaysPerWeek
     }
 
