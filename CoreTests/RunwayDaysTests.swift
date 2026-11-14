@@ -2,7 +2,7 @@ import Core
 import Foundation
 import Testing
 
-private let utcWorkdays = RunwayDays.workdays(TimeZone(identifier: "UTC")!)
+let utcWorkdays = RunwayDays.workdays(TimeZone(identifier: "UTC")!)
 
 @Test func calendarDayCountIsSecondsOverADay() {
   #expect(RunwayDays.calendar.dayCount(from: utcDate("2026-10-09T12:00:00Z"), to: utcDate("2026-10-12T12:00:00Z")) == 3)

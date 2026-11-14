@@ -3,11 +3,11 @@ import Foundation
 public enum MenuBarTitle {
   public static let placeholder = "--% · --d"
 
-  public static func title(usage: QuotaUsage, now: Date, mode: GaugeMode = .left) -> String {
+  public static func title(usage: QuotaUsage, now: Date, mode: GaugeMode = .left, days: RunwayDays = .calendar) -> String {
     if usage.isUnlimited { return "∞" }
     let gaugePercent = Runway.wholeGaugePercent(usage: usage, mode: mode)
-    if Runway.lastsTheCycle(usage: usage, now: now) { return "\(gaugePercent)%" }
-    let daysLabel = Runway.wholeDaysLeft(usage: usage, now: now).map { "\($0)d" } ?? "--d"
+    if Runway.lastsTheCycle(usage: usage, now: now, days: days) { return "\(gaugePercent)%" }
+    let daysLabel = Runway.wholeDaysLeft(usage: usage, now: now, days: days).map { "\($0)d" } ?? "--d"
     return "\(gaugePercent)% · \(daysLabel)"
   }
 
