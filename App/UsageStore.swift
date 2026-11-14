@@ -90,7 +90,7 @@ final class UsageStore {
   }
 
   private static func savedRunwayDays() -> RunwayDays {
-    UserDefaults.standard.bool(forKey: countWeekdaysOnlyKey) ? .workdays(.current) : .calendar
+    UserDefaults.standard.bool(forKey: countWeekdaysOnlyKey) ? .workdays(.autoupdatingCurrent) : .calendar
   }
 
   // didChangeNotification fires for every setting, so only a new mode or day unit changes the store.
