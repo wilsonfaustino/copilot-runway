@@ -458,13 +458,13 @@ as non-workdays, like weekends. Each date is matched in the given time zone.
   do not inflate it. The minimum is 1 workday in workday mode.
 - `dailyHeadroom` is nil when no workday is left before the reset, for example on a weekend
   before a Monday reset.
+- `dayWord(count:)` gives "day" or "workday", with an "s" unless the count is 1. Core text uses it.
+- "N days before the reset" in the run-out sentences is calendar days in both modes.
 
 `DaysOffGrid` lays out the Settings days off calendar. It lists the calendar days of the cycle's UTC
 month, marks weekends and gives the blank cells before the 1st for a first weekday (1 is Sunday).
 Weekdays are judged on the calendar date itself. `inCycle` drops marked days outside the cycle month
 and weekend dates. `range(from:to:)` returns the Monday to Friday dates between two days, in either order.
-- `dayWord(count:)` gives "day" or "workday", with an "s" unless the count is 1. Core text uses it.
-- "N days before the reset" in the run-out sentences is calendar days in both modes.
 
 ## Quota summary (`QuotaSummary`)
 
