@@ -34,7 +34,8 @@ OpenCode, Pi, omp and Copilot CLI and app session files, so it needs no setup.
 ### Menu bar
 
 The title shows the percent of credits left and the whole days of runway, for example
-`48% · 12d`. A runway glyph next to the title changes color with the runway health:
+`48% · 12d`. When the credits last past the reset date, the title shows only the percent, for
+example `92%`. A runway glyph next to the title changes color with the runway health:
 
 | Health | Rule | Color |
 |---|---|---|
@@ -61,7 +62,8 @@ For the error states, the glyph changes to a neutral symbol.
 
 Click the title to open the popover:
 
-- A ring with the percent of credits left, and the days of runway.
+- A ring with the percent of credits left, and the days of runway. When the credits last past the
+  reset date, it shows "Lasts the cycle" and the reset date instead of the days.
 - A sentence about the run-out date, for example "At this pace you run out on Oct 21,
   10 days before the reset on Nov 1."
 - Cards for credits used of the limit, the average daily burn, and credits per PR authored.
