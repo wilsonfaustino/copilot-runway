@@ -446,8 +446,8 @@ has no override file. A new price table entry needs a new name, and a test check
 ## Workday counting (`RunwayDays`)
 
 `RunwayDays` is `.calendar` or `.workdays(TimeZone, daysOff:)`. The runway math takes it as a trailing
-`days:` parameter that defaults to `.calendar`. The app passes `.workdays(.current)` when
-"Count only weekdays" is on. `daysOff` is a set of `LocalDay` dates (empty by default) that count
+`days:` parameter that defaults to `.calendar`. The app passes `.workdays(.autoupdatingCurrent, daysOff:)` when
+"Count only weekdays" is on, with only the days off in the current cycle (`keepingDaysOff(inCycleEndingAt:)`). `daysOff` is a set of `LocalDay` dates (empty by default) that count
 as non-workdays, like weekends. Each date is matched in the given time zone.
 
 - `dayCount(from:to:)` counts the time that falls on Monday to Friday, except days off, in the given time zone. A
