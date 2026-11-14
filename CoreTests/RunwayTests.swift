@@ -154,3 +154,17 @@ func makeUsage(
   let usage = makeUsage(creditsUsed: 300, resetDate: utcDate("2026-09-01T00:00:00Z"))
   #expect(Runway.averageDailyBurn(usage: usage, now: utcDate("2026-08-02T12:00:00Z"), days: utcWorkdays) == 300)
 }
+
+@Test func everyRemainingWorkdayOffLeavesNoHeadroomAndNoCriticalHealth() throws {
+  // Monday 2026-11-16 with every weekday to the December 1 reset off. 10 workdays elapsed: 11000 / 10 = 1100 a workday.
+  let remainingWeekdays = ["16", "17", "18", "19", "20", "23", "24", "25", "26", "27", "30"]
+  let days = RunwayDays.workdays(
+    TimeZone(identifier: "UTC")!, daysOff: Set(remainingWeekdays.compactMap { LocalDay(string: "2026-11-\($0)") }))
+  let usage = makeUsage(creditsUsed: 11000, resetDate: utcDate("2026-12-01T00:00:00Z"))
+  let now = utcDate("2026-11-16T00:00:00Z")
+  #expect(Runway.dailyHeadroom(usage: usage, now: now, days: days) == nil)
+  // 1000 / 1100 of a workday, spent on Tuesday December 1, after the reset.
+  let runOutDate = try #require(Runway.runOutDate(usage: usage, now: now, days: days))
+  #expect(abs(runOutDate.timeIntervalSince(utcDate("2026-12-01T00:00:00Z")) - 1000.0 / 1100 * 86_400) < 1e-3)
+  #expect(RunwayHealth(usage: usage, now: now, days: days) == .healthy)
+}

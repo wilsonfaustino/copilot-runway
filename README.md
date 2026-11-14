@@ -168,6 +168,8 @@ Open Settings with the gear button in the popover. It has 4 tabs:
   - Count only weekdays. Off by default. When on, the burn rate, run-out date, runway and the
     Portkey days of runway count Monday to Friday only, in your local time zone. The text says
     "workday" instead of "day". Saturdays and Sundays do not add to the burn rate or use up runway.
+  - Days off. With Count only weekdays on, click workdays in the calendar of the current cycle to
+    mark holidays and vacation days, which the runway skips like weekends.
 - Sources:
   - The GitHub account source ("From gh auth. No token stored.").
   - GitHub organization for outcomes. The status line under it shows if gh can search it.

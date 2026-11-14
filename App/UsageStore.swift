@@ -9,13 +9,15 @@ final class UsageStore {
   static let organizationKey = "githubOrganization"
   static let gaugeModeKey = "gaugeMode"
   static let countWeekdaysOnlyKey = "countWeekdaysOnly"
+  // An array of yyyy-MM-dd strings, local dates the workday math skips like weekends.
+  static let daysOffKey = "daysOff"
   // USD, a Double. No value means no budget.
   static let portkeyBudgetKey = "portkeyBudgetUSD"
   static let releaseCheckInterval: TimeInterval = 24 * 60 * 60
 
   private(set) var title = MenuBarTitle.placeholder
   private(set) var gaugeMode = UsageStore.savedGaugeMode()
-  private(set) var runwayDays = UsageStore.savedRunwayDays()
+  private(set) var runwayDays = UsageStore.savedRunwayDays(resetDate: nil)
   private(set) var errorMessage: String?
   private(set) var usageError: CopilotUsageError?
   private(set) var lastRefresh: Date?
@@ -91,14 +93,25 @@ final class UsageStore {
     UserDefaults.standard.string(forKey: gaugeModeKey).flatMap(GaugeMode.init(rawValue:)) ?? .left
   }
 
-  private static func savedRunwayDays() -> RunwayDays {
-    UserDefaults.standard.bool(forKey: countWeekdaysOnlyKey) ? .workdays(.autoupdatingCurrent) : .calendar
+  // Before the first fetch the cycle is unknown, so all stored days off stay. No runway number shows then.
+  private static func savedRunwayDays(resetDate: Date?) -> RunwayDays {
+    guard UserDefaults.standard.bool(forKey: countWeekdaysOnlyKey) else { return .calendar }
+    let runwayDays = RunwayDays.workdays(.autoupdatingCurrent, daysOff: savedDaysOff())
+    return resetDate.map(runwayDays.keepingDaysOff(inCycleEndingAt:)) ?? runwayDays
+  }
+
+  static func savedDaysOff() -> Set<LocalDay> {
+    #if DEBUG
+    // Demo numbers must not depend on the real days off of the machine.
+    if DemoLaunch.isActive { return [] }
+    #endif
+    return Set((UserDefaults.standard.stringArray(forKey: daysOffKey) ?? []).compactMap(LocalDay.init(string:)))
   }
 
   // didChangeNotification fires for every setting, so only a new mode or day unit changes the store.
   private func reloadGaugeMode() {
     let savedMode = Self.savedGaugeMode()
-    let savedDays = Self.savedRunwayDays()
+    let savedDays = Self.savedRunwayDays(resetDate: usage?.resetDate)
     guard savedMode != gaugeMode || savedDays != runwayDays else { return }
     gaugeMode = savedMode
     runwayDays = savedDays
@@ -120,6 +133,9 @@ final class UsageStore {
     Task { await refreshReleaseIfDue() }
     do throws(CopilotUsageError) {
       let usage = try await CopilotUsageClient.fetchCurrentUsage()
+      // A store that runs across the reset drops the marks of the past cycle here.
+      let cycleRunwayDays = Self.savedRunwayDays(resetDate: usage.resetDate)
+      if cycleRunwayDays != runwayDays { runwayDays = cycleRunwayDays }
       title = MenuBarTitle.title(usage: usage, now: .now, mode: gaugeMode, days: runwayDays)
       errorMessage = nil
       usageError = nil
