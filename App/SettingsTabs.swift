@@ -171,6 +171,8 @@ struct SettingsRunwayTab: View {
   }
 
   private func gaugeTileButton(mode: GaugeMode, title: String) -> some View {
+    // Reading lastRefresh redraws the tiles on each poll, so the health color follows the clock like the popover.
+    _ = usageStore.lastRefresh
     let tile = GaugeTile.make(usage: usageStore.usage, hasError: usageStore.usageError != nil, mode: mode)
     let health = RunwayHealth(usage: usageStore.usage, hasError: usageStore.usageError != nil, now: .now, days: usageStore.runwayDays)
     let isSelected = gaugeMode == mode
