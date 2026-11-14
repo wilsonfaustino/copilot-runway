@@ -190,7 +190,6 @@ struct SettingsRunwayTab: View {
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
-    .accessibilityElement(children: .ignore)
     .accessibilityLabel("\(title), \(tile.percent) percent\(tile.isSample ? ", sample" : "")")
     .accessibilityAddTraits(isSelected ? .isSelected : [])
   }

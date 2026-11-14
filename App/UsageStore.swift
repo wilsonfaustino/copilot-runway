@@ -42,6 +42,8 @@ final class UsageStore {
   // nil while loading and after an error, so the dashboard shows nothing instead of a wrong number.
   private(set) var copilotReviewCount: Int?
   private(set) var availableVersion: String?
+  // The Settings tab to show. The organization prompts set it to Sources before they open Settings.
+  var settingsTab = SettingsTab.general
   // The notification center keeps only a weak reference to its delegate, so the store owns the notifier.
   @ObservationIgnored let runwayNotifier = RunwayNotifier()
 
