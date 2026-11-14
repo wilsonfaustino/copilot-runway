@@ -135,3 +135,23 @@ private let portkeyNow = utcDate("2026-10-11T00:00:00Z")
   )
   #expect(status?.text.hasSuffix(", 5 workdays") == true)
 }
+
+// The Portkey budget resets monthly with the Copilot cycle, so days past the reset mean nothing.
+@Test func budgetStatusPastTheResetLastsTheCycle() {
+  // 1 of 10 USD in 10 days: 90 days, the reset is in 21.
+  let status = PortkeyBudget.status(spentUSD: 1, budgetUSD: 10, resetDate: portkeyResetDate, now: portkeyNow, locale: usLocale)
+  #expect(status == PortkeyBudget.Status(text: "$9.00 of $10.00 left, lasts the cycle", health: .healthy))
+}
+
+@Test func budgetStatusRunningOutOnTheResetLastsTheCycle() {
+  // 10 of 31 USD in 10 days: 1 USD/day, 21 USD left, run-out on the reset.
+  let status = PortkeyBudget.status(spentUSD: 10, budgetUSD: 31, resetDate: portkeyResetDate, now: portkeyNow, locale: usLocale)
+  #expect(status?.text == "$21.00 of $31.00 left, lasts the cycle")
+}
+
+@Test func workdayStatusPastTheResetLastsTheCycle() {
+  let status = PortkeyBudget.status(
+    spentUSD: 1, budgetUSD: 30, resetDate: portkeyResetDate, now: portkeyNow, locale: usLocale, days: utcWorkdays
+  )
+  #expect(status?.text == "$29.00 of $30.00 left, lasts the cycle")
+}

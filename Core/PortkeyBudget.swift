@@ -27,7 +27,8 @@ public enum PortkeyBudget {
     }
   }
 
-  // For example "$6.00 of $10.00 left, 15 days". Over budget, the amount left stops at $0.00. nil without a budget.
+  // For example "$6.00 of $10.00 left, 15 days", or "lasts the cycle" when the money reaches the reset.
+  // Over budget, the amount left stops at $0.00. nil without a budget.
   public static func status(
     spentUSD: Double, budgetUSD: Double?, resetDate: Date, now: Date, locale: Locale = .current,
     days: RunwayDays = .calendar
@@ -37,9 +38,13 @@ public enum PortkeyBudget {
       "\(PortkeySpend.formatted(max(usage.creditsRemaining, 0), locale: locale)) of "
       + "\(PortkeySpend.formatted(usage.entitlement, locale: locale)) left"
     let daysText =
-      switch Runway.wholeDaysLeft(usage: usage, now: now, days: days) {
-      case nil: "no spend yet"
-      case let wholeDays?: "\(wholeDays) \(days.dayWord(count: wholeDays))"
+      if Runway.lastsTheCycle(usage: usage, now: now, days: days) {
+        "lasts the cycle"
+      } else {
+        switch Runway.wholeDaysLeft(usage: usage, now: now, days: days) {
+        case nil: "no spend yet"
+        case let wholeDays?: "\(wholeDays) \(days.dayWord(count: wholeDays))"
+        }
       }
     return Status(text: "\(leftText), \(daysText)", health: RunwayHealth(usage: usage, now: now, days: days))
   }

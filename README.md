@@ -135,7 +135,8 @@ count in the Copilot gauge, runway, burn rate or breakdowns.
   A message without a stored cost, or with tokens and a cost of 0, counts as a request and adds
   $0.00. A note under the amounts gives the number of these requests.
 - Set a monthly Portkey budget in Settings to see the dollars left, the days of runway and the
-  health color, with the Copilot rules.
+  health color, with the Copilot rules. The budget resets with the Copilot cycle, so when the money
+  reaches the reset, the text says "lasts the cycle" instead of a day count.
 - The card is hidden when there are no Portkey messages this cycle and no budget.
 - The Share image shows the card when the popover shows it, without the note on where the cost
   comes from.
