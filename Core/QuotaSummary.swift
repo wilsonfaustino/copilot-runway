@@ -11,7 +11,8 @@ public enum QuotaSummary {
     modelCredits: [ModelCredits],
     categoryCredits: [CategoryCredits],
     outcomes: GitHubOutcomes? = nil,
-    gaugeMode: GaugeMode = .left
+    gaugeMode: GaugeMode = .left,
+    days: RunwayDays = .calendar
   ) -> String {
     let cycleStart = Runway.cycleStart(resetDate: usage.resetDate)
     let lastCycleDay = Runway.lastCycleDay(resetDate: usage.resetDate)
@@ -26,9 +27,13 @@ public enum QuotaSummary {
       }
       lines.append("Used: \(number(usage.creditsUsed)) of \(number(usage.entitlement)) credits (\(percentText))")
     }
-    lines.append("Average daily burn: \(number(Runway.averageDailyBurn(usage: usage, now: now))) credits/day")
+    let burnLabel = switch days {
+    case .calendar: "Average daily burn"
+    case .workdays: "Average workday burn"
+    }
+    lines.append("\(burnLabel): \(number(Runway.averageDailyBurn(usage: usage, now: now, days: days))) credits/\(days.dayWord())")
     if !usage.isUnlimited {
-      lines.append(runOutLine(usage: usage, now: now))
+      lines.append(runOutLine(usage: usage, now: now, days: days))
     }
     if let outcomes {
       lines.append(outcomesLine(outcomes: outcomes, creditsUsed: usage.creditsUsed))
@@ -45,8 +50,8 @@ public enum QuotaSummary {
     return lines.joined(separator: "\n")
   }
 
-  static func runOutLine(usage: QuotaUsage, now: Date) -> String {
-    guard let runOutDate = Runway.runOutDate(usage: usage, now: now) else {
+  static func runOutLine(usage: QuotaUsage, now: Date, days: RunwayDays = .calendar) -> String {
+    guard let runOutDate = Runway.runOutDate(usage: usage, now: now, days: days) else {
       return "Projected run-out: none, no credits used yet"
     }
     if runOutDate < usage.resetDate {
