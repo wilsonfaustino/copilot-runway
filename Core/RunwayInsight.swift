@@ -101,7 +101,8 @@ public enum RunwayInsight {
   public static func popoverSentence(usage: QuotaUsage, now: Date, locale: Locale = .current) -> String? {
     let headroomLine = headroomText(usage: usage, now: now, locale: locale).map { "\n\($0)." } ?? ""
     switch runOutOutlook(usage: usage, now: now) {
-    case .pastReset?: return "Lasts past the \(day(usage.resetDate, locale: locale)) reset.\(headroomLine)"
+    // The figure above already says "Lasts the cycle" with the reset day, so only the headroom line is left.
+    case .pastReset?: return headroomText(usage: usage, now: now, locale: locale).map { "\($0)." }
     case .beforeReset(let runOutDate, let daysBeforeReset)?:
       let daysText = daysBeforeReset == 1 ? "1 day" : "\(daysBeforeReset) days"
       return "Runs out \(day(runOutDate, locale: locale)), \(daysText) early.\(headroomLine)"
