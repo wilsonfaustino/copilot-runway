@@ -511,9 +511,14 @@ struct SettingsAboutTab: View {
         Text(versionText)
           .foregroundStyle(.secondary)
         if let availableVersion = usageStore.availableVersion {
-          HStack(spacing: Theme.Spacing.small) {
-            Text("Version \(availableVersion) is available.")
-            UpdateControls(appUpdater: usageStore.appUpdater)
+          VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+            HStack(spacing: Theme.Spacing.small) {
+              Text("Version \(availableVersion) is available.")
+              UpdateControls(appUpdater: usageStore.appUpdater)
+            }
+            // fixedSize collapses the row's Spacer, so Copy sits after the status text like Update sits after the version text.
+            UpdateStatusRow(appUpdater: usageStore.appUpdater)
+              .fixedSize()
           }
         }
       }

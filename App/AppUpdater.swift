@@ -30,8 +30,20 @@ final class AppUpdater {
       return
     }
     brewPath = foundBrewPath
-    let isInstalledByCask = await BrewUpgrade.isInstalledByCask(brewPath: foundBrewPath, caskFullName: caskFullName)
-    state = isInstalledByCask ? .ready : .unavailable
+    switch await BrewUpgrade.isInstalledByCask(brewPath: foundBrewPath, caskFullName: caskFullName) {
+    case true: state = .ready
+    case false: state = .unavailable
+    // brew did not finish; the next time the controls appear, they ask again.
+    case nil: state = .unknown
+    }
+  }
+
+  var statusMessage: String? {
+    switch state {
+    case .failed: "Update failed."
+    case .noNewVersion: "No new version yet."
+    default: nil
+    }
   }
 
   func update() async {

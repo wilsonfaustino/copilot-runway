@@ -10,6 +10,7 @@ public enum BrewUpgrade {
   static let brewPaths = ["/opt/homebrew/bin/brew", "/usr/local/bin/brew"]
   public static let caskFullName = "wilsonfaustino/tap/copilot-runway"
   public static let stepTimeout: Duration = .seconds(300)
+  public static let listTimeout = GhRunner.defaultTimeout
 
   // HOMEBREW_NO_ASK: brew 7 asks [y/n] by default, and nobody can answer it here.
   // HOMEBREW_NO_UPGRADE_QUIT_CASKS: brew 7 quits running cask apps by default; the app quits itself after brew exits.
@@ -30,16 +31,24 @@ public enum BrewUpgrade {
     brewPaths.first(where: isExecutable)
   }
 
-  public static func isInstalledByCask(brewPath: String, caskFullName: String) async -> Bool {
-    await run(brewPath: brewPath, arguments: ["list", "--cask", caskFullName], timeout: GhRunner.defaultTimeout) == .succeeded
+  // nil means brew did not finish (time limit or launch failure), so the caller can ask again later.
+  public static func isInstalledByCask(
+    brewPath: String,
+    caskFullName: String,
+    timeout: Duration = listTimeout
+  ) async -> Bool? {
+    guard let exitStatus = await run(brewPath: brewPath, arguments: ["list", "--cask", caskFullName], timeout: timeout) else {
+      return nil
+    }
+    return exitStatus == 0
   }
 
   public static func updateHomebrew(brewPath: String, timeout: Duration = stepTimeout) async -> Outcome {
-    await run(brewPath: brewPath, arguments: ["update", "--force"], timeout: timeout)
+    await outcome(brewPath: brewPath, arguments: ["update", "--force"], timeout: timeout)
   }
 
   public static func upgrade(brewPath: String, caskFullName: String, timeout: Duration = stepTimeout) async -> Outcome {
-    await run(brewPath: brewPath, arguments: ["upgrade", "--cask", caskFullName], timeout: timeout)
+    await outcome(brewPath: brewPath, arguments: ["upgrade", "--cask", caskFullName], timeout: timeout)
   }
 
   // brew exits 0 when the latest version is already installed, so exit 0 alone does not prove an upgrade.
@@ -54,24 +63,35 @@ public enum BrewUpgrade {
   }
 
   // The path goes in as $2, never into the script text, so spaces and quotes in it are safe.
-  public static func relaunchArguments(processIdentifier: Int32, bundlePath: String) -> [String] {
-    let relaunchScript = #"while kill -0 "$1" 2>/dev/null; do sleep 0.2; done; exec /usr/bin/open "$2""#
+  // The script gives up without running open when the app is still alive after waitLimitSeconds (a cancelled quit).
+  // The loop sleeps 0.2 s per turn, so the limit is 5 turns per second.
+  public static func relaunchArguments(processIdentifier: Int32, bundlePath: String, waitLimitSeconds: Int = 60) -> [String] {
+    let relaunchScript = """
+      waited=0; while kill -0 "$1" 2>/dev/null; do \
+      [ "$waited" -ge \(waitLimitSeconds * 5) ] && exit 1; sleep 0.2; waited=$((waited + 1)); done; \
+      exec /usr/bin/open "$2"
+      """
     return ["-c", relaunchScript, "sh", String(processIdentifier), bundlePath]
   }
 
-  private static func run(brewPath: String, arguments: [String], timeout: Duration) async -> Outcome {
+  private static func outcome(brewPath: String, arguments: [String], timeout: Duration) async -> Outcome {
+    await run(brewPath: brewPath, arguments: arguments, timeout: timeout) == 0 ? .succeeded : .failed
+  }
+
+  // nil when brew did not finish: it could not launch or hit the time limit.
+  private static func run(brewPath: String, arguments: [String], timeout: Duration) async -> Int32? {
     do throws(GhRunner.Failure) {
       let output = try await GhRunner.run(
         path: brewPath,
         arguments: arguments,
-        readsStandardError: true,
+        readsStandardError: false,
         timeout: timeout,
         extraEnvironment: environment(brewPath: brewPath),
         interruptsAtTimeLimit: true
       )
-      return output.exitStatus == 0 ? .succeeded : .failed
+      return output.exitStatus
     } catch {
-      return .failed
+      return nil
     }
   }
 }

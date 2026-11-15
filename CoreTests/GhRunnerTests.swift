@@ -70,18 +70,31 @@ private func makeHangingGh() throws -> URL {
   let markerURL = FileManager.default.temporaryDirectory.appending(path: "interrupt-marker-\(UUID().uuidString)")
   defer { try? FileManager.default.removeItem(at: markerURL) }
   // Like brew update: clean up on SIGINT, then exit. The sleep runs in the background so the trap fires at once.
-  let script = "trap 'touch \"$0\"; exit 130' INT; /bin/sleep 60 & wait"
+  // A background job ignores SIGINT in a non-interactive shell, so the trap stops it with SIGTERM.
+  let script = "trap 'kill $!; touch \"$0\"; exit 130' INT; /bin/sleep 60 & wait"
   await #expect(throws: GhRunner.Failure.timedOut) {
     try await GhRunner.run(
       path: "/bin/sh", arguments: ["-c", script, markerURL.path],
       readsStandardError: false, timeout: .seconds(1), interruptsAtTimeLimit: true
     )
   }
+  #expect(FileManager.default.fileExists(atPath: markerURL.path))
+}
+
+@Test func runnerWaitsForTheCleanupAfterTheInterrupt() async throws {
+  let markerURL = FileManager.default.temporaryDirectory.appending(path: "cleanup-marker-\(UUID().uuidString)")
+  defer { try? FileManager.default.removeItem(at: markerURL) }
+  let script = "trap 'kill $!; /bin/sleep 1; touch \"$0\"; exit 130' INT; /bin/sleep 60 & wait"
   let clock = ContinuousClock()
-  let deadline = clock.now + .seconds(2)
-  while !FileManager.default.fileExists(atPath: markerURL.path), clock.now < deadline {
-    try await Task.sleep(for: .milliseconds(50))
+  let start = clock.now
+  await #expect(throws: GhRunner.Failure.timedOut) {
+    try await GhRunner.run(
+      path: "/bin/sh", arguments: ["-c", script, markerURL.path],
+      readsStandardError: false, timeout: .seconds(1), interruptsAtTimeLimit: true
+    )
   }
+  #expect(clock.now - start >= .seconds(1.9))
+  #expect(clock.now - start < .seconds(5))
   #expect(FileManager.default.fileExists(atPath: markerURL.path))
 }
 

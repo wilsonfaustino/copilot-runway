@@ -10,12 +10,12 @@ private struct FakeBrew {
   let logURL: URL
   var path: String { directory.appending(path: "brew").path }
 
-  init(exitStatus: Int32, printsToStandardError: String = "", body: String? = nil) throws {
+  init(exitStatus: Int32, body: String? = nil) throws {
     directory = FileManager.default.temporaryDirectory.appending(path: "fake-brew-\(UUID().uuidString)")
     logURL = directory.appending(path: "log")
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     let logLine = #"echo "$*|$HOMEBREW_NO_ASK|$HOMEBREW_NO_UPGRADE_QUIT_CASKS|$HOMEBREW_NO_AUTO_UPDATE|$PATH" >> "\#(logURL.path)""#
-    let script = body ?? "\(logLine)\necho '\(printsToStandardError)' >&2\nexit \(exitStatus)\n"
+    let script = body ?? "\(logLine)\nexit \(exitStatus)\n"
     try Data("#!/bin/sh\n\(script)".utf8).write(to: URL(fileURLWithPath: path))
     try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: path)
   }
@@ -56,13 +56,13 @@ private func makeAppBundle(version: String?) throws -> URL {
 }
 
 @Test func upgradeIsFailedOnNonZeroExit() async throws {
-  let fakeBrew = try FakeBrew(exitStatus: 1, printsToStandardError: "Error: Download failed")
+  let fakeBrew = try FakeBrew(exitStatus: 1)
   defer { fakeBrew.remove() }
   #expect(await BrewUpgrade.upgrade(brewPath: fakeBrew.path, caskFullName: caskFullName) == .failed)
 }
 
 @Test func upgradeIsFailedAtTheTimeLimit() async throws {
-  let fakeBrew = try FakeBrew(exitStatus: 0, body: "trap 'exit 130' INT\n/bin/sleep 60 &\nwait\n")
+  let fakeBrew = try FakeBrew(exitStatus: 0, body: "trap 'kill $!; exit 130' INT\n/bin/sleep 60 &\nwait\n")
   defer { fakeBrew.remove() }
   let clock = ContinuousClock()
   let start = clock.now
@@ -77,14 +77,27 @@ private func makeAppBundle(version: String?) throws -> URL {
 @Test func installedByCaskIsTrueWhenBrewListSucceeds() async throws {
   let fakeBrew = try FakeBrew(exitStatus: 0)
   defer { fakeBrew.remove() }
-  #expect(await BrewUpgrade.isInstalledByCask(brewPath: fakeBrew.path, caskFullName: caskFullName))
+  #expect(await BrewUpgrade.isInstalledByCask(brewPath: fakeBrew.path, caskFullName: caskFullName) == true)
   #expect(try fakeBrew.log().hasPrefix("list --cask \(caskFullName)|"))
 }
 
 @Test func installedByCaskIsFalseWhenBrewListFails() async throws {
   let fakeBrew = try FakeBrew(exitStatus: 1)
   defer { fakeBrew.remove() }
-  #expect(await !BrewUpgrade.isInstalledByCask(brewPath: fakeBrew.path, caskFullName: caskFullName))
+  #expect(await BrewUpgrade.isInstalledByCask(brewPath: fakeBrew.path, caskFullName: caskFullName) == false)
+}
+
+@Test func installedByCaskIsUnknownWhenBrewListHangs() async throws {
+  let fakeBrew = try FakeBrew(exitStatus: 0, body: "trap 'kill $!; exit 130' INT\n/bin/sleep 60 &\nwait\n")
+  defer { fakeBrew.remove() }
+  let clock = ContinuousClock()
+  let start = clock.now
+  #expect(await BrewUpgrade.isInstalledByCask(brewPath: fakeBrew.path, caskFullName: caskFullName, timeout: .seconds(1)) == nil)
+  #expect(clock.now - start < .seconds(5))
+}
+
+@Test func installedByCaskIsUnknownWhenBrewCannotLaunch() async {
+  #expect(await BrewUpgrade.isInstalledByCask(brewPath: "/nonexistent/brew", caskFullName: caskFullName) == nil)
 }
 
 @Test func installedVersionIsNewerReadsThePlistOnDisk() throws {
@@ -128,4 +141,23 @@ private func makeAppBundle(version: String?) throws -> URL {
   )
   #expect(clock.now - start >= .seconds(1))
   #expect(output.exitStatus != 0)
+}
+
+@Test func relaunchScriptGivesUpWhenTheProcessDoesNotExit() async throws {
+  let sleeper = Process()
+  sleeper.executableURL = URL(fileURLWithPath: "/bin/sleep")
+  sleeper.arguments = ["30"]
+  try sleeper.run()
+  defer { sleeper.terminate() }
+  let clock = ContinuousClock()
+  let start = clock.now
+  let output = try await GhRunner.run(
+    path: "/bin/sh",
+    arguments: BrewUpgrade.relaunchArguments(processIdentifier: sleeper.processIdentifier, bundlePath: "/nonexistent/Runway.app", waitLimitSeconds: 1),
+    readsStandardError: false,
+    timeout: .seconds(10)
+  )
+  #expect(output.exitStatus != 0)
+  #expect(clock.now - start >= .seconds(1))
+  #expect(clock.now - start < .seconds(5))
 }
