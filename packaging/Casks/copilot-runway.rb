@@ -8,7 +8,7 @@ cask "copilot-runway" do
   desc "Menu bar app that shows GitHub Copilot credit runway"
   homepage "https://github.com/wilsonfaustino/copilot-runway"
 
-  depends_on macos: :sequoia
+  depends_on macos: :tahoe
 
   app "CopilotRunway.app"
 

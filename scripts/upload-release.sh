@@ -27,9 +27,9 @@ if [[ -z "${DEVELOPER_ID_IDENTITY:-}" || -z "${NOTARY_KEYCHAIN_PROFILE:-}" ]]; t
   exit 1
 fi
 
-version="$(sed -n 's/^ *MARKETING_VERSION: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p' project.yml)"
-if [[ -z "$version" ]]; then
-  echo "error: MARKETING_VERSION not found in project.yml" >&2
+version="$(sed -n 's/^[[:space:]]*"MARKETING_VERSION": "\([^"]*\)",$/\1/p' CopilotRunway.xcodeproj/project.xcproj | sort -u)"
+if [[ -z "$version" || "$version" == *$'\n'* ]]; then
+  echo "error: expected one MARKETING_VERSION in CopilotRunway.xcodeproj/project.xcproj" >&2
   exit 1
 fi
 tag="v$version"

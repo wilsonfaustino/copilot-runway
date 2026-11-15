@@ -11,15 +11,11 @@ permissions:
 
 jobs:
   test:
-    runs-on: macos-26
+    runs-on: xcode-27
     steps:
       - uses: actions/checkout@v7.0.1
-      - name: Select Xcode 26.6
-        run: sudo xcode-select -s /Applications/Xcode_26.6.app
-      - name: Install XcodeGen
-        run: brew install xcodegen
-      - name: Generate project
-        run: xcodegen
+      - name: Select Xcode 27.2
+        run: sudo xcode-select -s /Applications/Xcode_27.2.app
       - name: Run tests with coverage
         run: |
           rm -rf build/tests.xcresult
@@ -33,7 +29,7 @@ jobs:
 
   sonar:
     needs: test
-    runs-on: macos-26
+    runs-on: xcode-27
     steps:
       - uses: actions/checkout@v7.0.1
         with:

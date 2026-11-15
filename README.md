@@ -199,7 +199,7 @@ Open Settings with the gear button in the popover. It has 4 tabs:
 
 ## Requirements
 
-- macOS 15 (Sequoia) or later.
+- macOS 26 (Tahoe) or later.
 - The [GitHub CLI](https://cli.github.com) (`gh`), logged in with `gh auth login`. The app looks
   for gh in `/opt/homebrew/bin`, `/usr/local/bin` and `/usr/bin`, because apps opened from Finder
   do not get your shell `PATH`.
@@ -269,7 +269,7 @@ Security. See Apple's steps:
 
 ### Build from source
 
-Requires Xcode and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
+Requires Xcode 27.2 or later.
 
 ```sh
 ./scripts/release.sh
@@ -448,12 +448,11 @@ The app works with no configuration. Two settings are optional:
 
 ## Development
 
-Requirements: Xcode with Swift 6, and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
-The Xcode project comes from `project.yml`. Do not edit the `.xcodeproj` by hand, and do not
-commit it.
+Requirements: Xcode 27.2 or later.
+`CopilotRunway.xcodeproj` is committed. It uses synchronized folders, so new files in `App/`,
+`Core/` and `CoreTests/` join their target without a project change.
 
 ```sh
-xcodegen generate
 xcodebuild -scheme CopilotRunway build
 xcodebuild test -scheme CopilotRunway -destination 'platform=macOS'
 ```
@@ -463,7 +462,7 @@ The tests use Swift Testing and cover the Core module.
 ### Repo layout
 
 ```
-project.yml          XcodeGen project definition
+CopilotRunway.xcodeproj   Xcode project
 App/                 SwiftUI app target: menu bar, popover, dashboard, settings
 Core/                Pure logic: usage client, session parsers, prices, runway, categories, outcomes
 CoreTests/           Unit tests, with sample sessions in CoreTests/Fixtures/
@@ -478,7 +477,7 @@ category rules, the dashboard totals, the summary format, the outcome searches a
 
 ### Release
 
-Bump `MARKETING_VERSION` in `project.yml` and merge the PR. When the release has user-visible
+Bump `MARKETING_VERSION` in the `CopilotRunway` target build settings (Debug and Release) and merge the PR. When the release has user-visible
 changes, add an entry for the new version to `WhatsNew.bundledNotes` in `Core/WhatsNew.swift`
 in the same PR. Then:
 

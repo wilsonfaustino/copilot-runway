@@ -9,26 +9,24 @@ on:
 jobs:
   build:
     if: github.event_name == 'push'
-    runs-on: macos-26
+    runs-on: xcode-27
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v7.0.1
-      - name: Select Xcode 26.6
-        run: sudo xcode-select -s /Applications/Xcode_26.6.app
-      - name: Install XcodeGen
-        run: brew install xcodegen
+      - name: Select Xcode 27.2
+        run: sudo xcode-select -s /Applications/Xcode_27.2.app
       - name: Check tag matches MARKETING_VERSION
         env:
           TAG_NAME: ${{ github.ref_name }}
         run: |
-          version="$(sed -n 's/^ *MARKETING_VERSION: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p' project.yml)"
-          if [[ -z "$version" ]]; then
-            echo "error: MARKETING_VERSION not found in project.yml" >&2
+          version="$(sed -n 's/^[[:space:]]*"MARKETING_VERSION": "\([^"]*\)",$/\1/p' CopilotRunway.xcodeproj/project.xcproj | sort -u)"
+          if [[ -z "$version" || "$version" == *$'\n'* ]]; then
+            echo "error: expected one MARKETING_VERSION in CopilotRunway.xcodeproj/project.xcproj" >&2
             exit 1
           fi
           if [[ "$TAG_NAME" != "v$version" ]]; then
-            echo "error: tag $TAG_NAME does not match v$version from project.yml" >&2
+            echo "error: tag $TAG_NAME does not match v$version from CopilotRunway.xcodeproj/project.xcproj" >&2
             exit 1
           fi
           echo "VERSION=$version" >> "$GITHUB_ENV"
@@ -48,7 +46,7 @@ jobs:
 
   verify:
     if: github.event_name == 'release'
-    runs-on: macos-26
+    runs-on: xcode-27
     permissions:
       contents: read
     outputs:
