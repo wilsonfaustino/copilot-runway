@@ -22,6 +22,7 @@ final class UsageStore {
   private(set) var usageError: CopilotUsageError?
   private(set) var lastRefresh: Date?
   private(set) var usage: QuotaUsage?
+  private(set) var combinedBudget: CombinedBudget?
   private(set) var modelCredits: [ModelCredits] = []
   private(set) var categoryCredits: [CategoryCredits] = []
   private(set) var modelCategoryCredits: [ModelCategoryCredits] = []
@@ -36,6 +37,7 @@ final class UsageStore {
   private(set) var modelEfficiencyNote: String?
   private(set) var sessionsWarning: String?
   private(set) var portkeySpend = PortkeySpend(records: [])
+  private(set) var previousPortkeySpend = PortkeySpend(records: [])
   private(set) var organization = UserDefaults.standard.string(forKey: organizationKey)
     .flatMap(GitHubOutcomesClient.normalizedOrganization)
   private(set) var outcomes: GitHubOutcomes?
@@ -113,12 +115,34 @@ final class UsageStore {
   private func reloadGaugeMode() {
     let savedMode = Self.savedGaugeMode()
     let savedDays = Self.savedRunwayDays(resetDate: usage?.resetDate)
-    guard savedMode != gaugeMode || savedDays != runwayDays else { return }
+    guard savedMode != gaugeMode || savedDays != runwayDays || currentCombinedBudget() != combinedBudget else { return }
     gaugeMode = savedMode
     runwayDays = savedDays
-    if usageError == nil, let usage {
-      title = MenuBarTitle.title(usage: usage, now: .now, mode: savedMode, days: savedDays)
+    updateGauge()
+  }
+
+  // Demo mode ignores the saved budget, like the popover, so demo builds show no combined gauge.
+  private func currentCombinedBudget() -> CombinedBudget? {
+    guard let usage else { return nil }
+    var budgetUSD = UserDefaults.standard.object(forKey: Self.portkeyBudgetKey) as? Double
+    #if DEBUG
+    if DemoLaunch.isActive { budgetUSD = nil }
+    #endif
+    return CombinedBudget.make(copilot: usage, portkeySpentUSD: portkeySpend.totalUSD, portkeyBudgetUSD: budgetUSD)
+  }
+
+  // The one place that sets the combined budget and the title. An error title stays as it is.
+  private func updateGauge() {
+    combinedBudget = currentCombinedBudget()
+    if usageError == nil, let gaugeUsage {
+      title = MenuBarTitle.title(usage: gaugeUsage, now: .now, mode: gaugeMode, days: runwayDays)
     }
+  }
+
+  var gaugeUsage: QuotaUsage? { combinedBudget?.usage ?? usage }
+
+  var gaugeParts: GaugeParts {
+    MenuBarTitle.gaugeParts(usage: usage, combined: combinedBudget, mode: gaugeMode)
   }
 
   func refresh() async {
@@ -137,11 +161,11 @@ final class UsageStore {
       // A store that runs across the reset drops the marks of the past cycle here.
       let cycleRunwayDays = Self.savedRunwayDays(resetDate: usage.resetDate)
       if cycleRunwayDays != runwayDays { runwayDays = cycleRunwayDays }
-      title = MenuBarTitle.title(usage: usage, now: .now, mode: gaugeMode, days: runwayDays)
       errorMessage = nil
       usageError = nil
       lastRefresh = .now
       self.usage = usage
+      updateGauge()
       // Not awaited, because a permission prompt can stay open and must not stop the poll.
       Task { await runwayNotifier.sendDueNotices(usage: usage, days: runwayDays) }
     } catch {
@@ -178,13 +202,15 @@ final class UsageStore {
     modelEfficiencyNote = sessionCredits.modelEfficiencyNote
     sessionsWarning = sessionCredits.warning
     portkeySpend = sessionCredits.portkey
+    previousPortkeySpend = sessionCredits.previousPortkey
+    updateGauge()
   }
 
   #if DEBUG
   // No usage poll, release check, outcomes fetch, session files or run-out notices.
   private func applyDemo(_ demoScenario: DemoScenario) {
     usage = demoScenario.usage
-    title = MenuBarTitle.title(usage: demoScenario.usage, now: .now, mode: gaugeMode, days: runwayDays)
+    updateGauge()
     lastRefresh = .now
     outcomes = demoScenario.outcomes
     copilotReviewCount = demoScenario.copilotReviewCount

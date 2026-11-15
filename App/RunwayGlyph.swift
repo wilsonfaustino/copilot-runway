@@ -10,12 +10,13 @@ struct RunwayGlyph {
   static let trackStartDegrees = 135.0
   static let trackSweepDegrees = 270.0
   static let trackOpacity = 0.28
+  static let portkeyOpacity = 0.6
 
   // Menu bar labels turn SF Symbols into monochrome templates, so the tinted glyph is a non-template NSImage.
   // The drawing handler runs at draw time, so the dynamic accent color follows the menu bar appearance.
   // The track is a 270 degree horseshoe with its gap at the bottom. The arc starts at the lower left and grows
   // clockwise. At 0 only the track shows.
-  static func menuBarImage(gaugeFraction: Double, health: RunwayHealth) -> NSImage {
+  static func menuBarImage(parts: GaugeParts, health: RunwayHealth) -> NSImage {
     let accentColor = Theme.accentNSColor(health)
     let size = NSSize(width: menuBarSize, height: menuBarSize)
     let image = NSImage(size: size, flipped: true) { rect in
@@ -35,8 +36,11 @@ struct RunwayGlyph {
         context.strokePath()
       }
       strokeArc(sweepDegrees: Self.trackSweepDegrees, color: accentColor.withAlphaComponent(Self.trackOpacity))
-      if gaugeFraction > 0 {
-        strokeArc(sweepDegrees: Self.trackSweepDegrees * gaugeFraction, color: accentColor)
+      if parts.portkey > 0 {
+        strokeArc(sweepDegrees: Self.trackSweepDegrees * parts.total, color: accentColor.withAlphaComponent(Self.portkeyOpacity))
+      }
+      if parts.copilot > 0 {
+        strokeArc(sweepDegrees: Self.trackSweepDegrees * parts.copilot, color: accentColor)
       }
       return true
     }

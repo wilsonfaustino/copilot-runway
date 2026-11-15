@@ -157,8 +157,17 @@ private func expectUSD(_ actual: Double, _ expected: Double, sourceLocation: Sou
   #expect(PortkeySpend.formatted(0, locale: englishLocale) == "$0.00")
 }
 
-@Test func zeroAmountFollowsTheLocale() {
-  #expect(PortkeySpend.formatted(0, locale: Locale(identifier: "pt_BR")) == "US$\u{00A0}0,00")
+// The sign is always "$", so pt_BR shows "$10,17", not "US$ 10,17". The number follows the locale.
+@Test func amountsUseTheDollarSignInEveryLocale() {
+  let brazilLocale = Locale(identifier: "pt_BR")
+  #expect(PortkeySpend.formatted(0, locale: brazilLocale) == "$0,00")
+  #expect(PortkeySpend.formatted(1234.5, locale: brazilLocale) == "$1.234,50")
+  #expect(PortkeySpend.formatted(10.17, locale: englishLocale) == "$10.17")
+}
+
+@Test func formattedNumberHasNoSign() {
+  #expect(PortkeySpend.formattedNumber(10.17, locale: Locale(identifier: "pt_BR")) == "10,17")
+  #expect(PortkeySpend.formattedNumber(0.004, locale: englishLocale) == "0.004")
 }
 
 @Test func unpricedNoteCountsRequestsWithNoCost() {

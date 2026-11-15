@@ -40,8 +40,7 @@ struct PortkeyCard: View {
       VStack(alignment: .leading, spacing: 12) {
         header
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-          Text(PortkeySpend.formatted(spend.totalUSD))
-            .bigFigureStyle()
+          DollarFigure(usd: spend.totalUSD)
           Text("this cycle, \(PortkeyText.requests(spend.requestCount))")
             .font(.system(size: 12))
             .foregroundStyle(.secondary)
@@ -198,7 +197,7 @@ struct PortkeyDashboardSection: View {
         Spacer()
       }
       HStack(alignment: .top, spacing: Theme.Spacing.regular) {
-        summaryCard("Spend this cycle", value: PortkeySpend.formatted(spend.totalUSD)) {
+        summaryCard("Spend this cycle", value: { DollarFigure(usd: spend.totalUSD, size: 26) }) {
           if let budgetStatus {
             Text(budgetStatus.text)
               .font(.system(size: 12))
@@ -206,8 +205,14 @@ struct PortkeyDashboardSection: View {
               .foregroundStyle(Theme.accent(budgetStatus.health))
           }
         }
-        summaryCard("Requests", value: "\(spend.requestCount)") { EmptyView() }
-        summaryCard("Average per request", value: spend.averageUSDPerRequest.map { PortkeySpend.formatted($0) } ?? "--") {
+        summaryCard("Requests", value: { Text("\(spend.requestCount)").bigFigureStyle(size: 26) }) { EmptyView() }
+        summaryCard("Average per request", value: {
+          if let averageUSDPerRequest = spend.averageUSDPerRequest {
+            DollarFigure(usd: averageUSDPerRequest, size: 26)
+          } else {
+            Text("--").bigFigureStyle(size: 26)
+          }
+        }) {
           EmptyView()
         }
       }
@@ -229,13 +234,14 @@ struct PortkeyDashboardSection: View {
     }
   }
 
-  private func summaryCard<Detail: View>(_ title: String, value: String, @ViewBuilder detail: () -> Detail) -> some View {
+  private func summaryCard<Value: View, Detail: View>(
+    _ title: String, @ViewBuilder value: () -> Value, @ViewBuilder detail: () -> Detail
+  ) -> some View {
     VStack(alignment: .leading, spacing: Theme.Spacing.small) {
       Text(title)
         .font(.system(size: 12))
         .foregroundStyle(.secondary)
-      Text(value)
-        .bigFigureStyle(size: 26)
+      value()
       detail()
     }
     .lineLimit(1)
@@ -337,5 +343,22 @@ struct PortkeyDashboardSection: View {
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .cardStyle(padding: Theme.Spacing.panel)
+  }
+}
+
+// A big USD figure with a smaller "$", so the number reads first.
+private struct DollarFigure: View {
+  let usd: Double
+  var size: CGFloat = 30
+
+  var body: some View {
+    HStack(alignment: .firstTextBaseline, spacing: 2) {
+      Text("$")
+        .font(.system(size: size * 0.55, weight: .semibold, design: .rounded))
+      Text(PortkeySpend.formattedNumber(usd))
+        .bigFigureStyle(size: size)
+    }
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(PortkeySpend.formatted(usd))
   }
 }

@@ -313,3 +313,75 @@ let usLocale = Locale(identifier: "en_US")
   )
   #expect(sentence == "At this pace you run out on Oct 17, 15 days before the reset on Nov 1.")
 }
+
+private let combinedInsightReset = utcDate("2026-12-01T00:00:00Z")
+private let combinedInsightNow = utcDate("2026-11-15T12:00:00Z")
+
+private func combinedInsightBudget(copilotUsed: Double = 10216, portkeySpent: Double = 9.26) throws -> CombinedBudget {
+  let copilot = QuotaUsage(
+    creditsUsed: copilotUsed, entitlement: 15000, creditsRemaining: 15000 - copilotUsed, percentRemaining: 31.8933,
+    isUnlimited: false, resetDate: combinedInsightReset)
+  return try #require(CombinedBudget.make(copilot: copilot, portkeySpentUSD: portkeySpent, portkeyBudgetUSD: 50))
+}
+
+@Test func combinedHeadroomInUSD() throws {
+  let combined = try combinedInsightBudget()
+  let text = RunwayInsight.headroomText(usage: combined.usage, now: combinedInsightNow, locale: usLocale, unit: .usd)
+  #expect(text == "$1.97/day over budget")
+}
+
+@Test func combinedHeadroomFollowsLocale() throws {
+  let combined = try combinedInsightBudget()
+  let text = try #require(
+    RunwayInsight.headroomText(
+      usage: combined.usage, now: combinedInsightNow, locale: Locale(identifier: "pt_BR"), unit: .usd))
+  #expect(text == "$1,97/day over budget")
+  #expect(!text.contains("credits"))
+}
+
+@Test func combinedPopoverSentenceUsesUSD() throws {
+  let combined = try combinedInsightBudget()
+  let sentence = try #require(
+    RunwayInsight.popoverSentence(usage: combined.usage, now: combinedInsightNow, locale: usLocale, unit: .usd))
+  #expect(sentence.hasSuffix("\n$1.97/day over budget."))
+}
+
+@Test func combinedNothingSpent() throws {
+  let combined = try combinedInsightBudget(copilotUsed: 0, portkeySpent: 0)
+  #expect(
+    RunwayInsight.popoverSentence(usage: combined.usage, now: combinedInsightNow, locale: usLocale, unit: .usd)
+      == "Nothing spent yet.")
+}
+
+@Test func combinedBannerUsesUSDAndNamesEachProviderAverage() throws {
+  let combined = try combinedInsightBudget()
+  let banner = RunwayInsight.banner(
+    usage: makeUsage(creditsUsed: 10216), errorMessage: nil, categoryCredits: [], now: combinedInsightNow,
+    locale: usLocale, combined: combined)
+  // 88.58 USD left at 7.68 USD/day: 11.5 days, run-out Nov 27. Needed: 88.58 / 15.5 days = 5.71 USD/day.
+  #expect(banner.headline == "At this pace you run out on Nov 27, 4 days before the reset on Dec 1.")
+  #expect(
+    banner.detail
+      == "To reach Dec 1, keep the burn under $5.71/day. $1.97/day over budget. "
+      + "Copilot averages $7.05/day and Portkey $0.64/day.")
+}
+
+@Test func combinedBannerWithNothingSpent() throws {
+  let combined = try combinedInsightBudget(copilotUsed: 0, portkeySpent: 0)
+  let banner = RunwayInsight.banner(
+    usage: makeUsage(creditsUsed: 0), errorMessage: nil, categoryCredits: [], now: combinedInsightNow,
+    locale: usLocale, combined: combined)
+  #expect(banner.headline == "Nothing spent yet this cycle.")
+  #expect(banner.detail == "Resets Dec 1.")
+}
+
+// Copilot alone runs short ($20 of $150 left), but an unused $150 Portkey budget makes the combined budget last.
+@Test func combinedBannerThatLastsNamesTheCombinedBudget() throws {
+  let copilot = QuotaUsage(
+    creditsUsed: 13000, entitlement: 15000, creditsRemaining: 2000, percentRemaining: 13.3333,
+    isUnlimited: false, resetDate: combinedInsightReset)
+  let combined = try #require(CombinedBudget.make(copilot: copilot, portkeySpentUSD: 0, portkeyBudgetUSD: 150))
+  let banner = RunwayInsight.banner(
+    usage: copilot, errorMessage: nil, categoryCredits: [], now: combinedInsightNow, locale: usLocale, combined: combined)
+  #expect(banner.headline == "At this pace your combined budget lasts past the reset on Dec 1.")
+}

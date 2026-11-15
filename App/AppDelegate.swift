@@ -59,9 +59,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         image?.isTemplate = true
         button.image = image
       } else {
-        let health = RunwayHealth(usage: usageStore.usage, hasError: false, now: .now, days: usageStore.runwayDays)
-        let gaugeFraction = MenuBarTitle.gaugeFraction(usage: usageStore.usage, mode: usageStore.gaugeMode)
-        button.image = RunwayGlyph.menuBarImage(gaugeFraction: gaugeFraction, health: health)
+        let health = RunwayHealth(usage: usageStore.gaugeUsage, hasError: false, now: .now, days: usageStore.runwayDays)
+        button.image = RunwayGlyph.menuBarImage(parts: usageStore.gaugeParts, health: health)
       }
       button.title = usageStore.title
     } onChange: {

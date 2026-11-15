@@ -21,6 +21,8 @@ public struct SessionCredits: Sendable {
   public let cycleComparisonSentence: String?
   // Portkey messages in the cycle, in USD. Never part of the Copilot aggregates above.
   public let portkey: PortkeySpend
+  // Portkey messages before cycleStart, read with the last cycle. For the combined last cycle line.
+  public let previousPortkey: PortkeySpend
   public let warning: String?
 
   public static func load(
@@ -127,6 +129,7 @@ public struct SessionCredits: Sendable {
       modelEfficiencyNote: ModelEfficiency.note(ModelEfficiency.byModel(turns: currentTurns, prices: prices)),
       cycleComparisonSentence: CycleComparison.compare(current: byDay, previous: previousByDay)?.sentence(locale: locale),
       portkey: PortkeySpend(records: portkeyRecords.filter { $0.timestamp >= cycleStart }),
+      previousPortkey: PortkeySpend(records: portkeyRecords.filter { $0.timestamp < cycleStart }),
       warning: warning
     )
   }
