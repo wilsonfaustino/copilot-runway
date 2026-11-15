@@ -112,7 +112,10 @@ public enum RunwayInsight {
     } else if usage.isUnlimited {
       headline = "Unlimited plan."
       detailSentences.append("\(Credits.formatted(usage.creditsUsed, locale: locale)) credits used this cycle.")
-    } else if let runOutSentence = runOutSentence(usage: budgetUsage, now: now, locale: locale, days: days) {
+    } else if let runOutSentence = runOutSentence(
+      usage: budgetUsage, now: now, locale: locale, days: days,
+      lastsText: combined == nil ? "your credits last" : "your combined budget lasts", runsOutText: "you run out")
+    {
       headline = runOutSentence
       if let runOutDate = Runway.runOutDate(usage: budgetUsage, now: now, days: days), runOutDate < budgetUsage.resetDate,
         let targetText = targetBurnText(usage: budgetUsage, now: now, locale: locale, days: days, unit: unit)

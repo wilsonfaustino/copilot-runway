@@ -374,3 +374,14 @@ private func combinedInsightBudget(copilotUsed: Double = 10216, portkeySpent: Do
   #expect(banner.headline == "Nothing spent yet this cycle.")
   #expect(banner.detail == "Resets Dec 1.")
 }
+
+// Copilot alone runs short ($20 of $150 left), but an unused $150 Portkey budget makes the combined budget last.
+@Test func combinedBannerThatLastsNamesTheCombinedBudget() throws {
+  let copilot = QuotaUsage(
+    creditsUsed: 13000, entitlement: 15000, creditsRemaining: 2000, percentRemaining: 13.3333,
+    isUnlimited: false, resetDate: combinedInsightReset)
+  let combined = try #require(CombinedBudget.make(copilot: copilot, portkeySpentUSD: 0, portkeyBudgetUSD: 150))
+  let banner = RunwayInsight.banner(
+    usage: copilot, errorMessage: nil, categoryCredits: [], now: combinedInsightNow, locale: usLocale, combined: combined)
+  #expect(banner.headline == "At this pace your combined budget lasts past the reset on Dec 1.")
+}
