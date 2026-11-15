@@ -53,6 +53,21 @@ final class RunwayNotifier: NSObject, UNUserNotificationCenterDelegate {
     )
   }
 
+  // Posts the Portkey notices of PortkeyNoticeDrill, one step every few seconds. The sent keys stay in memory,
+  // so the real sent keys and the toggle do not change, and each launch runs the full drill again.
+  func runPortkeyNoticeDrill() async {
+    guard !DemoLaunch.isActive, await isAuthorized() else { return }
+    let stepInterval: Duration = .seconds(8)
+    let now = Date.now
+    var sentKeys: Set<String> = []
+    for usage in PortkeyNoticeDrill.usages(now: now) {
+      for notice in RunwayNotice.toSend(usage: usage, now: now, sentKeys: sentKeys, subject: .portkey) {
+        await post(identifier: "drill-\(notice.key)", title: notice.title, body: notice.body)
+        sentKeys.insert(notice.key)
+      }
+      try? await Task.sleep(for: stepInterval)
+    }
+  }
   #endif
 
   // Asks only the first time. Later calls return the stored answer.
