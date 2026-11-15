@@ -13,7 +13,6 @@ struct PopoverView: View {
   @AppStorage("whatsNewLastSeenVersion") private var whatsNewLastSeenVersion: String?
   @AppStorage(UsageStore.portkeyBudgetKey) private var portkeyBudgetUSD: Double?
   @Environment(\.openWindow) private var openWindow
-  @Environment(\.openSettings) private var openSettings
   @State private var openCount = 0
   @State private var shareAnchor = ShareAnchor()
 
@@ -290,8 +289,7 @@ struct PopoverView: View {
     if usageStore.organization == nil && !forShare {
       Button {
         usageStore.settingsTab = .sources
-        openSettings()
-        NSApplication.shared.activate()
+        SettingsWindowController.show(usageStore: usageStore)
         closePopover()
       } label: {
         card
@@ -395,10 +393,8 @@ struct PopoverView: View {
           .frame(maxWidth: .infinity)
       }
       .buttonStyle(FooterButtonStyle(fillOpacity: 0.10))
-      // SettingsLink has no action to bring the app forward, so this button opens Settings itself.
       Button {
-        openSettings()
-        NSApplication.shared.activate()
+        SettingsWindowController.show(usageStore: usageStore)
         closePopover()
       } label: {
         Image(systemName: "gearshape")

@@ -14,8 +14,11 @@ struct CopilotRunwayApp: App {
     }
     .defaultSize(width: 760, height: 640)
     .defaultLaunchBehavior(.suppressed)
-    Settings {
-      SettingsView(usageStore: appDelegate.usageStore)
+    .commands {
+      CommandGroup(replacing: .appSettings) {
+        Button("Settings…") { SettingsWindowController.show(usageStore: appDelegate.usageStore) }
+          .keyboardShortcut(",")
+      }
     }
   }
 }
