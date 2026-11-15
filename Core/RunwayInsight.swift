@@ -1,5 +1,11 @@
 import Foundation
 
+// What the headroom and popover lines count: Copilot credits, or the US dollars of the combined budget.
+public enum BudgetUnit: Sendable {
+  case credits
+  case usd
+}
+
 public enum RunwayInsight {
   // When the credits run out against the reset. Stale usage from a past cycle has no outlook, and an unlimited plan
   // or a cycle with no burn has no run-out.
@@ -62,13 +68,18 @@ public enum RunwayInsight {
   }
 
   // "N credits/day of headroom" or "N credits/day over budget". nil when Runway.dailyHeadroom is nil.
+  // With .usd the usage is in dollars and the amount reads as "$N/day".
   public static func headroomText(
-    usage: QuotaUsage, now: Date, locale: Locale = .current, days: RunwayDays = .calendar
+    usage: QuotaUsage, now: Date, locale: Locale = .current, days: RunwayDays = .calendar, unit: BudgetUnit = .credits
   ) -> String? {
     guard let headroom = Runway.dailyHeadroom(usage: usage, now: now, days: days) else { return nil }
-    let creditsText = Credits.formatted(abs(headroom), locale: locale)
-    let unit = days.dayWord()
-    return headroom >= 0 ? "\(creditsText) credits/\(unit) of headroom" : "\(creditsText) credits/\(unit) over budget"
+    let amountText =
+      switch unit {
+      case .credits: "\(Credits.formatted(abs(headroom), locale: locale)) credits"
+      case .usd: PortkeySpend.formatted(abs(headroom), locale: locale)
+      }
+    let dayWord = days.dayWord()
+    return headroom >= 0 ? "\(amountText)/\(dayWord) of headroom" : "\(amountText)/\(dayWord) over budget"
   }
 
   // The category with the most local credits and its rounded share of them. nil when no category has credits.
@@ -121,19 +132,19 @@ public enum RunwayInsight {
   // The lines under the popover runway figure. Each line must fit about 30 characters next to the ring,
   // so the headroom text goes on a second line. nil when there is nothing useful to say.
   public static func popoverSentence(
-    usage: QuotaUsage, now: Date, locale: Locale = .current, days: RunwayDays = .calendar
+    usage: QuotaUsage, now: Date, locale: Locale = .current, days: RunwayDays = .calendar, unit: BudgetUnit = .credits
   ) -> String? {
-    let headroomLine = headroomText(usage: usage, now: now, locale: locale, days: days).map { "\n\($0)." } ?? ""
+    let headroomLine = headroomText(usage: usage, now: now, locale: locale, days: days, unit: unit).map { "\n\($0)." } ?? ""
     switch runOutOutlook(usage: usage, now: now, days: days) {
     // The figure above already says "Lasts the cycle" with the reset day, so only the headroom line is left.
-    case .pastReset?: return headroomText(usage: usage, now: now, locale: locale, days: days).map { "\($0)." }
+    case .pastReset?: return headroomText(usage: usage, now: now, locale: locale, days: days, unit: unit).map { "\($0)." }
     case .beforeReset(let runOutDate, let daysBeforeReset)?:
       let daysText = daysBeforeReset == 1 ? "1 day" : "\(daysBeforeReset) days"
       return "Runs out \(day(runOutDate, locale: locale)), \(daysText) early.\(headroomLine)"
     case nil: break
     }
     if usage.isUnlimited { return "Unlimited plan, no run-out." }
-    if usage.creditsUsed == 0 { return "No credits used yet." }
+    if usage.creditsUsed == 0 { return unit == .usd ? "Nothing spent yet." : "No credits used yet." }
     return nil
   }
 

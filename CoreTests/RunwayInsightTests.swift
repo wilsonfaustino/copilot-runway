@@ -313,3 +313,43 @@ let usLocale = Locale(identifier: "en_US")
   )
   #expect(sentence == "At this pace you run out on Oct 17, 15 days before the reset on Nov 1.")
 }
+
+private let combinedInsightReset = utcDate("2026-12-01T00:00:00Z")
+private let combinedInsightNow = utcDate("2026-11-15T12:00:00Z")
+
+private func combinedInsightBudget(copilotUsed: Double = 10216, portkeySpent: Double = 9.26) throws -> CombinedBudget {
+  let copilot = QuotaUsage(
+    creditsUsed: copilotUsed, entitlement: 15000, creditsRemaining: 15000 - copilotUsed, percentRemaining: 31.8933,
+    isUnlimited: false, resetDate: combinedInsightReset)
+  return try #require(CombinedBudget.make(copilot: copilot, portkeySpentUSD: portkeySpent, portkeyBudgetUSD: 50))
+}
+
+@Test func combinedHeadroomInUSD() throws {
+  let combined = try combinedInsightBudget()
+  let text = RunwayInsight.headroomText(usage: combined.usage, now: combinedInsightNow, locale: usLocale, unit: .usd)
+  #expect(text == "$1.97/day over budget")
+}
+
+@Test func combinedHeadroomFollowsLocale() throws {
+  let combined = try combinedInsightBudget()
+  let text = try #require(
+    RunwayInsight.headroomText(
+      usage: combined.usage, now: combinedInsightNow, locale: Locale(identifier: "pt_BR"), unit: .usd))
+  #expect(text.contains("US$"))
+  #expect(text.contains("1,97"))
+  #expect(!text.contains("credits"))
+}
+
+@Test func combinedPopoverSentenceUsesUSD() throws {
+  let combined = try combinedInsightBudget()
+  let sentence = try #require(
+    RunwayInsight.popoverSentence(usage: combined.usage, now: combinedInsightNow, locale: usLocale, unit: .usd))
+  #expect(sentence.hasSuffix("\n$1.97/day over budget."))
+}
+
+@Test func combinedNothingSpent() throws {
+  let combined = try combinedInsightBudget(copilotUsed: 0, portkeySpent: 0)
+  #expect(
+    RunwayInsight.popoverSentence(usage: combined.usage, now: combinedInsightNow, locale: usLocale, unit: .usd)
+      == "Nothing spent yet.")
+}
