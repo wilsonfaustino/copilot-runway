@@ -21,7 +21,7 @@ struct PopoverView: View {
 
   var body: some View {
     let now = Date.now
-    let health = RunwayHealth(usage: usageStore.usage, hasError: usageStore.usageError != nil, now: now, days: usageStore.runwayDays)
+    let health = RunwayHealth(usage: usageStore.gaugeUsage, hasError: usageStore.usageError != nil, now: now, days: usageStore.runwayDays)
     VStack(alignment: .leading, spacing: Theme.Spacing.section) {
       header
       if !forShare && !localOnlyNoticeDismissed {
@@ -192,53 +192,75 @@ struct PopoverView: View {
   }
 
   private func runwaySection(health: RunwayHealth, now: Date) -> some View {
-    let usage = usageStore.usage
+    let usage = usageStore.gaugeUsage
+    let combined = usageStore.combinedBudget
     let gaugeMode = usageStore.gaugeMode
     let accent = Theme.accent(health)
-    return HStack(spacing: 18) {
-      RunwayRing(
-        gaugeFraction: MenuBarTitle.gaugeFraction(usage: usage, mode: gaugeMode),
-        gaugePercent: usage.map { Runway.wholeGaugePercent(usage: $0, mode: gaugeMode) },
-        gaugeMode: gaugeMode,
-        accent: accent,
-        openCount: openCount,
-        isStatic: forShare
-      )
-      VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-        // "Lasts the cycle" leaves no room for the caption beside it, so the caption goes underneath.
-        let lastsTheCycle = lastsTheCycle(usage: usage, now: now)
-        let figureLayout = lastsTheCycle
-          ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
-          : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: Theme.Spacing.small))
-        figureLayout {
-          Text(daysFigure(usage: usage, now: now))
-            .bigFigureStyle(size: lastsTheCycle ? 24 : 40)
-            .foregroundStyle(accent)
-            // Early in a cycle the burn is tiny, so the day count can have 4 or more digits.
-            .lineLimit(1)
-            .minimumScaleFactor(0.5)
-            .layoutPriority(1)
-          Text(daysCaption(usage: usage, now: now))
-            .font(.system(size: 15, weight: .semibold))
-            .lineLimit(1)
-        }
-        if let usage, let insight = RunwayInsight.popoverSentence(usage: usage, now: now, days: usageStore.runwayDays) {
-          Text(insight)
-            .font(.system(size: 12.5))
-            .foregroundStyle(.secondary)
-            .lineLimit(2)
-            .fixedSize(horizontal: false, vertical: true)
-        }
-        if !forShare, let usage, case .workdays(_, let daysOff) = usageStore.runwayDays {
-          let daysOffCount = DaysOffGrid.inCycle(daysOff, resetDate: usage.resetDate).count
-          if daysOffCount > 0 {
-            Label("Excludes \(daysOffCount) \(daysOffCount == 1 ? "day" : "days") off", systemImage: "calendar")
-              .captionStyle()
+    return VStack(alignment: .leading, spacing: Theme.Spacing.section) {
+      HStack(spacing: 18) {
+        RunwayRing(
+          parts: usageStore.gaugeParts,
+          gaugePercent: usage.map { Runway.wholeGaugePercent(usage: $0, mode: gaugeMode) },
+          gaugeMode: gaugeMode,
+          accent: accent,
+          combined: combined,
+          openCount: openCount,
+          isStatic: forShare
+        )
+        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+          // "Lasts the cycle" leaves no room for the caption beside it, so the caption goes underneath.
+          let lastsTheCycle = lastsTheCycle(usage: usage, now: now)
+          let figureLayout = lastsTheCycle
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
+            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: Theme.Spacing.small))
+          figureLayout {
+            Text(daysFigure(usage: usage, now: now))
+              .bigFigureStyle(size: lastsTheCycle ? 24 : 40)
+              .foregroundStyle(accent)
+              // Early in a cycle the burn is tiny, so the day count can have 4 or more digits.
+              .lineLimit(1)
+              .minimumScaleFactor(0.5)
+              .layoutPriority(1)
+            Text(daysCaption(usage: usage, now: now))
+              .font(.system(size: 15, weight: .semibold))
+              .lineLimit(1)
+          }
+          if let usage, let insight = RunwayInsight.popoverSentence(usage: usage, now: now, days: usageStore.runwayDays, unit: combined == nil ? .credits : .usd) {
+            Text(insight)
+              .font(.system(size: 12.5))
+              .foregroundStyle(.secondary)
+              .lineLimit(2)
+              .fixedSize(horizontal: false, vertical: true)
+          }
+          if !forShare, let usage, case .workdays(_, let daysOff) = usageStore.runwayDays {
+            let daysOffCount = DaysOffGrid.inCycle(daysOff, resetDate: usage.resetDate).count
+            if daysOffCount > 0 {
+              Label("Excludes \(daysOffCount) \(daysOffCount == 1 ? "day" : "days") off", systemImage: "calendar")
+                .captionStyle()
+            }
           }
         }
+        .accessibilityElement(children: .combine)
       }
-      .accessibilityElement(children: .combine)
+      if let combined {
+        combinedBox(combined: combined, gaugeMode: gaugeMode, accent: accent)
+      }
     }
+  }
+
+  private func combinedBox(combined: CombinedBudget, gaugeMode: GaugeMode, accent: Color) -> some View {
+    let budgetText = PortkeySpend.formatted(combined.usage.entitlement)
+    let header = gaugeMode == .spent
+      ? "\(PortkeySpend.formatted(combined.usage.creditsUsed)) of \(budgetText) spent"
+      : "\(PortkeySpend.formatted(max(combined.usage.creditsRemaining, 0))) of \(budgetText) left"
+    return VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+      Text("Copilot + Portkey · \(header)")
+        .captionStyle()
+      GaugeLegend(amountsUSD: combined.amountsUSD(mode: gaugeMode), color: accent)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .cardStyle()
+    .accessibilityElement(children: .combine)
   }
 
   private func wholeDaysLeft(usage: QuotaUsage?, now: Date) -> Int? {
@@ -415,10 +437,11 @@ struct PopoverView: View {
 }
 
 private struct RunwayRing: View {
-  let gaugeFraction: Double
+  let parts: GaugeParts
   let gaugePercent: Int?
   let gaugeMode: GaugeMode
   let accent: Color
+  let combined: CombinedBudget?
   // Each change replays the sweep from the mode's start fraction to the current fraction.
   let openCount: Int
   // ImageRenderer draws one frame, where the animator is still at its start fraction.
@@ -439,30 +462,58 @@ private struct RunwayRing: View {
       .rotationEffect(.degrees(RunwayGlyph.trackStartDegrees))
   }
 
+  // Same order as the menu bar glyph: the Portkey tone up to the total, then the Copilot part on top.
+  @ViewBuilder
+  nonisolated private static func arcs(parts: GaugeParts, color: Color) -> some View {
+    if parts.portkey > 0 {
+      horseshoe(fraction: parts.total, color: color.opacity(RunwayGlyph.portkeyOpacity))
+    }
+    if parts.copilot > 0 {
+      horseshoe(fraction: parts.copilot, color: color)
+    }
+  }
+
+  // Both parts scale by the shown total over the target total, so their ratio holds during the sweep.
+  nonisolated private static func shownParts(target: GaugeParts, shownTotal: Double) -> GaugeParts {
+    guard target.total > 0 else { return GaugeParts(copilot: shownTotal, portkey: 0) }
+    let scale = shownTotal / target.total
+    return GaugeParts(copilot: target.copilot * scale, portkey: target.portkey * scale)
+  }
+
+  private var accessibilityText: String {
+    let percentText = gaugePercent.map(String.init)
+    if let combined, let percentText {
+      let amounts = combined.amountsUSD(mode: gaugeMode)
+      let copilotText = PortkeySpend.formatted(amounts.copilot)
+      let portkeyText = PortkeySpend.formatted(amounts.portkey)
+      let state = gaugeMode == .spent ? "spent" : "left"
+      return "\(percentText) percent of combined budget \(state). Copilot \(copilotText), Portkey \(portkeyText)."
+    }
+    return gaugeMode == .spent
+      ? percentText.map { "\($0) percent of credits spent" } ?? "Credits spent unknown"
+      : percentText.map { "\($0) percent of credits remaining" } ?? "Credits remaining unknown"
+  }
+
   var body: some View {
     let reduceMotion = reduceMotion
-    let gaugeFraction = gaugeFraction
+    let parts = parts
     let sweepStartFraction = gaugeMode.sweepStartFraction
     let accent = accent
     ZStack {
       Self.horseshoe(fraction: 1, color: accent.opacity(RunwayGlyph.trackOpacity))
       if isStatic {
-        if gaugeFraction > 0 {
-          Self.horseshoe(fraction: gaugeFraction, color: accent)
-        }
+        Self.arcs(parts: parts, color: accent)
       } else {
         // The animator only supplies the progress value. The arc is built from it, so the clear view is not shown.
         Color.clear
           .keyframeAnimator(initialValue: 0.0, trigger: openCount) { _, progress in
             let sweepProgress = reduceMotion ? 1 : progress
-            let shownFraction = sweepStartFraction + (gaugeFraction - sweepStartFraction) * sweepProgress
-            if shownFraction > 0 {
-              Self.horseshoe(fraction: shownFraction, color: accent)
-            }
+            let shownTotal = sweepStartFraction + (parts.total - sweepStartFraction) * sweepProgress
+            Self.arcs(parts: Self.shownParts(target: parts, shownTotal: shownTotal), color: accent)
           } keyframes: { _ in
             LinearKeyframe(1.0, duration: Self.sweepDuration, timingCurve: .easeOut)
           }
-          .animation(reduceMotion ? nil : .easeOut(duration: Self.refreshDuration), value: gaugeFraction)
+          .animation(reduceMotion ? nil : .easeOut(duration: Self.refreshDuration), value: parts)
       }
       VStack(spacing: 0) {
         Text(gaugePercent.map { "\($0)%" } ?? "--%")
@@ -474,11 +525,7 @@ private struct RunwayRing: View {
     .padding(Self.lineWidth / 2)
     .frame(width: Self.diameter, height: Self.diameter)
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel(
-      gaugeMode == .spent
-        ? gaugePercent.map { "\($0) percent of credits spent" } ?? "Credits spent unknown"
-        : gaugePercent.map { "\($0) percent of credits remaining" } ?? "Credits remaining unknown"
-    )
+    .accessibilityLabel(accessibilityText)
   }
 }
 

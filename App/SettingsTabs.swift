@@ -195,8 +195,8 @@ struct SettingsRunwayTab: View {
   private func gaugeTileButton(mode: GaugeMode, title: String) -> some View {
     // Reading lastRefresh redraws the tiles on each poll, so the health color follows the clock like the popover.
     _ = usageStore.lastRefresh
-    let tile = GaugeTile.make(usage: usageStore.usage, hasError: usageStore.usageError != nil, mode: mode)
-    let health = RunwayHealth(usage: usageStore.usage, hasError: usageStore.usageError != nil, now: .now, days: usageStore.runwayDays)
+    let tile = GaugeTile.make(usage: usageStore.usage, hasError: usageStore.usageError != nil, mode: mode, combined: usageStore.combinedBudget)
+    let health = RunwayHealth(usage: usageStore.gaugeUsage, hasError: usageStore.usageError != nil, now: .now, days: usageStore.runwayDays)
     let isSelected = gaugeMode == mode
     return Button {
       gaugeMode = mode
@@ -358,8 +358,11 @@ private struct GaugeTileRing: View {
   var body: some View {
     ZStack {
       horseshoe(fraction: 1, color: color.opacity(RunwayGlyph.trackOpacity))
-      if tile.fraction > 0 {
-        horseshoe(fraction: tile.fraction, color: color)
+      if tile.parts.portkey > 0 {
+        horseshoe(fraction: tile.parts.total, color: color.opacity(RunwayGlyph.portkeyOpacity))
+      }
+      if tile.parts.copilot > 0 {
+        horseshoe(fraction: tile.parts.copilot, color: color)
       }
       Text("\(tile.percent)%")
         .font(.system(size: 12, weight: .semibold))
