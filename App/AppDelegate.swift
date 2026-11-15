@@ -41,6 +41,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
       // Async, because an argument that AppKit opens as a file makes SwiftUI skip .presented, and that happens in this launch pass.
       DispatchQueue.main.async { [weak self] in self?.openDashboard?() }
     }
+    if DemoLaunch.runsPortkeyNoticeDrill {
+      Task { await usageStore.runwayNotifier.runPortkeyNoticeDrill() }
+    }
     if DemoLaunch.scenario != nil {
       NotificationCenter.default.addObserver(
         self, selector: #selector(clearSettingsWindowAutosaveName(_:)), name: NSWindow.didUpdateNotification, object: nil)

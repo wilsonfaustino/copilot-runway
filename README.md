@@ -140,7 +140,9 @@ count in the Copilot gauge, runway, burn rate or breakdowns.
 - The card is hidden when there are no Portkey messages this cycle and no budget.
 - The Share image shows the card when the popover shows it, without the note on where the cost
   comes from.
-- The menu bar, notifications and "Copy summary" stay Copilot-only.
+- With a budget, Runway notifications also cover Portkey: the same four notices, once per cycle,
+  with the dollar budget in place of credits.
+- The menu bar and "Copy summary" stay Copilot-only.
 
 ### Task categories
 

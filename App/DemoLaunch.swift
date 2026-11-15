@@ -19,5 +19,8 @@ enum DemoLaunch {
   static let isActive = scenario != nil
 
   static let opensDashboard = ProcessInfo.processInfo.arguments.contains("-openDashboard")
+
+  // Put it last, or give it a value: AppKit pairs a -key argument with the next token.
+  static let runsPortkeyNoticeDrill = ProcessInfo.processInfo.arguments.contains("-portkeyNoticeDrill")
 }
 #endif
