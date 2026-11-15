@@ -23,13 +23,14 @@ struct DashboardView: View {
 
   var body: some View {
     let health = RunwayHealth(usage: usageStore.usage, hasError: usageStore.usageError != nil, now: .now, days: usageStore.runwayDays)
+    let gaugeHealth = RunwayHealth(usage: usageStore.gaugeUsage, hasError: usageStore.usageError != nil, now: .now, days: usageStore.runwayDays)
     ScrollView {
       VStack(alignment: .leading, spacing: Theme.Spacing.panel) {
         if let usage = usageStore.usage {
           insightBanner(usage: usage, health: health)
           HStack(alignment: .top, spacing: Theme.Spacing.regular) {
-            runwayCard(usage: usage, health: health)
-            remainingCard(usage: usage, health: health)
+            runwayCard(usage: usageStore.gaugeUsage ?? usage, health: gaugeHealth)
+            remainingCard(usage: usageStore.gaugeUsage ?? usage, health: gaugeHealth)
             kpiCard("Average daily burn") {
               Text(Credits.formatted(Runway.averageDailyBurn(usage: usage, now: .now, days: usageStore.runwayDays)))
                 .bigFigureStyle(size: 34)
@@ -193,8 +194,15 @@ struct DashboardView: View {
         kpiDetail("\(Credits.formatted(usage.creditsUsed)) used")
       } else {
         Text("\(Runway.wholeGaugePercent(usage: usage, mode: gaugeMode))%").bigFigureStyle(size: 34)
-        shareBar(fraction: MenuBarTitle.gaugeFraction(usage: usage, mode: gaugeMode), color: Theme.accent(health))
-        kpiDetail("\(Credits.formatted(usage.creditsUsed)) of \(Credits.formatted(usage.entitlement)) used")
+        if let combined = usageStore.combinedBudget {
+          let accent = Theme.accent(health)
+          combinedBar(parts: usageStore.gaugeParts, color: accent)
+          kpiDetail("\(PortkeySpend.formatted(usage.creditsUsed)) of \(PortkeySpend.formatted(usage.entitlement)) used")
+          GaugeLegend(amountsUSD: combined.amountsUSD(mode: gaugeMode), color: accent)
+        } else {
+          shareBar(fraction: MenuBarTitle.gaugeFraction(usage: usage, mode: gaugeMode), color: Theme.accent(health))
+          kpiDetail("\(Credits.formatted(usage.creditsUsed)) of \(Credits.formatted(usage.entitlement)) used")
+        }
       }
     }
   }
@@ -474,6 +482,24 @@ struct DashboardView: View {
           RoundedRectangle(cornerRadius: Theme.Radius.bar)
             .fill(color)
             .frame(width: proxy.size.width * min(max(fraction, 0), 1))
+        }
+      }
+  }
+
+  private func combinedBar(parts: GaugeParts, color: Color) -> some View {
+    RoundedRectangle(cornerRadius: Theme.Radius.bar)
+      .fill(color.opacity(RunwayGlyph.trackOpacity))
+      .frame(height: 6)
+      .overlay(alignment: .leading) {
+        GeometryReader { proxy in
+          if parts.portkey > 0 {
+            RoundedRectangle(cornerRadius: Theme.Radius.bar)
+              .fill(color.opacity(RunwayGlyph.portkeyOpacity))
+              .frame(width: proxy.size.width * min(max(parts.total, 0), 1))
+          }
+          RoundedRectangle(cornerRadius: Theme.Radius.bar)
+            .fill(color)
+            .frame(width: proxy.size.width * min(max(parts.copilot, 0), 1))
         }
       }
   }

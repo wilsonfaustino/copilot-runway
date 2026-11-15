@@ -124,8 +124,10 @@ Top categories (same local sessions):
 
 When your Pi, omp or OpenCode sessions send messages through Portkey (any provider id that
 contains "portkey"), the popover shows a Portkey card under the Copilot numbers, and the
-Dashboard shows a Portkey section. The amounts are USD, not Copilot credits, and they never
-count in the Copilot gauge, runway, burn rate or breakdowns.
+Dashboard shows a Portkey section. The amounts are USD, not Copilot credits. With a Portkey
+budget set, the gauge, the runway days and the run-out date combine the Copilot limit in USD
+and the Portkey budget, and the gauge draws them in two tones. The burn rate, the breakdowns
+and Copy summary stay Copilot only.
 
 - The card shows the spend this cycle, the request count, the spend by model and by agent, and
   one insight sentence. The cycle is the Copilot cycle.
@@ -166,7 +168,8 @@ Open Settings with the gear button in the popover. It has 4 tabs:
 - Runway:
   - Gauge shows. Two picture tiles, Credits left (the default) and Credits spent, drawn with
     your current usage. With Credits spent, the menu bar, the popover ring, the dashboard, the
-    Share card and Copy summary show the share of credits spent in the cycle.
+    Share card and Copy summary show the share of credits spent in the cycle. With a Portkey
+    budget, the tiles show the Copilot and Portkey split.
   - Count only weekdays. Off by default. When on, the burn rate, run-out date, runway and the
     Portkey days of runway count Monday to Friday only, in your local time zone. The text says
     "workday" instead of "day". Saturdays and Sundays do not add to the burn rate or use up runway.
