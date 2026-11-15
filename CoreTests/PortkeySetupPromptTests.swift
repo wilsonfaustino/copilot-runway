@@ -72,6 +72,28 @@ private func record(_ model: String, _ source: SessionSource, _ cost: Double?, a
   }
 }
 
+@Test func textLimitsChangesToCostBlocksAndApprovedRenames() {
+  for text in [PortkeySetupPrompt.text(records: []), PortkeySetupPrompt.text(records: [record("m", .omp, nil, at: 1)])] {
+    #expect(text.contains("Change only the `cost` blocks, plus a provider id rename that I approve"))
+    #expect(text.contains("strings named in that agent's section below."))
+    #expect(!text.contains("Change only the `cost` blocks.\n"))
+  }
+}
+
+@Test func eachAgentSectionNamesTheReferencesARenameChanges() {
+  let text = PortkeySetupPrompt.text(records: [])
+  #expect(text.contains("`<provider>/<model id>` strings in `~/.pi/agent/settings.json`"))
+  #expect(text.contains("`<provider>/<model id>` strings in the `model` and `small_model` keys"))
+  #expect(text.contains("`<provider>/<model id>` string in the omp config files"))
+}
+
+@Test func textChecksYamlFilesWithRuby() {
+  let command = "ruby -ryaml -e 'YAML.parse_file(ARGV[0])' <file>"
+  for text in [PortkeySetupPrompt.text(records: []), PortkeySetupPrompt.text(records: [record("m", .omp, nil, at: 1)])] {
+    #expect(text.contains(command))
+  }
+}
+
 @Test func genericTextHasNoCompanyDetails() {
   let text = PortkeySetupPrompt.text(records: []).lowercased()
   for banned in ["fireworks", "~/.secrets", "x-portkey-api-key", "https://"] {

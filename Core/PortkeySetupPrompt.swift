@@ -48,7 +48,7 @@ public enum PortkeySetupPrompt {
     - Never print, log, copy or echo an API key. Do not `cat` a key file. When you show a config file, replace each key value with `REDACTED`.
     - Back up each file before you change it: `cp <file> <file>.bak-portkey-pricing-$(date +%Y%m%d-%H%M%S)`. If that backup file already exists, stop and ask me.
     - Merge the changes into my existing files. Do not remove other providers, models or settings.
-    - Do not change the base URL, headers or key of a provider that already works. Change only the `cost` blocks.
+    - Do not change the base URL, headers or key of a provider that already works. Change only the `cost` blocks, plus a provider id rename that I approve, with the matching `<provider>/<model id>` strings named in that agent's section below.
     - If a model already has a cost above 0, tell me and do not change it.
     - If something below does not match what you find, stop and ask me. Do not guess.
 
@@ -76,7 +76,7 @@ public enum PortkeySetupPrompt {
     ## OpenCode
 
     - Config: `~/.config/opencode/opencode.json`. OpenCode reads it when it starts.
-    - Find the provider in `providers` whose `settings.baseURL` points to my Portkey gateway, for example `<your.portkey.gateway.com>`. Its id must contain `portkey`, for example `portkey-openai-compatible`. If it does not, ask me before you rename it.
+    - Find the provider in `providers` whose `settings.baseURL` points to my Portkey gateway, for example `<your.portkey.gateway.com>`. Its id must contain `portkey`, for example `portkey-openai-compatible`. If it does not, ask me before you rename it. A rename also changes the `<provider>/<model id>` strings in the `model` and `small_model` keys of that file, and you must update those too.
     - Add a `cost` object to each model under `providers.<provider id>.models`:
 
       ```json
@@ -89,7 +89,7 @@ public enum PortkeySetupPrompt {
 
     - Config: `~/.omp/agent/models.yml` (YAML). omp is a Pi fork and uses the same `cost` keys as Pi.
     - Copilot Runway has not tested this file end to end. If the file is missing, or the Portkey provider does not look like this example, stop and ask me.
-    - Find the provider whose `baseUrl` points to my Portkey gateway. Its id must contain `portkey` (any letter case). If it does not, ask me before you rename it.
+    - Find the provider whose `baseUrl` points to my Portkey gateway. Its id must contain `portkey` (any letter case). If it does not, ask me before you rename it. A rename also changes each `<provider>/<model id>` string in the omp config files under `~/.omp/agent/`, and you must update those too.
 
       ```yaml
       providers:
@@ -105,7 +105,8 @@ public enum PortkeySetupPrompt {
     ## Check
 
     1. Check that each changed JSON file is valid: `python3 -m json.tool <file> > /dev/null`.
-    2. Tell me to quit and start each changed agent again, then send one short message with a Portkey model.
-    3. In Copilot Runway, the new request shows a USD amount. Older requests stay unpriced, because agents do not recalculate old messages.
+    2. Check that each changed YAML file is valid: `ruby -ryaml -e 'YAML.parse_file(ARGV[0])' <file>`.
+    3. Tell me to quit and start each changed agent again, then send one short message with a Portkey model.
+    4. In Copilot Runway, the new request shows a USD amount. Older requests stay unpriced, because agents do not recalculate old messages.
     """
 }

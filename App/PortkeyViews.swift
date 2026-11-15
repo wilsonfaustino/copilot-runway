@@ -15,13 +15,15 @@ enum PortkeyText {
 
 struct PortkeySetupPromptButton: View {
   let records: [PortkeyRecord]
+  @State private var promptCopied = false
 
   var body: some View {
     Button {
       NSPasteboard.general.clearContents()
       NSPasteboard.general.setString(PortkeySetupPrompt.text(records: records), forType: .string)
+      promptCopied = true
     } label: {
-      Label("Copy setup prompt", systemImage: "doc.on.doc")
+      Label(promptCopied ? "Copied" : "Copy setup prompt", systemImage: "doc.on.doc")
     }
     .controlSize(.small)
   }
