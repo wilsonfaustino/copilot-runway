@@ -13,12 +13,17 @@ public enum PortkeySetupPrompt {
   ]
 
   // Ids sorted, per agent. A model counts when its newest record from that agent has no cost, so a model priced
-  // after some unpriced requests does not count.
+  // after some unpriced requests does not count. Ids with a backtick or a control character are skipped: in the
+  // prompt they could close the inline code and add instructions for the agent.
   public static func unpricedModels(in records: [PortkeyRecord]) -> [SessionSource: [String]] {
     let newestRecords = Dictionary(grouping: records) { "\($0.source.rawValue)\u{0}\($0.model)" }
       .compactMap { $0.value.max { $0.timestamp < $1.timestamp } }
-    return Dictionary(grouping: newestRecords.filter { $0.costUSD == nil }, by: \.source)
+    return Dictionary(grouping: newestRecords.filter { $0.costUSD == nil && isSafeInPrompt($0.model) }, by: \.source)
       .mapValues { $0.map(\.model).sorted() }
+  }
+
+  private static func isSafeInPrompt(_ model: String) -> Bool {
+    !model.contains("`") && model.unicodeScalars.allSatisfy { !CharacterSet.controlCharacters.contains($0) }
   }
 
   // With no unpriced model: every agent section and placeholders only.
