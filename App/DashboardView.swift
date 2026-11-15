@@ -560,6 +560,11 @@ private struct DailyBurnChart: View {
   let cycleDayCount: Int
   let averageDailyBurn: Double
   let unit: BudgetUnit
+
+  // Half a credit in either unit, so the invisible hover mark never stretches the y axis past the data.
+  private var hoverMarkPadding: Double {
+    unit == .usd ? 0.005 : 0.5
+  }
   let runwayDays: RunwayDays
   let health: RunwayHealth
   @State private var selectedDayPosition: Double?
@@ -679,8 +684,8 @@ private struct DailyBurnChart: View {
             RectangleMark(
               xStart: .value("Day start", Self.dayPosition(index) - 0.05),
               xEnd: .value("Day end", Self.dayPosition(index) + 0.05),
-              yStart: .value("Last cycle start", max(dayCredits.credits - 0.5, 0)),
-              yEnd: .value("Last cycle credits", dayCredits.credits + 0.5)
+              yStart: .value("Last cycle start", max(dayCredits.credits - hoverMarkPadding, 0)),
+              yEnd: .value("Last cycle credits", dayCredits.credits + hoverMarkPadding)
             )
             .opacity(0)
             .accessibilityLabel("Last cycle, \(dayCredits.day.formatted(DashboardView.dayLabelStyle))")
