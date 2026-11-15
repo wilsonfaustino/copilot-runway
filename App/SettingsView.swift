@@ -20,9 +20,11 @@ final class SettingsWindowController: NSWindowController {
   private var contentSizes: [SettingsTab: CGSize] = [:]
 
   static func show(usageStore: UsageStore) {
+    // Read the tab first: building the tabs selects General, which writes .general back to the store.
+    let requestedTab = usageStore.settingsTab
     let controller = shared ?? SettingsWindowController(usageStore: usageStore)
     shared = controller
-    controller.tabViewController.selectedTabViewItemIndex = SettingsTab.allCases.firstIndex(of: usageStore.settingsTab) ?? 0
+    controller.tabViewController.selectedTabViewItemIndex = SettingsTab.allCases.firstIndex(of: requestedTab) ?? 0
     // The app has no Dock icon, so it must come forward or the window opens behind other apps.
     NSApp.activate()
     controller.showWindow(nil)
