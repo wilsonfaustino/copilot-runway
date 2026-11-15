@@ -13,7 +13,6 @@ struct DashboardView: View {
 
   let usageStore: UsageStore
   @State private var summaryCopied = false
-  @Environment(\.openSettings) private var openSettings
   @AppStorage(Theme.taskPalettePreferenceKey) private var taskPalettePreference = TaskPalettePreference.unset
   @AppStorage(UsageStore.portkeyBudgetKey) private var portkeyBudgetUSD: Double?
   @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiatesWithoutColor
@@ -210,8 +209,7 @@ struct DashboardView: View {
           .fixedSize(horizontal: false, vertical: true)
         Button("Open Settings") {
           usageStore.settingsTab = .sources
-          openSettings()
-          NSApplication.shared.activate()
+          SettingsWindowController.show(usageStore: usageStore)
         }
         .buttonStyle(.link)
         .controlSize(.small)
