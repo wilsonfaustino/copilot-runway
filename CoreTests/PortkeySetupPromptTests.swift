@@ -68,6 +68,7 @@ private func record(_ model: String, _ source: SessionSource, _ cost: Double?, a
     #expect(text.contains("Do not search the web or fill in a price yourself, unless I explicitly ask you to."))
     #expect(text.contains("wait for my confirmation"))
     #expect(text.contains("$(date +%Y%m%d-%H%M%S)"))
+    #expect(text.contains("If that backup file already exists, stop and ask me."))
   }
 }
 

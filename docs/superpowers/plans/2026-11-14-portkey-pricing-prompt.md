@@ -134,7 +134,7 @@ Configure my AI agents so that each Portkey message in my sessions stores a corr
 
 - Before you save any change, show me the diff and wait for my approval.
 - Never print, log, copy or echo an API key. Do not `cat` a key file. When you show a config file, replace each key value with `REDACTED`.
-- Back up each file before you change it: `cp <file> <file>.bak-portkey-pricing-$(date +%Y%m%d-%H%M%S)`.
+- Back up each file before you change it: `cp <file> <file>.bak-portkey-pricing-$(date +%Y%m%d-%H%M%S)`. If that backup file already exists, stop and ask me.
 - Merge the changes into my existing files. Do not remove other providers, models or settings.
 - Do not change the base URL, headers or key of a provider that already works. Change only the `cost` blocks.
 - If a model already has a cost above 0, tell me and do not change it.
