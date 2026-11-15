@@ -15,9 +15,9 @@ struct GaugeLegend: View {
 
   private func item(label: String, amountUSD: Double, opacity: Double) -> some View {
     HStack(spacing: Theme.Spacing.tight) {
-      Circle()
+      RoundedRectangle(cornerRadius: 3)
         .fill(color.opacity(opacity))
-        .frame(width: 8, height: 8)
+        .frame(width: 10, height: 10)
       Text("\(label) \(PortkeySpend.formatted(amountUSD))")
         .captionStyle()
         .monospacedDigit()
