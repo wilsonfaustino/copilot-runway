@@ -156,6 +156,10 @@ final class UsageStore {
       SessionCredits.load(since: cycleStart, now: .now)
     }.value
     apply(sessionCredits)
+    let budgetUSD = UserDefaults.standard.object(forKey: Self.portkeyBudgetKey) as? Double
+    if let portkeyUsage = PortkeyBudget.usage(spentUSD: portkeySpend.totalUSD, budgetUSD: budgetUSD, resetDate: usage.resetDate) {
+      Task { await runwayNotifier.sendDueNotices(usage: portkeyUsage, days: runwayDays, subject: .portkey) }
+    }
   }
 
   private func apply(_ sessionCredits: SessionCredits) {

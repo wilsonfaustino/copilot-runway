@@ -84,7 +84,7 @@ struct SettingsGeneralTab: View {
           #endif
         SettingsCaption(
           "One notice at 80% used, one when runway turns short, one when it turns critical and one when the limit is reached."
-            + " Each is sent once per billing cycle.")
+            + " Each is sent once per billing cycle. With a Portkey budget, the same notices also cover Portkey.")
         #if DEBUG
         if !DemoLaunch.isActive {
           Button("Send test notice") {

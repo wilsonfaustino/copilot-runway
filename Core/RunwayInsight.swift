@@ -22,18 +22,35 @@ public enum RunwayInsight {
   }
 
   public static func runOutSentence(usage: QuotaUsage, now: Date, locale: Locale = .current, days: RunwayDays = .calendar) -> String? {
+    runOutSentence(usage: usage, now: now, locale: locale, days: days, lastsText: "your credits last", runsOutText: "you run out")
+  }
+
+  private static func runOutSentence(
+    usage: QuotaUsage, now: Date, locale: Locale, days: RunwayDays, lastsText: String, runsOutText: String
+  ) -> String? {
     let resetText = day(usage.resetDate, locale: locale)
     switch runOutOutlook(usage: usage, now: now, days: days) {
     case nil: return nil
-    case .pastReset?: return "At this pace your credits last past the reset on \(resetText)."
+    case .pastReset?: return "At this pace \(lastsText) past the reset on \(resetText)."
     case .beforeReset(let runOutDate, let daysBeforeReset)?:
       let daysText = daysBeforeReset == 1 ? "1 day" : "\(daysBeforeReset) days"
-      return "At this pace you run out on \(day(runOutDate, locale: locale)), \(daysText) before the reset on \(resetText)."
+      return "At this pace \(runsOutText) on \(day(runOutDate, locale: locale)), \(daysText) before the reset on \(resetText)."
     }
   }
 
   public static func limitSentence(usage: QuotaUsage, locale: Locale = .current) -> String {
     "You used all credits for this cycle. Resets \(day(usage.resetDate, locale: locale))."
+  }
+
+  // The runOutSentence and limitSentence wording for a Portkey budget from PortkeyBudget.usage.
+  static func portkeyRunOutSentence(usage: QuotaUsage, now: Date, locale: Locale, days: RunwayDays) -> String? {
+    runOutSentence(
+      usage: usage, now: now, locale: locale, days: days,
+      lastsText: "your Portkey budget lasts", runsOutText: "your Portkey budget runs out")
+  }
+
+  static func portkeyLimitSentence(usage: QuotaUsage, locale: Locale) -> String {
+    "You used all of your Portkey budget for this cycle. Resets \(day(usage.resetDate, locale: locale))."
   }
 
   // The highest average burn from now on that still reaches the reset with credits left.

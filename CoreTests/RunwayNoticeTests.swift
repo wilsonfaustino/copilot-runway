@@ -124,6 +124,16 @@ func runwayNotices(usage: QuotaUsage?, now: String, sentKeys: Set<String> = []) 
   ])
 }
 
+@Test func portkeyNoticeKeysAreStableStrings() {
+  let resetDate = utcDate("2026-11-01T00:00:00Z")
+  #expect(RunwayNotice.Kind.allCases.map { RunwayNotice.key(kind: $0, resetDate: resetDate, subject: .portkey) } == [
+    "portkey-used80-2026-11-01",
+    "portkey-short-2026-11-01",
+    "portkey-critical-2026-11-01",
+    "portkey-limitReached-2026-11-01",
+  ])
+}
+
 @Test func limitSentenceNamesResetDay() {
   let usage = makeUsage(creditsUsed: 12500)
   #expect(RunwayInsight.limitSentence(usage: usage, locale: usLocale) == "You used all credits for this cycle. Resets Nov 1.")
@@ -145,4 +155,59 @@ func runwayNotices(usage: QuotaUsage?, now: String, sentKeys: Set<String> = []) 
   let sentNotices = RunwayNotice.toSend(
     usage: usage, now: utcDate("2027-01-29T12:00:00Z"), sentKeys: [], days: utcWorkdays)
   #expect(!sentNotices.map(\.kind).contains(.critical))
+}
+
+// A 120 USD Portkey budget has the same ratios as the 12000 credits of makeUsage.
+func portkeyNotices(spentUSD: Double, now: String, sentKeys: Set<String> = []) -> [RunwayNotice] {
+  let usage = PortkeyBudget.usage(spentUSD: spentUSD, budgetUSD: 120, resetDate: utcDate("2026-11-01T00:00:00Z"))
+  return RunwayNotice.toSend(usage: usage, now: utcDate(now), sentKeys: sentKeys, locale: usLocale, subject: .portkey)
+}
+
+@Test func portkeyUsed80NamesTheBudget() {
+  #expect(portkeyNotices(spentUSD: 96, now: "2026-10-29T00:00:00Z") == [
+    RunwayNotice(
+      kind: .used80,
+      key: "portkey-used80-2026-11-01",
+      title: "Portkey: 80% of budget used",
+      body: "At this pace your Portkey budget lasts past the reset on Nov 1."
+    ),
+  ])
+}
+
+@Test func portkeyShortNoticeNamesDaysLeft() {
+  #expect(portkeyNotices(spentUSD: 60, now: "2026-10-11T00:00:00Z") == [
+    RunwayNotice(
+      kind: .short,
+      key: "portkey-short-2026-11-01",
+      title: "Portkey runway is short: 10 days left",
+      body: "At this pace your Portkey budget runs out on Oct 21, 11 days before the reset on Nov 1."
+    ),
+  ])
+}
+
+@Test func portkeyCriticalNoticeFiresWhileBudgetRemains() {
+  let sentNotices = portkeyNotices(spentUSD: 118, now: "2026-10-21T00:00:00Z")
+  #expect(sentNotices.map(\.kind) == [.used80, .critical])
+  #expect(sentNotices.last?.title == "Portkey runway is critical: under 1 day left")
+  #expect(sentNotices.last?.key == "portkey-critical-2026-11-01")
+}
+
+@Test func portkeyBudgetReachedNotice() {
+  let sentNotices = portkeyNotices(spentUSD: 125, now: "2026-10-21T00:00:00Z")
+  #expect(sentNotices.last == RunwayNotice(
+    kind: .limitReached,
+    key: "portkey-limitReached-2026-11-01",
+    title: "Portkey budget reached",
+    body: "You used all of your Portkey budget for this cycle. Resets Nov 1."
+  ))
+}
+
+@Test func copilotSentKeysDoNotStopPortkeyNotices() {
+  let copilotKeys = Set(runwayNotices(usage: makeUsage(creditsUsed: 9600), now: "2026-10-29T00:00:00Z").map(\.key))
+  #expect(portkeyNotices(spentUSD: 96, now: "2026-10-29T00:00:00Z", sentKeys: copilotKeys).map(\.kind) == [.used80])
+}
+
+@Test func portkeyWithoutBudgetGivesNoNotice() {
+  let usage = PortkeyBudget.usage(spentUSD: 500, budgetUSD: nil, resetDate: utcDate("2026-11-01T00:00:00Z"))
+  #expect(RunwayNotice.toSend(usage: usage, now: utcDate("2026-10-21T00:00:00Z"), sentKeys: [], subject: .portkey).isEmpty)
 }
