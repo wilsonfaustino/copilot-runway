@@ -362,12 +362,7 @@ struct PopoverView: View {
         .font(.system(size: 12))
         .foregroundStyle(.secondary)
       Spacer()
-      Button("Copy brew command") {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(ReleaseCheck.upgradeCommand, forType: .string)
-      }
-      .controlSize(.small)
-      .help(ReleaseCheck.upgradeCommand)
+      UpdateControls(appUpdater: usageStore.appUpdater)
     }
   }
 

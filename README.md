@@ -218,6 +218,11 @@ Since Homebrew 6.0.0, Homebrew loads code from a third-party tap only after you 
 A fully qualified install trusts this one cask and nothing else in the tap
 ([Tap Trust](https://docs.brew.sh/Tap-Trust)).
 
+When a new version is out, the popover and Settings > About show an Update button. It runs
+`brew update --force` and `brew upgrade --cask wilsonfaustino/tap/copilot-runway`, then
+relaunches the app. If brew is missing, the app was not installed with the cask, or the update
+fails, use Copy brew command and run the command in Terminal.
+
 ### With an AI agent
 
 Paste this prompt into an AI coding agent such as Claude Code, OpenCode, Pi or Codex. The agent

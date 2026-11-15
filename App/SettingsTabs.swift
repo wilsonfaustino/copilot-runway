@@ -513,12 +513,7 @@ struct SettingsAboutTab: View {
         if let availableVersion = usageStore.availableVersion {
           HStack(spacing: Theme.Spacing.small) {
             Text("Version \(availableVersion) is available.")
-            Button("Copy brew command") {
-              NSPasteboard.general.clearContents()
-              NSPasteboard.general.setString(ReleaseCheck.upgradeCommand, forType: .string)
-            }
-            .controlSize(.small)
-            .help(ReleaseCheck.upgradeCommand)
+            UpdateControls(appUpdater: usageStore.appUpdater)
           }
         }
       }
