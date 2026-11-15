@@ -70,7 +70,11 @@ struct PopoverView: View {
       openCount += 1
       storeWhatsNewBaselineIfNoBanner()
     }
-    .onReceive(NotificationCenter.default.publisher(for: NSPopover.willShowNotification)) { _ in openCount += 1 }
+    .onReceive(NotificationCenter.default.publisher(for: NSPopover.willShowNotification)) { _ in
+      openCount += 1
+      // UpdateControls' .task does not run again on a later show, so a brew check that did not finish retries here.
+      Task { await usageStore.appUpdater.prepareIfNeeded() }
+    }
   }
 
   // applicationIconImage follows the system icon style (Clear renders a low-contrast grey glass). The asset catalog keeps the full-colour icon.
@@ -357,12 +361,15 @@ struct PopoverView: View {
   }
 
   private func updateNotice(version: String) -> some View {
-    HStack(spacing: Theme.Spacing.small) {
-      Text("Version \(version) is available.")
-        .font(.system(size: 12))
-        .foregroundStyle(.secondary)
-      Spacer()
-      UpdateControls(appUpdater: usageStore.appUpdater)
+    VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+      HStack(spacing: Theme.Spacing.small) {
+        Text("Version \(version) is available.")
+          .font(.system(size: 12))
+          .foregroundStyle(.secondary)
+        Spacer()
+        UpdateControls(appUpdater: usageStore.appUpdater)
+      }
+      UpdateStatusRow(appUpdater: usageStore.appUpdater)
     }
   }
 

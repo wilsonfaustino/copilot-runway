@@ -1,11 +1,13 @@
 import Foundation
 import os
 
-// Runs gh without blocking a thread while it runs, and stops it after a time limit.
-// Both pipes drain while gh runs, so a full pipe cannot stop gh.
+// Runs a command line tool (gh, brew) without blocking a thread while it runs, and stops it after a time limit.
+// Both pipes drain while the tool runs, so a full pipe cannot stop it.
 enum GhRunner {
-  // gh can wait for ever, for example on a keychain prompt that nobody answers.
+  // A tool can wait for ever, for example gh on a keychain prompt that nobody answers.
   static let defaultTimeout: Duration = .seconds(30)
+  // After SIGINT, brew needs time to clean up and release its lock. A retry that starts too early hits that lock.
+  static let interruptGracePeriod: Duration = .seconds(10)
 
   struct Output: Sendable {
     let exitStatus: Int32
@@ -20,6 +22,7 @@ enum GhRunner {
 
   // stderr goes to /dev/null unless readsStandardError is true. stdin is always empty, so a prompt fails at once.
   // interruptsAtTimeLimit sends SIGINT instead of SIGTERM: brew update cleans up its fetch children on SIGINT only.
+  // It also waits for the process to exit (up to interruptGracePeriod) before it reports the time limit.
   static func run(
     path: String,
     arguments: [String],
@@ -57,12 +60,18 @@ enum GhRunner {
         } catch {
           return
         }
-        guard run.end(with: .timedOut) else { return }
+        guard let continuation = run.claim() else { return }
         if interruptsAtTimeLimit {
           process.interrupt()
+          let graceEnd = ContinuousClock.now + interruptGracePeriod
+          while process.isRunning, ContinuousClock.now < graceEnd {
+            try? await Task.sleep(for: .milliseconds(50))
+          }
+          if process.isRunning { process.terminate() }
         } else {
           process.terminate()
         }
+        continuation.resume(returning: .failure(.timedOut))
       }
     }
     timeoutTask?.cancel()
@@ -70,7 +79,7 @@ enum GhRunner {
   }
 }
 
-// Resumes the continuation exactly once: after gh exits and every pipe reaches its end, or at the time limit.
+// Hands the continuation to exactly one owner: the exit and pipe path, a launch failure, or the time limit.
 private final class RunState: Sendable {
   private struct Fields: Sendable {
     var continuation: CheckedContinuation<Result<GhRunner.Output, GhRunner.Failure>, Never>?
@@ -105,15 +114,16 @@ private final class RunState: Sendable {
     finishIfDone { $0.exitStatus = status }
   }
 
-  // Returns true when this call ended the run, so only that caller stops the process.
-  @discardableResult
-  func end(with failure: GhRunner.Failure) -> Bool {
-    let continuation = fields.withLock { fields in
+  // Returns the continuation only to the first caller. That caller must resume it, and the exit path then never does.
+  func claim() -> CheckedContinuation<Result<GhRunner.Output, GhRunner.Failure>, Never>? {
+    fields.withLock { fields in
       defer { fields.continuation = nil }
       return fields.continuation
     }
-    continuation?.resume(returning: .failure(failure))
-    return continuation != nil
+  }
+
+  func end(with failure: GhRunner.Failure) {
+    claim()?.resume(returning: .failure(failure))
   }
 
   private func finishIfDone(_ change: @Sendable (inout Fields) -> Void) {
