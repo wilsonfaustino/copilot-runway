@@ -421,6 +421,12 @@ struct SettingsSourcesTab: View {
         SettingsCaption("Optional. With a budget, the Portkey block shows the dollars left and the days of runway. Empty means no budget.")
       }
       SettingsDivider()
+      SettingsRow(label: "Portkey prices") {
+        PortkeySetupPromptButton(records: usageStore.portkeySpend.records)
+        SettingsCaption("Paste it into Pi, OpenCode or omp. The agent asks you for each model price and adds it to its config, so new Portkey requests get a cost.")
+        SettingsCaption(PortkeySetupPrompt.disclaimer)
+      }
+      SettingsDivider()
       SettingsRow(label: "Price overrides") {
         Text(priceOverridePath)
           .font(.system(size: 11, design: .monospaced))
