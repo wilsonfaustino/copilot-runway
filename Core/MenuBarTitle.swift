@@ -30,6 +30,11 @@ public enum MenuBarTitle {
     }
   }
 
+  // The gauge fraction split by provider. Without a combined budget the whole gauge is Copilot.
+  public static func gaugeParts(usage: QuotaUsage?, combined: CombinedBudget?, mode: GaugeMode) -> GaugeParts {
+    combined?.parts(mode: mode) ?? GaugeParts(copilot: gaugeFraction(usage: usage, mode: mode), portkey: 0)
+  }
+
   public static func title(error: CopilotUsageError) -> String {
     switch error {
     case .ghNotFound: "gh missing"
