@@ -58,6 +58,8 @@ Other titles:
 
 For the error states, the glyph changes to a neutral symbol.
 
+Right-click or Control-click the title for a menu: Refresh, Copy Summary, Open Dashboard, Settings, Check for Updates and Quit.
+
 ### Popover
 
 Click the title to open the popover:

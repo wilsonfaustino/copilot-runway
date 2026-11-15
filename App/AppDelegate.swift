@@ -8,9 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
   private var statusItem: NSStatusItem?
   private let popover = NSPopover()
   private let sharePicker = SharePicker()
-  #if DEBUG
   var openDashboard: (() -> Void)?
-  #endif
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -18,7 +16,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     if let button = statusItem.button {
       button.target = self
       button.action = #selector(togglePopover(_:))
+      button.sendAction(on: [.leftMouseUp, .rightMouseUp])
       button.imagePosition = .imageLeading
+      button.setAccessibilityHelp("Click for usage. Right-click for more actions.")
     }
     self.statusItem = statusItem
     updateLabel()
@@ -70,16 +70,103 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
   @objc private func togglePopover(_ sender: Any?) {
     guard let button = statusItem?.button else { return }
+    if let currentEvent = NSApp.currentEvent,
+      currentEvent.type == .rightMouseUp || currentEvent.modifierFlags.contains(.control)
+    {
+      popover.performClose(sender)
+      showMenu(from: button)
+      return
+    }
     if popover.isShown {
       popover.performClose(sender)
       return
     }
+    showPopover(from: button)
+  }
+
+  private func showPopover(from button: NSStatusBarButton) {
     NSApp.activate()
     popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
     // show does not make the popover key, and the system declines activate() for a status item click, so
     // without this the popover looks inactive and the first click in it only makes it key.
     popover.contentViewController?.view.window?.makeKey()
     button.highlight(true)
+  }
+
+  // Setting the menu for one click lets the system place it like any other menu bar menu.
+  private func showMenu(from button: NSStatusBarButton) {
+    statusItem?.menu = makeMenu()
+    button.performClick(nil)
+    statusItem?.menu = nil
+  }
+
+  private func makeMenu() -> NSMenu {
+    let menu = NSMenu()
+    // Copy Summary sets its own enabled state.
+    menu.autoenablesItems = false
+    menu.addItem(menuItem("Refresh", action: #selector(refreshNow), keyEquivalent: "r"))
+    let copySummaryItem = menuItem("Copy Summary", action: #selector(copySummary), keyEquivalent: "c")
+    copySummaryItem.keyEquivalentModifierMask = [.command, .shift]
+    copySummaryItem.isEnabled = usageStore.summaryText() != nil
+    menu.addItem(copySummaryItem)
+    menu.addItem(.separator())
+    menu.addItem(menuItem("Open Dashboard", action: #selector(openDashboardWindow), keyEquivalent: "d"))
+    menu.addItem(menuItem("Settings…", action: #selector(openSettings), keyEquivalent: ","))
+    menu.addItem(menuItem("Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "u"))
+    menu.addItem(.separator())
+    menu.addItem(menuItem("Quit Copilot Runway", action: #selector(quit), keyEquivalent: "q"))
+    return menu
+  }
+
+  private func menuItem(_ title: String, action: Selector, keyEquivalent: String) -> NSMenuItem {
+    let item = NSMenuItem(title: title, action: action, keyEquivalent: keyEquivalent)
+    item.target = self
+    return item
+  }
+
+  @objc private func refreshNow() {
+    Task { await usageStore.refresh() }
+  }
+
+  @objc private func copySummary() {
+    guard let summaryText = usageStore.summaryText() else { return }
+    NSPasteboard.general.clearContents()
+    NSPasteboard.general.setString(summaryText, forType: .string)
+  }
+
+  @objc private func openDashboardWindow() {
+    openDashboard?()
+    NSApp.activate()
+  }
+
+  @objc private func openSettings() {
+    SettingsWindowController.show(usageStore: usageStore)
+  }
+
+  @objc private func checkForUpdates() {
+    Task {
+      switch await usageStore.checkForUpdatesNow() {
+      case .newer:
+        guard let button = statusItem?.button, !popover.isShown else { return }
+        showPopover(from: button)
+      case .upToDate(let currentVersion):
+        showAlert(message: "Copilot Runway is up to date.", information: "Version \(currentVersion) is the newest version.")
+      case .failed:
+        showAlert(message: "Could not check for updates.", information: "Check your connection and try again.")
+      }
+    }
+  }
+
+  private func showAlert(message: String, information: String) {
+    let alert = NSAlert()
+    alert.messageText = message
+    alert.informativeText = information
+    NSApp.activate()
+    alert.runModal()
+  }
+
+  @objc private func quit() {
+    NSApp.terminate(nil)
   }
 
   private func share(from anchorView: NSView) {

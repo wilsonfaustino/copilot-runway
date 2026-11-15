@@ -6,9 +6,7 @@ struct CopilotRunwayApp: App {
   @Environment(\.openWindow) private var openWindow
 
   var body: some Scene {
-    #if DEBUG
     let _ = appDelegate.openDashboard = { [openWindow] in openWindow(id: DashboardView.windowId) }
-    #endif
     Window("Copilot Runway", id: DashboardView.windowId) {
       DashboardView(usageStore: appDelegate.usageStore)
     }
