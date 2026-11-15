@@ -463,13 +463,15 @@ private struct RunwayRing: View {
   }
 
   // Same order as the menu bar glyph: the Portkey tone up to the total, then the Copilot part on top.
-  @ViewBuilder
+  // The ZStack keeps the two arcs on one circle: inside keyframeAnimator, loose sibling views stack vertically.
   nonisolated private static func arcs(parts: GaugeParts, color: Color) -> some View {
-    if parts.portkey > 0 {
-      horseshoe(fraction: parts.total, color: color.opacity(RunwayGlyph.portkeyOpacity))
-    }
-    if parts.copilot > 0 {
-      horseshoe(fraction: parts.copilot, color: color)
+    ZStack {
+      if parts.portkey > 0 {
+        horseshoe(fraction: parts.total, color: color.opacity(RunwayGlyph.portkeyOpacity))
+      }
+      if parts.copilot > 0 {
+        horseshoe(fraction: parts.copilot, color: color)
+      }
     }
   }
 
