@@ -27,7 +27,7 @@ struct DashboardView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: Theme.Spacing.panel) {
         if let usage = usageStore.usage {
-          insightBanner(usage: usage, health: health)
+          insightBanner(usage: usage, health: gaugeHealth)
           HStack(alignment: .top, spacing: Theme.Spacing.regular) {
             runwayCard(usage: usageStore.gaugeUsage ?? usage, health: gaugeHealth)
             remainingCard(usage: usageStore.gaugeUsage ?? usage, health: gaugeHealth)
@@ -113,7 +113,7 @@ struct DashboardView: View {
     let accent = Theme.accent(health)
     let (headline, detail) = RunwayInsight.banner(
       usage: usage, errorMessage: usageStore.errorMessage, categoryCredits: usageStore.categoryCredits, now: .now,
-      days: usageStore.runwayDays
+      days: usageStore.runwayDays, combined: usageStore.combinedBudget
     )
     return HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.regular) {
       Image(systemName: bannerSymbolName(health: health))

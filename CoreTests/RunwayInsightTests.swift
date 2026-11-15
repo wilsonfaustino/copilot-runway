@@ -352,3 +352,25 @@ private func combinedInsightBudget(copilotUsed: Double = 10216, portkeySpent: Do
     RunwayInsight.popoverSentence(usage: combined.usage, now: combinedInsightNow, locale: usLocale, unit: .usd)
       == "Nothing spent yet.")
 }
+
+@Test func combinedBannerUsesUSDAndNamesEachProviderAverage() throws {
+  let combined = try combinedInsightBudget()
+  let banner = RunwayInsight.banner(
+    usage: makeUsage(creditsUsed: 10216), errorMessage: nil, categoryCredits: [], now: combinedInsightNow,
+    locale: usLocale, combined: combined)
+  // 88.58 USD left at 7.68 USD/day: 11.5 days, run-out Nov 27. Needed: 88.58 / 15.5 days = 5.71 USD/day.
+  #expect(banner.headline == "At this pace you run out on Nov 27, 4 days before the reset on Dec 1.")
+  #expect(
+    banner.detail
+      == "To reach Dec 1, keep the burn under $5.71/day. $1.97/day over budget. "
+      + "Copilot averages $7.05/day and Portkey $0.64/day.")
+}
+
+@Test func combinedBannerWithNothingSpent() throws {
+  let combined = try combinedInsightBudget(copilotUsed: 0, portkeySpent: 0)
+  let banner = RunwayInsight.banner(
+    usage: makeUsage(creditsUsed: 0), errorMessage: nil, categoryCredits: [], now: combinedInsightNow,
+    locale: usLocale, combined: combined)
+  #expect(banner.headline == "Nothing spent yet this cycle.")
+  #expect(banner.detail == "Resets Dec 1.")
+}

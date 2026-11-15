@@ -85,7 +85,8 @@ Click the title to open the popover:
 - The cycle dates and the reset date.
 - A banner with the run-out sentence. When the credits run out before the reset, it gives the
   highest daily burn that still reaches the reset. It also gives the category with the largest
-  share of local credits.
+  share of local credits. With a Portkey budget set, the banner uses the combined budget in USD
+  and gives the average daily burn of Copilot and of Portkey.
 - Cards for days of runway, percent remaining, average daily burn and credits per PR authored.
 - A daily burn chart for the cycle, one bar per UTC day from local sessions, with a line at the
   GitHub average daily burn. Select a bar to see the credits for that day.

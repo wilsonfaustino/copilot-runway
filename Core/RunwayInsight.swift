@@ -91,42 +91,77 @@ public enum RunwayInsight {
 
   // The dashboard banner. The headline names the state, the detail adds what to do next and the top category.
   // A past cycle with credits used has no run-out sentence, so it falls through to the reset sentence.
+  // With a combined budget the run-out, target burn and headroom count its US dollars, and one more sentence
+  // gives the average burn of Copilot and of Portkey, so the user sees which one to cut.
   public static func banner(
     usage: QuotaUsage,
     errorMessage: String?,
     categoryCredits: [CategoryCredits],
     now: Date,
     locale: Locale = .current,
-    days: RunwayDays = .calendar
+    days: RunwayDays = .calendar,
+    combined: CombinedBudget? = nil
   ) -> (headline: String, detail: String) {
     var detailSentences: [String] = []
     let headline: String
+    let budgetUsage = combined?.usage ?? usage
+    let unit: BudgetUnit = combined == nil ? .credits : .usd
     if let errorMessage {
       headline = errorMessage
       detailSentences.append("The numbers below are from the last good refresh.")
     } else if usage.isUnlimited {
       headline = "Unlimited plan."
       detailSentences.append("\(Credits.formatted(usage.creditsUsed, locale: locale)) credits used this cycle.")
-    } else if let runOutSentence = runOutSentence(usage: usage, now: now, locale: locale, days: days) {
+    } else if let runOutSentence = runOutSentence(usage: budgetUsage, now: now, locale: locale, days: days) {
       headline = runOutSentence
-      // Rounded down, so the burn stays under the target. A target of 0 is not a useful instruction.
-      let targetBurn = requiredDailyBurn(usage: usage, now: now, days: days).map { Int($0.rounded(.down)) } ?? 0
-      if let runOutDate = Runway.runOutDate(usage: usage, now: now, days: days), runOutDate < usage.resetDate, targetBurn > 0 {
-        detailSentences.append(
-          "To reach \(day(usage.resetDate, locale: locale)), keep the burn under \(targetBurn.formatted(.number.locale(locale))) credits/\(days.dayWord())."
-        )
+      if let runOutDate = Runway.runOutDate(usage: budgetUsage, now: now, days: days), runOutDate < budgetUsage.resetDate,
+        let targetText = targetBurnText(usage: budgetUsage, now: now, locale: locale, days: days, unit: unit)
+      {
+        detailSentences.append("To reach \(day(budgetUsage.resetDate, locale: locale)), keep the burn under \(targetText).")
       }
-      if let headroomText = headroomText(usage: usage, now: now, locale: locale, days: days) {
+      if let headroomText = headroomText(usage: budgetUsage, now: now, locale: locale, days: days, unit: unit) {
         detailSentences.append("\(headroomText).")
       }
+      if let combined {
+        detailSentences.append(providerAveragesSentence(combined: combined, now: now, locale: locale, days: days))
+      }
     } else {
-      headline = "No credits used yet this cycle."
-      detailSentences.append("Resets \(day(usage.resetDate, locale: locale)).")
+      headline = combined == nil ? "No credits used yet this cycle." : "Nothing spent yet this cycle."
+      detailSentences.append("Resets \(day(budgetUsage.resetDate, locale: locale)).")
     }
     if let topShare = topCategoryShare(categoryCredits: categoryCredits) {
       detailSentences.append("\(topShare.category.displayName) turns use \(topShare.percent)% of local credits.")
     }
     return (headline, detailSentences.joined(separator: " "))
+  }
+
+  // Rounded down (whole credits, or cents), so the burn stays under the target. A target of 0 is not a useful
+  // instruction, so it gives nil.
+  private static func targetBurnText(
+    usage: QuotaUsage, now: Date, locale: Locale, days: RunwayDays, unit: BudgetUnit
+  ) -> String? {
+    guard let requiredBurn = requiredDailyBurn(usage: usage, now: now, days: days) else { return nil }
+    switch unit {
+    case .credits:
+      let targetCredits = Int(requiredBurn.rounded(.down))
+      return targetCredits > 0 ? "\(targetCredits.formatted(.number.locale(locale))) credits/\(days.dayWord())" : nil
+    case .usd:
+      let targetUSD = (requiredBurn * 100).rounded(.down) / 100
+      return targetUSD > 0 ? "\(PortkeySpend.formatted(targetUSD, locale: locale))/\(days.dayWord())" : nil
+    }
+  }
+
+  // For example "Copilot averages $7.05/day and Portkey $0.64/day."
+  private static func providerAveragesSentence(
+    combined: CombinedBudget, now: Date, locale: Locale, days: RunwayDays
+  ) -> String {
+    let spentUSD = combined.amountsUSD(mode: .spent)
+    let resetDate = combined.usage.resetDate
+    let copilotBurn = Runway.averageDailyBurn(credits: spentUSD.copilot, resetDate: resetDate, now: now, days: days)
+    let portkeyBurn = Runway.averageDailyBurn(credits: spentUSD.portkey, resetDate: resetDate, now: now, days: days)
+    let dayWord = days.dayWord()
+    return "Copilot averages \(PortkeySpend.formatted(copilotBurn, locale: locale))/\(dayWord) "
+      + "and Portkey \(PortkeySpend.formatted(portkeyBurn, locale: locale))/\(dayWord)."
   }
 
   // The lines under the popover runway figure. Each line must fit about 30 characters next to the ring,
