@@ -110,9 +110,15 @@ public struct PortkeySpend: Equatable, Sendable {
   }
 
   // Cents, for example "$0.73". An amount that rounds below 1 cent keeps a third decimal, for example "$0.004".
+  // The sign is always "$", so a non-US locale shows "$10,17" and not "US$ 10,17".
   public static func formatted(_ usd: Double, locale: Locale = .current) -> String {
+    "$" + formattedNumber(usd, locale: locale)
+  }
+
+  // The amount without the "$" sign, for big figures that draw the sign smaller.
+  public static func formattedNumber(_ usd: Double, locale: Locale = .current) -> String {
     let fractionLength = usd == 0 || abs(usd) >= 0.0095 ? 2 : 3
-    return usd.formatted(.currency(code: "USD").precision(.fractionLength(fractionLength)).locale(locale))
+    return usd.formatted(.number.precision(.fractionLength(fractionLength)).locale(locale))
   }
 
   private static func usd(of records: [PortkeyRecord]) -> Double {

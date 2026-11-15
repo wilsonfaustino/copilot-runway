@@ -335,8 +335,7 @@ private func combinedInsightBudget(copilotUsed: Double = 10216, portkeySpent: Do
   let text = try #require(
     RunwayInsight.headroomText(
       usage: combined.usage, now: combinedInsightNow, locale: Locale(identifier: "pt_BR"), unit: .usd))
-  #expect(text.contains("US$"))
-  #expect(text.contains("1,97"))
+  #expect(text == "$1,97/day over budget")
   #expect(!text.contains("credits"))
 }
 
