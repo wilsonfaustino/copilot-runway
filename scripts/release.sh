@@ -18,9 +18,9 @@ else
   exit 1
 fi
 
-version="$(sed -n 's/^ *MARKETING_VERSION: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p' project.yml)"
-if [[ -z "$version" ]]; then
-  echo "error: MARKETING_VERSION not found in project.yml" >&2
+version="$(sed -n 's/^[[:space:]]*"MARKETING_VERSION": "\([^"]*\)",$/\1/p' CopilotRunway.xcodeproj/project.xcproj | sort -u)"
+if [[ -z "$version" || "$version" == *$'\n'* ]]; then
+  echo "error: expected one MARKETING_VERSION in CopilotRunway.xcodeproj/project.xcproj" >&2
   exit 1
 fi
 
@@ -29,7 +29,6 @@ derived_data_dir="$dist_dir/DerivedData"
 app_path="$derived_data_dir/Build/Products/Release/CopilotRunway.app"
 zip_path="$dist_dir/CopilotRunway-$version.zip"
 
-xcodegen generate
 xcodebuild -scheme CopilotRunway -configuration Release \
   -derivedDataPath "$derived_data_dir" build -quiet
 
