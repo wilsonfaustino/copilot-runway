@@ -18,16 +18,23 @@ enum GhRunner {
     case timedOut
   }
 
-  // stderr goes to /dev/null unless readsStandardError is true.
+  // stderr goes to /dev/null unless readsStandardError is true. stdin is always empty, so a prompt fails at once.
+  // interruptsAtTimeLimit sends SIGINT instead of SIGTERM: brew update cleans up its fetch children on SIGINT only.
   static func run(
     path: String,
     arguments: [String],
     readsStandardError: Bool,
-    timeout: Duration = defaultTimeout
+    timeout: Duration = defaultTimeout,
+    extraEnvironment: [String: String] = [:],
+    interruptsAtTimeLimit: Bool = false
   ) async throws(Failure) -> Output {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: path)
     process.arguments = arguments
+    if !extraEnvironment.isEmpty {
+      process.environment = ProcessInfo.processInfo.environment.merging(extraEnvironment) { _, extraValue in extraValue }
+    }
+    process.standardInput = FileHandle.nullDevice
     let outputPipe = Pipe()
     let errorPipe = readsStandardError ? Pipe() : nil
     process.standardOutput = outputPipe
@@ -50,7 +57,12 @@ enum GhRunner {
         } catch {
           return
         }
-        if run.end(with: .timedOut) { process.terminate() }
+        guard run.end(with: .timedOut) else { return }
+        if interruptsAtTimeLimit {
+          process.interrupt()
+        } else {
+          process.terminate()
+        }
       }
     }
     timeoutTask?.cancel()

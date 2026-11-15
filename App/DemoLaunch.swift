@@ -22,5 +22,12 @@ enum DemoLaunch {
 
   // Put it last, or give it a value: AppKit pairs a -key argument with the next token.
   static let runsPortkeyNoticeDrill = ProcessInfo.processInfo.arguments.contains("-portkeyNoticeDrill")
+
+  // `-upgradeCask <full name>` points the Update button at a rehearsal cask instead of the real one.
+  static let upgradeCaskFullName: String? = {
+    let arguments = ProcessInfo.processInfo.arguments
+    guard let flagIndex = arguments.firstIndex(of: "-upgradeCask"), arguments.indices.contains(flagIndex + 1) else { return nil }
+    return arguments[flagIndex + 1]
+  }()
 }
 #endif
