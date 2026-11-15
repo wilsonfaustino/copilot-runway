@@ -498,6 +498,7 @@ struct SettingsAboutTab: View {
   private static let authorURL = URL(string: "https://github.com/wilsonfaustino")!
   private static let repositoryURL = URL(string: "https://github.com/wilsonfaustino/copilot-runway")!
   private static let licenseURL = URL(string: "https://github.com/wilsonfaustino/copilot-runway/blob/main/LICENSE")!
+  private static let donationURL = URL(string: "https://buymeacoffee.com/wilsonfaustino")!
 
   private var versionText: String {
     let shortVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
@@ -534,6 +535,51 @@ struct SettingsAboutTab: View {
       SettingsRow(label: "License") {
         Link("MIT License", destination: Self.licenseURL)
       }
+      GridRow {
+        SupportCard(donationURL: Self.donationURL)
+          .gridCellColumns(2)
+      }
     }
+  }
+}
+
+private struct SupportCard: View {
+  let donationURL: URL
+
+  var body: some View {
+    HStack(alignment: .top, spacing: Theme.Spacing.section) {
+      Image(systemName: "cup.and.saucer")
+        .font(.system(size: 18))
+        .foregroundStyle(Theme.donationAccent)
+        .frame(width: 40, height: 40)
+        .background(Theme.donationAccent.opacity(0.18), in: Circle())
+        .accessibilityHidden(true)
+      VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+        Text("Enjoying Copilot Runway?")
+          .fontWeight(.semibold)
+        Text("It is free, open source and local only. If it helps you stretch your credits, you can buy me a coffee.")
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+        HStack(spacing: Theme.Spacing.regular) {
+          Link(destination: donationURL) {
+            HStack(spacing: Theme.Spacing.small) {
+              Text("Buy me a coffee")
+              Image(systemName: "arrow.up.right")
+                .font(.system(size: 10, weight: .semibold))
+            }
+            .fontWeight(.medium)
+            .foregroundStyle(Theme.donationAccentText)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 5)
+            .background(Theme.donationAccent, in: RoundedRectangle(cornerRadius: Theme.Radius.control))
+          }
+          .buttonStyle(.plain)
+          Text("Opens in your browser")
+            .captionStyle()
+        }
+        .padding(.top, Theme.Spacing.tight)
+      }
+    }
+    .cardStyle(padding: Theme.Spacing.panel)
   }
 }

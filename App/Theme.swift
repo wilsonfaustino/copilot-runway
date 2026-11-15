@@ -34,6 +34,9 @@ enum Theme {
 
   static let cardFill = Color.primary.opacity(0.05)
   static let cardBorder = Color.primary.opacity(0.08)
+  static let donationAccent = Color(nsColor: dynamicColor(dark: 0xFF9F0A, light: 0xC45A00))
+  // Dark text on the bright dark-mode orange, white on the deep light-mode orange, for 4.5:1 contrast.
+  static let donationAccentText = Color(nsColor: dynamicColor(dark: 0x1E1E1E, light: 0xFFFFFF))
 
   static let taskPalettePreferenceKey = "taskPalettePreference"
 
