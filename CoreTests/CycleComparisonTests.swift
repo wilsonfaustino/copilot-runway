@@ -343,3 +343,13 @@ private func summaryText(_ sessionCredits: SessionCredits) -> String {
   #expect(summaryText(loaded) == summaryText(readFromReset))
   #expect(loaded.previousByDay.reduce(0) { $0 + $1.credits } > 0)
 }
+
+@Test func usdComparisonSentence() {
+  let throughDay = utcDate("2026-11-14T00:00:00Z")
+  let above = CycleComparison(throughDay: throughDay, percentDifference: 16)
+  let same = CycleComparison(throughDay: throughDay, percentDifference: 0)
+  let below = CycleComparison(throughDay: throughDay, percentDifference: -8)
+  #expect(above.sentence(locale: comparisonLocale, unit: .usd) == "Local spend through Nov 14 is 16% above the same days of last cycle.")
+  #expect(same.sentence(locale: comparisonLocale, unit: .usd) == "Local spend through Nov 14 is about the same as last cycle.")
+  #expect(below.sentence(locale: comparisonLocale, unit: .usd) == "Local spend through Nov 14 is 8% below the same days of last cycle.")
+}

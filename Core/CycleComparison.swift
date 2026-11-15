@@ -35,8 +35,10 @@ extension CycleComparison {
     )
   }
 
-  public func sentence(locale: Locale = .current) -> String {
-    let start = "Local credits through \(RunwayInsight.day(throughDay, locale: locale)) are"
+  public func sentence(locale: Locale = .current, unit: BudgetUnit = .credits) -> String {
+    let verb = unit == .credits ? "are" : "is"
+    let subject = unit == .credits ? "Local credits" : "Local spend"
+    let start = "\(subject) through \(RunwayInsight.day(throughDay, locale: locale)) \(verb)"
     if percentDifference == 0 { return "\(start) about the same as last cycle." }
     let direction = percentDifference > 0 ? "above" : "below"
     return "\(start) \(abs(percentDifference))% \(direction) the same days of last cycle."
