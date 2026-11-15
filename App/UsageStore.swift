@@ -37,6 +37,7 @@ final class UsageStore {
   private(set) var modelEfficiencyNote: String?
   private(set) var sessionsWarning: String?
   private(set) var portkeySpend = PortkeySpend(records: [])
+  private(set) var previousPortkeySpend = PortkeySpend(records: [])
   private(set) var organization = UserDefaults.standard.string(forKey: organizationKey)
     .flatMap(GitHubOutcomesClient.normalizedOrganization)
   private(set) var outcomes: GitHubOutcomes?
@@ -201,6 +202,7 @@ final class UsageStore {
     modelEfficiencyNote = sessionCredits.modelEfficiencyNote
     sessionsWarning = sessionCredits.warning
     portkeySpend = sessionCredits.portkey
+    previousPortkeySpend = sessionCredits.previousPortkey
     updateGauge()
   }
 

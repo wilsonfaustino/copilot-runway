@@ -39,15 +39,7 @@ struct DashboardView: View {
             outcomesCard(usage: usage)
           }
           .fixedSize(horizontal: false, vertical: true)
-          DailyBurnChart(
-            dailyCredits: usageStore.dailyCredits,
-            previousDailyCredits: usageStore.previousDailyCredits,
-            comparisonSentence: usageStore.cycleComparisonSentence,
-            cycleDayCount: Runway.cycleDayCount(resetDate: usage.resetDate),
-            averageDailyBurn: Runway.averageDailyBurn(usage: usage, now: .now, days: usageStore.runwayDays),
-            runwayDays: usageStore.runwayDays,
-            health: health
-          )
+          dailyBurnChart(usage: usage, health: health)
           HStack(alignment: .top, spacing: Theme.Spacing.regular) {
             taskCard
             modelCard(usage: usage)
@@ -504,6 +496,40 @@ struct DashboardView: View {
       }
   }
 
+  private func dailyBurnChart(usage: QuotaUsage, health: RunwayHealth) -> some View {
+    let cycleDayCount = Runway.cycleDayCount(resetDate: usage.resetDate)
+    if let combined = usageStore.combinedBudget {
+      let days = CombinedDailyBurn.days(copilot: usageStore.dailyCredits, portkeyRecords: usageStore.portkeySpend.records)
+      let previousDays = CombinedDailyBurn.days(
+        copilot: usageStore.previousDailyCredits, portkeyRecords: usageStore.previousPortkeySpend.records
+      )
+      let previousTotals = previousDays.map { DailyCredits(day: $0.day, credits: $0.totalUSD) }
+      let comparison = CycleComparison.compare(
+        current: days.map { DailyCredits(day: $0.day, credits: $0.totalUSD) }, previous: previousTotals
+      )
+      return DailyBurnChart(
+        days: days.map { DailyBurnChart.ChartDay(day: $0.day, copilot: $0.copilotUSD, portkey: $0.portkeyUSD) },
+        previousTotals: previousTotals,
+        comparisonSentence: comparison?.sentence(unit: .usd),
+        cycleDayCount: cycleDayCount,
+        averageDailyBurn: Runway.averageDailyBurn(usage: combined.usage, now: .now, days: usageStore.runwayDays),
+        unit: .usd,
+        runwayDays: usageStore.runwayDays,
+        health: health
+      )
+    }
+    return DailyBurnChart(
+      days: usageStore.dailyCredits.map { DailyBurnChart.ChartDay(day: $0.day, copilot: $0.credits, portkey: 0) },
+      previousTotals: usageStore.previousDailyCredits,
+      comparisonSentence: usageStore.cycleComparisonSentence,
+      cycleDayCount: cycleDayCount,
+      averageDailyBurn: Runway.averageDailyBurn(usage: usage, now: .now, days: usageStore.runwayDays),
+      unit: .credits,
+      runwayDays: usageStore.runwayDays,
+      health: health
+    )
+  }
+
   private func day(_ date: Date) -> String {
     date.formatted(Self.dayLabelStyle)
   }
@@ -517,11 +543,23 @@ private struct DailyBurnChart: View {
   static let previousLineStyle = StrokeStyle(lineWidth: 1.5, dash: [2, 3])
   static let barHalfWidth = 0.35
 
-  let dailyCredits: [DailyCredits]
-  let previousDailyCredits: [DailyCredits]
+  // Values are in credits for the credits form, or USD for the combined form. portkey is 0 in credits.
+  struct ChartDay {
+    let day: Date
+    let copilot: Double
+    let portkey: Double
+    var total: Double { copilot + portkey }
+  }
+
+  static let portkeyBarColor = DashboardView.barColor.opacity(0.45)
+
+  let days: [ChartDay]
+  // One total per day of the last cycle, in the same unit as days.
+  let previousTotals: [DailyCredits]
   let comparisonSentence: String?
   let cycleDayCount: Int
   let averageDailyBurn: Double
+  let unit: BudgetUnit
   let runwayDays: RunwayDays
   let health: RunwayHealth
   @State private var selectedDayPosition: Double?
@@ -550,11 +588,13 @@ private struct DailyBurnChart: View {
   }
 
   var body: some View {
-    let localTotal = dailyCredits.reduce(0) { $0 + $1.credits }
-    let previousTotal = previousDailyCredits.reduce(0) { $0 + $1.credits }
+    let copilotTotal = days.reduce(0) { $0 + $1.copilot }
+    let portkeyTotal = days.reduce(0) { $0 + $1.portkey }
+    let previousTotal = previousTotals.reduce(0) { $0 + $1.credits }
+    let averageName = unit == .usd ? "Combined average" : "GitHub average"
     let showsPreviousCycle = previousTotal > 0
     let averageColor = Theme.accent(health)
-    let dayCount = max(cycleDayCount, dailyCredits.count, showsPreviousCycle ? previousDailyCredits.count : 0)
+    let dayCount = max(cycleDayCount, days.count, showsPreviousCycle ? previousTotals.count : 0)
     let selectedIndex = selectedDayPosition.map { min(max(Int($0.rounded()), 1), dayCount) - 1 }
     VStack(alignment: .leading, spacing: 12) {
       VStack(alignment: .leading, spacing: Theme.Spacing.small) {
@@ -569,17 +609,25 @@ private struct DailyBurnChart: View {
               RoundedRectangle(cornerRadius: 2)
                 .fill(DashboardView.barColor)
                 .frame(width: 10, height: 10)
-              Text("This cycle, \(Credits.formatted(localTotal)) local credits")
+              Text(unit == .usd ? "Copilot, \(amount(copilotTotal)) local" : "This cycle, \(amount(copilotTotal)) local credits")
+            }
+            if unit == .usd {
+              HStack(spacing: Theme.Spacing.small) {
+                RoundedRectangle(cornerRadius: 2)
+                  .fill(Self.portkeyBarColor)
+                  .frame(width: 10, height: 10)
+                Text("Portkey, \(amount(portkeyTotal))")
+              }
             }
             if showsPreviousCycle {
               HStack(spacing: Theme.Spacing.small) {
                 legendLine(color: Self.previousLineColor, style: Self.previousLineStyle)
-                Text("Last cycle, \(Credits.formatted(previousTotal)) local credits")
+                Text(unit == .usd ? "Last cycle, \(amount(previousTotal))" : "Last cycle, \(amount(previousTotal)) local credits")
               }
             }
             HStack(spacing: Theme.Spacing.small) {
               legendLine(color: averageColor, style: StrokeStyle(lineWidth: 2, dash: [3, 2]))
-              Text("GitHub average, \(Credits.formatted(averageDailyBurn))/\(runwayDays.dayWord())")
+              Text("\(averageName), \(amount(averageDailyBurn))/\(runwayDays.dayWord())")
             }
           }
           .captionStyle()
@@ -592,23 +640,36 @@ private struct DailyBurnChart: View {
         }
       }
       Chart {
-        ForEach(Array(dailyCredits.enumerated()), id: \.offset) { index, dayCredits in
+        ForEach(Array(days.enumerated()), id: \.offset) { index, chartDay in
+          let dayName = chartDay.day.formatted(DashboardView.dayLabelStyle)
           RectangleMark(
             xStart: .value("Day start", Self.dayPosition(index) - Self.barHalfWidth),
             xEnd: .value("Day end", Self.dayPosition(index) + Self.barHalfWidth),
             yStart: .value("Baseline", 0.0),
-            yEnd: .value("Credits", dayCredits.credits)
+            yEnd: .value(unit == .usd ? "Copilot USD" : "Credits", chartDay.copilot)
           )
           .foregroundStyle(DashboardView.barColor)
           .cornerRadius(4)
-          .accessibilityLabel("This cycle, \(dayCredits.day.formatted(DashboardView.dayLabelStyle))")
-          .accessibilityValue("\(Credits.formatted(dayCredits.credits)) local credits")
+          .accessibilityLabel(unit == .usd ? "This cycle, \(dayName), Copilot" : "This cycle, \(dayName)")
+          .accessibilityValue(unit == .usd ? amount(chartDay.copilot) : "\(amount(chartDay.copilot)) local credits")
+          if chartDay.portkey > 0 {
+            RectangleMark(
+              xStart: .value("Day start", Self.dayPosition(index) - Self.barHalfWidth),
+              xEnd: .value("Day end", Self.dayPosition(index) + Self.barHalfWidth),
+              yStart: .value("Copilot USD", chartDay.copilot),
+              yEnd: .value("Total USD", chartDay.total)
+            )
+            .foregroundStyle(Self.portkeyBarColor)
+            .cornerRadius(4)
+            .accessibilityLabel("This cycle, \(dayName), Portkey")
+            .accessibilityValue(amount(chartDay.portkey))
+          }
         }
         if showsPreviousCycle {
-          ForEach(Array(previousDailyCredits.enumerated()), id: \.offset) { index, dayCredits in
+          ForEach(Array(previousTotals.enumerated()), id: \.offset) { index, dayCredits in
             LineMark(
               x: .value("Day", Self.dayPosition(index)),
-              y: .value("Last cycle credits", dayCredits.credits)
+              y: .value("Last cycle total", dayCredits.credits)
             )
             .foregroundStyle(Self.previousLineColor)
             .lineStyle(Self.previousLineStyle)
@@ -623,14 +684,14 @@ private struct DailyBurnChart: View {
             )
             .opacity(0)
             .accessibilityLabel("Last cycle, \(dayCredits.day.formatted(DashboardView.dayLabelStyle))")
-            .accessibilityValue("\(Credits.formatted(dayCredits.credits)) local credits")
+            .accessibilityValue(unit == .usd ? amount(dayCredits.credits) : "\(amount(dayCredits.credits)) local credits")
           }
         }
-        RuleMark(y: .value("GitHub average", averageDailyBurn))
+        RuleMark(y: .value(averageName, averageDailyBurn))
           .foregroundStyle(averageColor)
           .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 4]))
-          .accessibilityLabel("GitHub average")
-          .accessibilityValue("\(Credits.formatted(averageDailyBurn)) credits per \(runwayDays.dayWord())")
+          .accessibilityLabel(averageName)
+          .accessibilityValue(unit == .usd ? "\(amount(averageDailyBurn)) per \(runwayDays.dayWord())" : "\(amount(averageDailyBurn)) credits per \(runwayDays.dayWord())")
         if let selectedIndex {
           RuleMark(x: .value("Day", Self.dayPosition(selectedIndex)))
             .foregroundStyle(.secondary.opacity(0.4))
@@ -654,9 +715,22 @@ private struct DailyBurnChart: View {
           }
         }
       }
+      .chartYAxis {
+        if unit == .usd {
+          AxisMarks { value in
+            AxisGridLine()
+            AxisTick()
+            AxisValueLabel {
+              if let usd = value.as(Double.self) { Text(PortkeySpend.formatted(usd)) }
+            }
+          }
+        } else {
+          AxisMarks()
+        }
+      }
       .frame(height: 200)
       .accessibilityLabel("Daily burn")
-      .accessibilityValue(accessibilitySummary(localTotal: localTotal, previousTotal: previousTotal))
+      .accessibilityValue(accessibilitySummary(copilotTotal: copilotTotal, portkeyTotal: portkeyTotal, previousTotal: previousTotal))
     }
     .cardStyle(padding: Theme.Spacing.panel)
   }
@@ -673,11 +747,11 @@ private struct DailyBurnChart: View {
   // A day past today has no bar, and a day past the last cycle's length has no last cycle line.
   private func hoverText(index: Int, showsPreviousCycle: Bool) -> some View {
     var lines = [Self.dayLabel(index)]
-    if dailyCredits.indices.contains(index) {
-      lines.append(hoverLine(dailyCredits[index]))
+    if days.indices.contains(index) {
+      lines.append(hoverLine(days[index]))
     }
-    if showsPreviousCycle, previousDailyCredits.indices.contains(index) {
-      lines.append(hoverLine(previousDailyCredits[index]))
+    if showsPreviousCycle, previousTotals.indices.contains(index) {
+      lines.append(hoverLine(previousTotals[index]))
     }
     return Text(lines.joined(separator: "\n"))
       .font(.caption)
@@ -687,14 +761,31 @@ private struct DailyBurnChart: View {
       .overlay(RoundedRectangle(cornerRadius: Theme.Radius.control).strokeBorder(Color.primary.opacity(0.2)))
   }
 
-  private func hoverLine(_ dayCredits: DailyCredits) -> String {
-    "\(dayCredits.day.formatted(DashboardView.dayLabelStyle)): \(Credits.formatted(dayCredits.credits)) credits"
+  // The USD form splits the bar total, like "Nov 3: $13.25 ($12.00 Copilot, $1.25 Portkey)".
+  private func hoverLine(_ chartDay: ChartDay) -> String {
+    let dayName = chartDay.day.formatted(DashboardView.dayLabelStyle)
+    guard unit == .usd else { return "\(dayName): \(amount(chartDay.total)) credits" }
+    return "\(dayName): \(amount(chartDay.total)) (\(amount(chartDay.copilot)) Copilot, \(amount(chartDay.portkey)) Portkey)"
   }
 
-  private func accessibilitySummary(localTotal: Double, previousTotal: Double) -> String {
-    var sentences = ["This cycle, \(Credits.formatted(localTotal)) local credits over \(dailyCredits.count) days."]
+  private func hoverLine(_ dayTotal: DailyCredits) -> String {
+    let dayName = dayTotal.day.formatted(DashboardView.dayLabelStyle)
+    return "\(dayName): \(amount(dayTotal.credits))" + (unit == .usd ? "" : " credits")
+  }
+
+  private func amount(_ value: Double) -> String {
+    unit == .usd ? PortkeySpend.formatted(value) : Credits.formatted(value)
+  }
+
+  private func accessibilitySummary(copilotTotal: Double, portkeyTotal: Double, previousTotal: Double) -> String {
+    var sentences: [String]
+    if unit == .usd {
+      sentences = ["This cycle, \(amount(copilotTotal)) Copilot and \(amount(portkeyTotal)) Portkey over \(days.count) days."]
+    } else {
+      sentences = ["This cycle, \(amount(copilotTotal)) local credits over \(days.count) days."]
+    }
     if previousTotal > 0 {
-      sentences.append("Last cycle, \(Credits.formatted(previousTotal)) local credits.")
+      sentences.append(unit == .usd ? "Last cycle, \(amount(previousTotal))." : "Last cycle, \(amount(previousTotal)) local credits.")
     }
     if let comparisonSentence { sentences.append(comparisonSentence) }
     return sentences.joined(separator: " ")
