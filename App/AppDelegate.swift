@@ -95,6 +95,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
   // Setting the menu for one click lets the system place it like any other menu bar menu.
   private func showMenu(from button: NSStatusBarButton) {
+    // Key equivalents in an open menu reach it only while the app is active.
+    NSApp.activate()
     statusItem?.menu = makeMenu()
     button.performClick(nil)
     statusItem?.menu = nil
