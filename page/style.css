@@ -166,6 +166,11 @@ h1 {
   font-size: 1.2em;
 }
 
+.ok {
+  color: #64A8FF;
+  font-size: 1.2em;
+}
+
 .runout-text {
   font-size: 18px;
   line-height: 1.5;
@@ -219,7 +224,7 @@ h1 {
 }
 
 .shot-menubar {
-  width: 110px;
+  width: 77px;
 }
 
 .card .shot-popover {
