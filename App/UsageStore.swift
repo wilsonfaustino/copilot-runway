@@ -289,13 +289,33 @@ final class UsageStore {
   // Runs on launch and then at most once a day. A failure keeps the last result and shows nothing.
   private func refreshReleaseIfDue() async {
     if let lastReleaseCheck, Date.now.timeIntervalSince(lastReleaseCheck) < Self.releaseCheckInterval { return }
+    _ = await checkForUpdatesNow()
+  }
+
+  // Skips the once-a-day gate. A failure keeps the last result.
+  func checkForUpdatesNow() async -> UpdateCheckResult {
+    #if DEBUG
+    // Demo mode makes no network calls.
+    if demoScenario != nil { return .failed }
+    #endif
     // Set before the request, so a wake refresh during the request does not start a second one.
     lastReleaseCheck = .now
-    guard let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String else { return }
+    guard let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String else {
+      return .failed
+    }
     do {
-      availableVersion = try await ReleaseCheck.fetchNewerVersion(currentVersion: currentVersion)
+      let newerVersion = try await ReleaseCheck.fetchNewerVersion(currentVersion: currentVersion)
+      availableVersion = newerVersion
+      return newerVersion.map { .newer($0) } ?? .upToDate(currentVersion)
     } catch {
       // Offline, rate limited or no release yet: keep the last result.
+      return .failed
     }
   }
+}
+
+enum UpdateCheckResult {
+  case newer(String)
+  case upToDate(String)
+  case failed
 }
