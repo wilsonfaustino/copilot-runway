@@ -32,6 +32,9 @@ public struct WhatsNew: Equatable, Sendable {
 
   // One entry per release with user-visible changes, keyed by version, at most maxLines lines. Add it in the release commit.
   public static let bundledNotes: [String: [String]] = [
+    "1.4.1": [
+      "The popover scrolls on small screens instead of going off the top.",
+    ],
     "1.4.0": [
       "With a Portkey budget set, one gauge shows Copilot and Portkey together.",
       "Right-click the menu bar icon for quick actions and shortcuts.",
