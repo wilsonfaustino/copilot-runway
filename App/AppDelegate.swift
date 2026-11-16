@@ -8,6 +8,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
   private var statusItem: NSStatusItem?
   private let popover = NSPopover()
   private let sharePicker = SharePicker()
+  // Room for the popover arrow below the menu bar and a small gap above the Dock.
+  private static let popoverScreenMargin: CGFloat = 24
   var openDashboard: (() -> Void)?
 
   func applicationDidFinishLaunching(_ notification: Notification) {
@@ -24,11 +26,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     updateLabel()
 
     let hostingController = NSHostingController(
-      rootView: PopoverView(
+      rootView: PopoverScrollView(
         usageStore: usageStore,
-        closePopover: { [weak popover] in popover?.performClose(nil) },
-        share: { [weak self] anchorView in self?.share(from: anchorView) }
-      ))
+        content: PopoverView(
+          usageStore: usageStore,
+          closePopover: { [weak popover] in popover?.performClose(nil) },
+          share: { [weak self] anchorView in self?.share(from: anchorView) }
+        )))
     hostingController.sizingOptions = [.preferredContentSize]
     popover.behavior = .transient
     popover.contentViewController = hostingController
@@ -86,6 +90,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
   private func showPopover(from button: NSStatusBarButton) {
     NSApp.activate()
+    if let visibleFrame = button.window?.screen?.visibleFrame {
+      usageStore.popoverMaxHeight = visibleFrame.height - Self.popoverScreenMargin
+    }
     popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
     // show does not make the popover key, and the system declines activate() for a status item click, so
     // without this the popover looks inactive and the first click in it only makes it key.
