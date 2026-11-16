@@ -51,35 +51,44 @@
         <p class="note">Free and open source (MIT). macOS 26 or later. <a href="https://github.com/wilsonfaustino/copilot-runway/releases/latest">Latest release</a>.</p>
       </div>
       <div class="hero-gauge">
-        <svg viewBox="0 0 24 24" width="380" height="380" role="img" aria-label="Runway gauge at 49 percent"><path d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" fill="none" stroke="#26C8DF" stroke-opacity="0.18" stroke-width="2.4" stroke-linecap="round"></path><path d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" fill="none" stroke="#26C8DF" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="19.62 40.05" id="gauge-arc"></path><text id="gauge-percent" x="12" y="12.4" text-anchor="middle" font-size="4.6" font-weight="700" fill="#E8EAED" font-family="ui-rounded, -apple-system, sans-serif">49%</text><text x="12" y="15.4" text-anchor="middle" font-size="1.6" fill="#B9C0C9" font-family="-apple-system, sans-serif">16 days left</text></svg>
+        <svg viewBox="0 0 24 24" width="380" height="380" role="img" aria-label="Runway gauge at 49 percent"><path d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" fill="none" stroke="#26C8DF" stroke-opacity="0.18" stroke-width="2.4" stroke-linecap="round"></path><path d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" fill="none" stroke="#26C8DF" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="19.62 40.05" id="gauge-arc"></path><text id="gauge-percent" x="12" y="12.4" text-anchor="middle" font-size="4.6" font-weight="700" fill="#E8EAED" font-family="ui-rounded, -apple-system, sans-serif">49%</text><text x="12" y="15.4" text-anchor="middle" font-size="1.6" fill="#B9C0C9" font-family="-apple-system, sans-serif">Lasts the cycle</text></svg>
       </div>
     </section>
 
     <section class="runout reveal" aria-label="Run-out insight">
-      <p class="runout-quote">"At this pace you run out on Oct 21,<br><span class="warn">10 days before the reset</span> on Nov 1."</p>
-      <p class="runout-text">One sentence, updated every 5 minutes. You see it while you can still change how you work.</p>
-      <a href="assets/dashboard-typical.png"><img class="shot-dashboard" src="assets/dashboard-typical.png" width="1520" height="1180" alt="The Copilot Runway dashboard with a run-out banner, four summary cards and a chart of daily credit burn."></a>
+      <p class="runout-quote">"At this pace your credits last past the reset on Nov 30,<br><span class="ok">with 9 credits a day of headroom</span>."</p>
+      <p class="runout-text">One sentence, updated every 5 minutes. When you burn too fast, it gives the run-out date instead, for example "At this pace you run out on Oct 21, 10 days before the reset on Nov 1." You see it while you can still change how you work. Runway notifications tell you at 80% used, when the runway is short or critical, and at the limit.</p>
+      <a href="assets/dashboard-typical.png"><img class="shot-dashboard" src="assets/dashboard-typical.png" width="1520" height="1280" alt="The Copilot Runway dashboard with the runway sentence, four summary cards, and a chart of daily credit burn with a dashed line for last cycle."></a>
     </section>
 
     <section class="cards" aria-label="What it shows">
       <div class="card">
         <h2>Menu bar</h2>
-        <p>Percent left and days of runway, for example <code>49% · 16d</code>. The gauge turns orange when you will run out before the reset, and red when less than a day is left.</p>
-        <img class="shot-menubar" src="assets/menubar-typical.png" width="220" height="56" alt="Menu bar item showing 49% credits left and 16 days of runway next to the gauge.">
+        <p>Percent left and days of runway, for example <code>48% · 12d</code>. When the credits last past the reset, it shows only the percent. The gauge turns orange when you will run out before the reset, and red when less than a day is left. Right-click or Control-click the title for Refresh, Copy Summary, Open Dashboard, Settings, Check for Updates and Quit.</p>
+        <img class="shot-menubar" src="assets/menubar-typical.png" width="154" height="52" alt="Menu bar item with a blue runway gauge and the text 49%.">
       </div>
       <div class="card">
         <h2>Popover</h2>
-        <p>The run-out date, average daily burn, credits per PR authored and credits per model.</p>
-        <img class="shot-popover" src="assets/popover-typical.png" width="772" height="1178" alt="The Copilot Runway popover with a gauge at 49%, 16 days of runway, three summary cards and credits per model.">
+        <p>The run-out date, average daily burn, credits per PR authored and credits per model. The Share button opens the macOS share menu with an image of the popover, or copies the image or the summary text. The image stays in memory. When a new version is out and you installed with Homebrew, an Update button runs Homebrew and relaunches the app after the upgrade. Otherwise, the popover gives you the brew command to copy.</p>
+        <img class="shot-popover" src="assets/popover-typical.png" width="772" height="1050" alt="The Copilot Runway popover with a gauge at 49% and the text Lasts the cycle, three summary cards, credits per model, and buttons for Share, Open dashboard, Settings and Quit.">
       </div>
       <div class="card">
         <h2>Dashboard</h2>
-        <p>Credits by kind of work (implementation, debugging, review and more), by model, by agent and by project, plus the top sessions of the cycle. "Copy summary" puts a plain-text report on the clipboard for a quota request.</p>
+        <p>Credits by kind of work (implementation, debugging, review and more), by model, by agent and by project, plus the five top sessions of the cycle. A dashed line shows last cycle, and a sentence compares the same days. "Copy summary" puts a plain-text report on the clipboard for a quota request.</p>
+      </div>
+      <div class="card">
+        <h2>Portkey</h2>
+        <p>If your Pi, omp or OpenCode sessions go through Portkey, the popover has a spend card and the dashboard has a section, both in USD. The app reads the cost from the session files and makes no call to Portkey. Set a monthly budget in Settings, and the gauge combines Copilot (in USD) and Portkey in two tones.</p>
+      </div>
+      <div class="card">
+        <h2>Settings</h2>
+        <p>The gauge shows credits left or credits spent. Count only weekdays and mark days off, so weekends and holidays do not use up runway. Turn on runway notifications and colorblind-safe task colors.</p>
       </div>
     </section>
 
     <section class="runout" aria-label="Credits by project and top sessions">
-      <a href="assets/dashboard-projects.png"><img class="shot-dashboard" src="assets/dashboard-projects.png" width="1520" height="1364" alt="The Copilot Runway dashboard with credits by project and the five top sessions of the cycle."></a>
+      <p class="runout-text">See which projects and sessions used the credits. Session labels have a date, an agent, a model and a task, never prompt text or titles.</p>
+      <a href="assets/dashboard-projects.png"><img class="shot-dashboard" src="assets/dashboard-projects.png" width="1520" height="1410" alt="The Copilot Runway dashboard with credits by project, and the five most expensive sessions of the cycle with their date, agent, model and task."></a>
     </section>
 
     <section class="setup" aria-label="Setup">
@@ -97,7 +106,7 @@
 
     <section class="privacy" id="privacy">
       <h2>Local only. No telemetry.</h2>
-      <p>The only network calls go to api.github.com: your credits every 5 minutes, outcome counts if you set an organization, and a release check once a day. Your <code>gh</code> token stays in memory for one request. The app does not decode or keep prompt or answer text.</p>
+      <p>The app has no backend. Its own network calls go to api.github.com: your credits every 5 minutes and when the Mac wakes, outcome counts only after you set an organization, and a release check on launch, every 24 hours while the app runs, and when you choose Check for Updates. The release check sends no token. Your <code>gh</code> token stays in memory for one credits request. The Update button runs Homebrew on your Mac, and Homebrew makes its own network calls. Session files stay on your Mac, and the app does not decode or keep prompt or answer text.</p>
     </section>
 
     <section class="install" aria-label="Install">
