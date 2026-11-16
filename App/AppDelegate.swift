@@ -106,23 +106,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     let menu = NSMenu()
     // Copy Summary sets its own enabled state.
     menu.autoenablesItems = false
-    menu.addItem(menuItem("Refresh", action: #selector(refreshNow), keyEquivalent: "r"))
-    let copySummaryItem = menuItem("Copy Summary", action: #selector(copySummary), keyEquivalent: "c")
+    menu.addItem(menuItem("Refresh", symbolName: "arrow.clockwise", action: #selector(refreshNow), keyEquivalent: "r"))
+    let copySummaryItem = menuItem("Copy Summary", symbolName: "doc.on.doc", action: #selector(copySummary), keyEquivalent: "c")
     copySummaryItem.keyEquivalentModifierMask = [.command, .shift]
     copySummaryItem.isEnabled = usageStore.summaryText() != nil
     menu.addItem(copySummaryItem)
     menu.addItem(.separator())
-    menu.addItem(menuItem("Open Dashboard", action: #selector(openDashboardWindow), keyEquivalent: "d"))
-    menu.addItem(menuItem("Settings…", action: #selector(openSettings), keyEquivalent: ","))
-    menu.addItem(menuItem("Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "u"))
+    menu.addItem(menuItem("Open Dashboard", symbolName: "chart.bar.xaxis", action: #selector(openDashboardWindow), keyEquivalent: "d"))
+    menu.addItem(menuItem("Settings…", symbolName: "gearshape", action: #selector(openSettings), keyEquivalent: ","))
+    menu.addItem(menuItem("Check for Updates…", symbolName: "arrow.down.circle", action: #selector(checkForUpdates), keyEquivalent: "u"))
     menu.addItem(.separator())
-    menu.addItem(menuItem("Quit Copilot Runway", action: #selector(quit), keyEquivalent: "q"))
+    menu.addItem(menuItem("Quit Copilot Runway", symbolName: "power", action: #selector(quit), keyEquivalent: "q"))
     return menu
   }
 
-  private func menuItem(_ title: String, action: Selector, keyEquivalent: String) -> NSMenuItem {
+  private func menuItem(_ title: String, symbolName: String, action: Selector, keyEquivalent: String) -> NSMenuItem {
     let item = NSMenuItem(title: title, action: action, keyEquivalent: keyEquivalent)
     item.target = self
+    item.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)
     return item
   }
 

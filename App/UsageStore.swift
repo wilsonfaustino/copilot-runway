@@ -294,6 +294,10 @@ final class UsageStore {
 
   // Skips the once-a-day gate. A failure keeps the last result.
   func checkForUpdatesNow() async -> UpdateCheckResult {
+    #if DEBUG
+    // Demo mode makes no network calls.
+    if demoScenario != nil { return .failed }
+    #endif
     // Set before the request, so a wake refresh during the request does not start a second one.
     lastReleaseCheck = .now
     guard let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String else {
