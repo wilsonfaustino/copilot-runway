@@ -49,6 +49,8 @@ final class UsageStore {
   let appUpdater = AppUpdater()
   // The Settings tab to show. The organization prompts set it to Sources before they open Settings.
   var settingsTab = SettingsTab.general
+  // The popover scrolls when its content is taller than this. AppDelegate sets it from the screen at each show.
+  var popoverMaxHeight = CGFloat.infinity
   // The notification center keeps only a weak reference to its delegate, so the store owns the notifier.
   @ObservationIgnored let runwayNotifier = RunwayNotifier()
 
