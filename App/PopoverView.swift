@@ -32,7 +32,9 @@ struct PopoverView: View {
       if !forShare {
         copilotStatusRow
       }
-      if !forShare, case .noPortkeyData = usageStore.copilotState {
+      if !forShare, case .noPortkeyData = usageStore.copilotState,
+        usageStore.usageError.flatMap(PortkeyOnly.absence(for:)) != nil
+      {
         noPortkeyDataCard
       }
       // Model bars come from local session files, so a fetch error does not make them stale.
@@ -255,7 +257,8 @@ struct PopoverView: View {
           combined: combined,
           openCount: openCount,
           isStatic: forShare,
-          hasNoBudget: hasNoBudget
+          hasNoBudget: hasNoBudget,
+          isPortkeyOnly: usageStore.isPortkeyOnly
         )
         VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
           if hasNoBudget {
@@ -544,6 +547,7 @@ private struct RunwayRing: View {
   let isStatic: Bool
   // Portkey only with no budget: the ring is an empty track with no percent.
   let hasNoBudget: Bool
+  let isPortkeyOnly: Bool
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -589,6 +593,10 @@ private struct RunwayRing: View {
       let portkeyText = PortkeySpend.formatted(amounts.portkey)
       let state = gaugeMode == .spent ? "spent" : "left"
       return "\(percentText) percent of combined budget \(state). Copilot \(copilotText), Portkey \(portkeyText)."
+    }
+    if isPortkeyOnly {
+      let state = gaugeMode == .spent ? "spent" : "left"
+      return percentText.map { "\($0) percent of Portkey budget \(state)" } ?? "Portkey budget \(state) unknown"
     }
     return gaugeMode == .spent
       ? percentText.map { "\($0) percent of credits spent" } ?? "Credits spent unknown"
