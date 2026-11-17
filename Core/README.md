@@ -145,15 +145,16 @@ never count as Copilot credits. Checked on real data in November 2026.
 - Pi and omp records are unique by `responseId`, with the same set as Copilot records, so a message copied
   between `~/.pi` and `~/.omp` counts once, as Pi.
 - Portkey records are never part of a turn. A turn with only Portkey messages has no Copilot record and drops out.
-- `SessionCredits.load` returns them as `portkey`, with records before the cycle start left out. The Portkey cycle
-  is the Copilot cycle.
+- `SessionCredits.load` returns them as `portkey`, with records before the cycle start left out.
 - `PortkeySpend` gives the total, request count, unpriced count, average per priced request, spend by model, by
   source and by model and source, and an insight sentence. `PortkeyBudget.usage` maps the spend and a monthly
-  budget in USD onto `QuotaUsage`, so `Runway` and `RunwayHealth` compute the Portkey runway with the Copilot
+  budget in USD onto `QuotaUsage` with the reset date the caller passes (the Copilot reset with Copilot, the
+  calendar month reset in Portkey-only mode), so `Runway` and `RunwayHealth` compute the Portkey runway with the Copilot
   rules. No budget, or a budget of 0 or less, gives no usage. `PortkeyBudget.entry` refuses text that is not
   fully a number, and amounts above `maximumBudgetUSD` (1,000,000 USD), so the days left always fit in an `Int`.
-- `CopilotAbsenceTracker` decides when Copilot is absent: one no-Copilot response counts at launch, and two in a row
-  count after a good response. `PortkeyOnly` maps a Copilot error to a no-Copilot cause, gives the reset date (1st of next month, 00:00 UTC)
+- `CopilotAbsenceTracker` decides when Copilot is absent: one no-Copilot response counts at launch. After a good
+  response, a second no-Copilot response counts when it comes at least 240 seconds after the first one.
+  `PortkeyOnly` maps a Copilot error to a no-Copilot cause, gives the reset date (1st of next month, 00:00 UTC)
   and the cause and spend copy.
 
 ## Turns and task categories

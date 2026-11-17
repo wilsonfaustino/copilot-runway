@@ -134,34 +134,39 @@ and the Portkey budget, and the gauge draws them in two tones. The burn rate, th
 and Copy summary stay Copilot only.
 
 - The card shows the spend this cycle, the request count, the spend by model and by agent, and
-  one insight sentence. The cycle is the Copilot cycle.
+  one insight sentence. With Copilot, the cycle is the Copilot cycle. Without Copilot, see "Without Copilot".
 - The Dashboard section shows the spend, the requests, the average cost per request, a model by
   agent table and agent share bars.
 - The cost is the cost each agent stores in its session files. The app makes no call to Portkey.
   A message without a stored cost, or with tokens and a cost of 0, counts as a request and adds
   $0.00. A note under the amounts gives the number of these requests.
 - Set a monthly Portkey budget in Settings to see the dollars left, the days of runway and the
-  health color, with the Copilot rules. The budget resets with the Copilot cycle, so when the money
-  reaches the reset, the text says "lasts the cycle" instead of a day count.
+  health color, with the Copilot rules. With Copilot, the budget resets with the Copilot cycle, so when
+  the money reaches the reset, the text says "lasts the cycle" instead of a day count. Without Copilot,
+  the budget resets on the calendar month (see "Without Copilot").
 - The card is hidden when there are no Portkey messages this cycle and no budget.
 - The Share image shows the card when the popover shows it, without the note on where the cost
   comes from.
 - With a budget, Runway notifications also cover Portkey: the same four notices, once per cycle,
   with the dollar budget in place of credits.
-- The menu bar and "Copy summary" stay Copilot-only.
+- With Copilot, the Portkey budget is part of the combined gauge, and the menu bar and "Copy summary"
+  stay Copilot-only. Without Copilot, Portkey drives the menu bar (see "Without Copilot").
 
 ### Without Copilot
 
 When you have no usable Copilot and the app finds Portkey data, it shows Portkey runway or
 Portkey spend in place of an error. The mode is on when:
 
-- `gh` is missing, or you are logged out of `gh` (a 401 response, or `gh auth token` fails).
+- `gh` is missing.
+- You are logged out of `gh` (`gh auth token` fails, or GitHub answers 401).
 - GitHub answers with any other 4xx status except 429, for example when the account has no
   Copilot seat, or the response is not what the app expects.
 
-The mode is off for network errors, 429 and 5xx statuses. A GitHub outage keeps the current
-behavior. After a good Copilot response in the same run, the app needs two no-Copilot responses
-in a row to switch. At launch, one response is enough. The app does not save the mode between launches.
+The mode is off for network errors, 429 and 5xx statuses. For a GitHub outage, the app shows the Copilot
+error as before. After a good Copilot response in the same run, the app needs a second no-Copilot response,
+at least 4 minutes after the first, to switch. At launch, one response is enough. The app does not save the mode between launches.
+
+In this mode:
 
 - The cycle is the calendar month. It resets on the 1st at 00:00 UTC.
 - With a Portkey monthly budget, the menu bar shows the percent and the days left of that budget.
