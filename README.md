@@ -5,7 +5,8 @@ runway: how many credits are left, how fast you use them, and which models and k
 work use them. It is for developers on Copilot usage-based billing who code through
 OpenCode, Pi Agent, omp, the Copilot CLI or the GitHub Copilot app. The menu bar shows the percent of credits left and the days until
 they run out at your current pace. The app reads your existing `gh` login and the local
-OpenCode, Pi, omp and Copilot CLI and app session files, so it needs no setup.
+OpenCode, Pi, omp and Copilot CLI and app session files, so it needs no setup. Copilot is not
+required: without a usable Copilot, the app shows your Portkey budget or spend (see "Without Copilot").
 
 ## Privacy
 
@@ -148,6 +149,29 @@ and Copy summary stay Copilot only.
 - With a budget, Runway notifications also cover Portkey: the same four notices, once per cycle,
   with the dollar budget in place of credits.
 - The menu bar and "Copy summary" stay Copilot-only.
+
+### Without Copilot
+
+When you have no usable Copilot and the app finds Portkey data, it shows Portkey runway or
+Portkey spend in place of an error. The mode is on when:
+
+- `gh` is missing, or you are logged out of `gh` (a 401 response, or `gh auth token` fails).
+- GitHub answers with any other 4xx status except 429, for example when the account has no
+  Copilot seat, or the response is not what the app expects.
+
+The mode is off for network errors, 429 and 5xx statuses. A GitHub outage keeps the current
+behavior. After a good Copilot response in the same run, the app needs two no-Copilot responses
+in a row to switch. At launch, one response is enough. The app does not save the mode between launches.
+
+- The cycle is the calendar month. It resets on the 1st at 00:00 UTC.
+- With a Portkey monthly budget, the menu bar shows the percent and the days left of that budget.
+  Without a budget, it shows the amount spent this month.
+- The header shows a "Portkey only" chip and a sentence on why Copilot data is off.
+- With no Portkey requests this month and no budget, the app shows the error and a short card
+  that explains how to set a budget.
+- The popover and the Dashboard hide the Copilot credit cards, By model (credits), Outcomes,
+  By task, By agent (credits), By project and Top sessions.
+- "Copy summary" is off. Share sends only the image.
 
 ### Task categories
 
@@ -460,6 +484,15 @@ xcodebuild test -scheme CopilotRunway -destination 'platform=macOS'
 ```
 
 The tests use Swift Testing and cover the Core module.
+
+### Debug demo scenarios
+
+A Debug build accepts `-demo <name>` as a launch argument and shows fixture data. Three names
+cover the mode without Copilot:
+
+- `portkey-only`: no Copilot, with a Portkey budget.
+- `portkey-only-no-budget`: no Copilot, with Portkey spend and no budget.
+- `no-copilot-empty`: no Copilot, no Portkey requests and no budget.
 
 ### Repo layout
 

@@ -152,6 +152,9 @@ never count as Copilot credits. Checked on real data in November 2026.
   budget in USD onto `QuotaUsage`, so `Runway` and `RunwayHealth` compute the Portkey runway with the Copilot
   rules. No budget, or a budget of 0 or less, gives no usage. `PortkeyBudget.entry` refuses text that is not
   fully a number, and amounts above `maximumBudgetUSD` (1,000,000 USD), so the days left always fit in an `Int`.
+- `CopilotAbsenceTracker` decides when Copilot is absent: one no-Copilot response counts at launch, and two in a row
+  count after a good response. `PortkeyOnly` maps a Copilot error to a no-Copilot cause, gives the reset date (1st of next month, 00:00 UTC)
+  and the cause and spend copy.
 
 ## Turns and task categories
 
