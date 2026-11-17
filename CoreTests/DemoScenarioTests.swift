@@ -198,6 +198,14 @@ func copilotScenariosHaveNoPortkeyOnlyData(name: DemoScenario.Name) {
   #expect((1...15).contains(wholeDaysLeft))
 }
 
+@Test func portkeyOnlyKeepsABudgetBeforeTheFirstRequestOfTheMonth() throws {
+  let firstMorning = utcDate("2026-12-01T09:00:00Z")
+  let scenario = DemoScenario(name: .portkeyOnly, now: firstMorning)
+  #expect(scenario.sessionCredits.portkey.requestCount == 0)
+  let budgetUSD = try #require(scenario.portkeyBudgetUSD)
+  #expect(budgetUSD > 0)
+}
+
 @Test func portkeyOnlyHasLastMonth() {
   let sessionCredits = DemoScenario(name: .portkeyOnly, now: portkeyDemoNow).sessionCredits
   #expect(sessionCredits.previousPortkey.requestCount > 0)

@@ -130,11 +130,12 @@ public struct DemoScenario: Sendable {
 
   // The runway ends at about half of the days left: this month's spend plus the average daily burn times half
   // of the days until the reset, at least one day, rounded up to whole dollars. Days count as whole UTC days.
+  // At least $1, so the budget UI shows before the first request of the month.
   static func portkeyBudgetUSD(records: [PortkeyRecord], resetDate: Date, now: Date) -> Double {
     let monthSpentUSD = PortkeySpend(records: records.filter { $0.timestamp >= Runway.cycleStart(resetDate: resetDate) }).totalUSD
     let dailyBurnUSD = Runway.averageDailyBurn(credits: monthSpentUSD, resetDate: resetDate, now: now)
     let daysUntilReset = Runway.utcCalendar.dateComponents([.day], from: now, to: resetDate).day!
-    return (monthSpentUSD + dailyBurnUSD * Double(max(daysUntilReset / 2, 1))).rounded(.up)
+    return max((monthSpentUSD + dailyBurnUSD * Double(max(daysUntilReset / 2, 1))).rounded(.up), 1)
   }
 
   // The value after -demo. nil without -demo, and empty when -demo is the last argument.

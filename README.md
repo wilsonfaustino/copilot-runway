@@ -162,8 +162,9 @@ Portkey spend in place of an error. The mode is on when:
 - GitHub answers with any other 4xx status except 429, for example when the account has no
   Copilot seat, or the response is not what the app expects.
 
-The mode is off for network errors, 429 and 5xx statuses. For a GitHub outage, the app shows the Copilot
-error as before. After a good Copilot response in the same run, the app needs a second no-Copilot response,
+Network errors, 429 and 5xx statuses never turn the mode on. For a GitHub outage in Copilot mode, the app
+shows the Copilot error as before. If the mode is already on, an outage keeps it on and the app refreshes the
+local Portkey spend. After a good Copilot response in the same run, the app needs a second no-Copilot response,
 at least 4 minutes after the first, to switch. At launch, one response is enough. The app does not save the mode between launches.
 
 In this mode:
