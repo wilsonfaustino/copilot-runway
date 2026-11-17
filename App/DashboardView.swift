@@ -595,7 +595,7 @@ struct DashboardView: View {
         unit: .usd,
         runwayDays: usageStore.runwayDays,
         health: health,
-        portkeyBarsFullTone: usageStore.isPortkeyOnly
+        isPortkeyOnly: usageStore.isPortkeyOnly
       )
     }
     return DailyBurnChart(
@@ -647,12 +647,12 @@ private struct DailyBurnChart: View {
   }
   let runwayDays: RunwayDays
   let health: RunwayHealth
-  // Portkey only has no Copilot bars, so its Portkey bars take the full bar color.
-  var portkeyBarsFullTone = false
+  // Portkey only has no Copilot series, so the Portkey bars take the full bar color and no text names Copilot.
+  var isPortkeyOnly = false
   @State private var selectedDayPosition: Double?
 
   private var portkeyColor: Color {
-    portkeyBarsFullTone ? DashboardView.barColor : Self.portkeyBarColor
+    isPortkeyOnly ? DashboardView.barColor : Self.portkeyBarColor
   }
 
   static func dayLabel(_ index: Int) -> String {
@@ -682,7 +682,7 @@ private struct DailyBurnChart: View {
     let copilotTotal = days.reduce(0) { $0 + $1.copilot }
     let portkeyTotal = days.reduce(0) { $0 + $1.portkey }
     let previousTotal = previousTotals.reduce(0) { $0 + $1.credits }
-    let averageName = unit == .usd ? "Combined average" : "GitHub average"
+    let averageName = isPortkeyOnly ? "Portkey average" : unit == .usd ? "Combined average" : "GitHub average"
     let showsPreviousCycle = previousTotal > 0
     let averageColor = Theme.accent(health)
     let dayCount = max(cycleDayCount, days.count, showsPreviousCycle ? previousTotals.count : 0)
@@ -696,11 +696,13 @@ private struct DailyBurnChart: View {
             .captionStyle()
           Spacer()
           HStack(spacing: Theme.Spacing.panel) {
-            HStack(spacing: Theme.Spacing.small) {
-              RoundedRectangle(cornerRadius: 2)
-                .fill(DashboardView.barColor)
-                .frame(width: 10, height: 10)
-              Text(unit == .usd ? "Copilot, \(amount(copilotTotal)) local" : "This cycle, \(amount(copilotTotal)) local credits")
+            if !isPortkeyOnly {
+              HStack(spacing: Theme.Spacing.small) {
+                RoundedRectangle(cornerRadius: 2)
+                  .fill(DashboardView.barColor)
+                  .frame(width: 10, height: 10)
+                Text(unit == .usd ? "Copilot, \(amount(copilotTotal)) local" : "This cycle, \(amount(copilotTotal)) local credits")
+              }
             }
             if unit == .usd {
               HStack(spacing: Theme.Spacing.small) {
@@ -733,16 +735,18 @@ private struct DailyBurnChart: View {
       Chart {
         ForEach(Array(days.enumerated()), id: \.offset) { index, chartDay in
           let dayName = chartDay.day.formatted(DashboardView.dayLabelStyle)
-          RectangleMark(
-            xStart: .value("Day start", Self.dayPosition(index) - Self.barHalfWidth),
-            xEnd: .value("Day end", Self.dayPosition(index) + Self.barHalfWidth),
-            yStart: .value("Baseline", 0.0),
-            yEnd: .value(unit == .usd ? "Copilot USD" : "Credits", chartDay.copilot)
-          )
-          .foregroundStyle(DashboardView.barColor)
-          .cornerRadius(4)
-          .accessibilityLabel(unit == .usd ? "This cycle, \(dayName), Copilot" : "This cycle, \(dayName)")
-          .accessibilityValue(unit == .usd ? amount(chartDay.copilot) : "\(amount(chartDay.copilot)) local credits")
+          if !isPortkeyOnly {
+            RectangleMark(
+              xStart: .value("Day start", Self.dayPosition(index) - Self.barHalfWidth),
+              xEnd: .value("Day end", Self.dayPosition(index) + Self.barHalfWidth),
+              yStart: .value("Baseline", 0.0),
+              yEnd: .value(unit == .usd ? "Copilot USD" : "Credits", chartDay.copilot)
+            )
+            .foregroundStyle(DashboardView.barColor)
+            .cornerRadius(4)
+            .accessibilityLabel(unit == .usd ? "This cycle, \(dayName), Copilot" : "This cycle, \(dayName)")
+            .accessibilityValue(unit == .usd ? amount(chartDay.copilot) : "\(amount(chartDay.copilot)) local credits")
+          }
           if chartDay.portkey > 0 {
             RectangleMark(
               xStart: .value("Day start", Self.dayPosition(index) - Self.barHalfWidth),
@@ -856,6 +860,7 @@ private struct DailyBurnChart: View {
   private func hoverLine(_ chartDay: ChartDay) -> String {
     let dayName = chartDay.day.formatted(DashboardView.dayLabelStyle)
     guard unit == .usd else { return "\(dayName): \(amount(chartDay.total)) credits" }
+    if isPortkeyOnly { return "\(dayName): \(amount(chartDay.portkey))" }
     return "\(dayName): \(amount(chartDay.total)) (\(amount(chartDay.copilot)) Copilot, \(amount(chartDay.portkey)) Portkey)"
   }
 
@@ -870,7 +875,9 @@ private struct DailyBurnChart: View {
 
   private func accessibilitySummary(copilotTotal: Double, portkeyTotal: Double, previousTotal: Double) -> String {
     var sentences: [String]
-    if unit == .usd {
+    if isPortkeyOnly {
+      sentences = ["This cycle, \(amount(portkeyTotal)) Portkey over \(days.count) days."]
+    } else if unit == .usd {
       sentences = ["This cycle, \(amount(copilotTotal)) Copilot and \(amount(portkeyTotal)) Portkey over \(days.count) days."]
     } else {
       sentences = ["This cycle, \(amount(copilotTotal)) local credits over \(days.count) days."]
