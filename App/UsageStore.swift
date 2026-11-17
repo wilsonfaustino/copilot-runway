@@ -224,7 +224,7 @@ final class UsageStore {
       // Not awaited, because a permission prompt can stay open and must not stop the poll.
       Task { await runwayNotifier.sendDueNotices(usage: usage, days: runwayDays) }
     } catch {
-      absenceTracker.observe(error)
+      absenceTracker.observe(error, now: .now)
       // With no Copilot, refreshWithoutCopilot sets the title.
       if absenceTracker.absence == nil { title = MenuBarTitle.title(error: error) }
       errorMessage = error.message
@@ -319,7 +319,7 @@ final class UsageStore {
     if let copilotError = demoScenario.copilotError {
       usageError = copilotError
       errorMessage = copilotError.message
-      absenceTracker.observe(copilotError)
+      absenceTracker.observe(copilotError, now: .now)
       if let absence = absenceTracker.absence {
         refreshWithoutCopilot(
           absence: absence, sessionCredits: demoScenario.sessionCredits, resetDate: demoScenario.usage.resetDate)

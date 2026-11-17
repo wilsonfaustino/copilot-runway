@@ -41,23 +41,33 @@ public enum PortkeyOnly {
 }
 
 public struct CopilotAbsenceTracker: Equatable, Sendable {
+  // Below the 5 minute poll interval, so one poll confirms an absence. The wake refresh and the poll, seconds apart, do not.
+  public static let confirmationGap: TimeInterval = 240
+
   public private(set) var absence: CopilotAbsence?
   private var hasSeenCopilot = false
-  private var absenceStreak = 0
+  private var streakStart: Date?
 
   public init() {}
 
   public mutating func observeSuccess() {
     absence = nil
     hasSeenCopilot = true
-    absenceStreak = 0
+    streakStart = nil
   }
 
-  public mutating func observe(_ error: CopilotUsageError) {
+  public mutating func observe(_ error: CopilotUsageError, now: Date) {
     guard let observedAbsence = PortkeyOnly.absence(for: error) else { return }
-    absenceStreak += 1
-    // A 403 rate limit or a locked keychain after wake gives one false absence, so a user who had Copilot needs two.
-    if !hasSeenCopilot || absenceStreak >= 2 {
+    guard hasSeenCopilot else {
+      absence = observedAbsence
+      return
+    }
+    // A 403 rate limit or a locked keychain after wake gives one false absence, so a user who had Copilot needs a second one later.
+    guard let firstAbsenceTime = streakStart else {
+      streakStart = now
+      return
+    }
+    if now.timeIntervalSince(firstAbsenceTime) >= Self.confirmationGap {
       absence = observedAbsence
     }
   }

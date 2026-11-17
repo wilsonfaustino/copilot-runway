@@ -60,60 +60,78 @@ import Testing
   #expect(PortkeyOnly.spentTitle(spentUSD: 10.17, locale: Locale(identifier: "en_US")) == "$10.17")
 }
 
+private let trackerStart = Date(timeIntervalSince1970: 1_800_000_000)
+
 @Test func firstAbsenceEntersAtOnce() {
   var tracker = CopilotAbsenceTracker()
-  tracker.observe(.notLoggedIn)
+  tracker.observe(.notLoggedIn, now: trackerStart)
   #expect(tracker.absence == .notLoggedIn)
 }
 
 @Test func goodThenOneAbsenceKeepsCopilot() {
   var tracker = CopilotAbsenceTracker()
   tracker.observeSuccess()
-  tracker.observe(.httpStatus(403))
+  tracker.observe(.httpStatus(403), now: trackerStart)
   #expect(tracker.absence == nil)
 }
 
 @Test func goodThenTwoAbsencesEnters() {
   var tracker = CopilotAbsenceTracker()
   tracker.observeSuccess()
-  tracker.observe(.httpStatus(403))
-  tracker.observe(.httpStatus(404))
+  tracker.observe(.httpStatus(403), now: trackerStart)
+  tracker.observe(.httpStatus(404), now: trackerStart.addingTimeInterval(300))
+  #expect(tracker.absence == .noSeat)
+}
+
+@Test func twoAbsencesWithinGapKeepCopilot() {
+  var tracker = CopilotAbsenceTracker()
+  tracker.observeSuccess()
+  tracker.observe(.httpStatus(403), now: trackerStart)
+  tracker.observe(.httpStatus(403), now: trackerStart.addingTimeInterval(30))
+  #expect(tracker.absence == nil)
+}
+
+@Test func twoAbsencesAfterGapEnter() {
+  var tracker = CopilotAbsenceTracker()
+  tracker.observeSuccess()
+  tracker.observe(.httpStatus(403), now: trackerStart)
+  tracker.observe(.httpStatus(403), now: trackerStart.addingTimeInterval(300))
   #expect(tracker.absence == .noSeat)
 }
 
 @Test func outageBetweenAbsencesDoesNotCount() {
   var tracker = CopilotAbsenceTracker()
   tracker.observeSuccess()
-  tracker.observe(.httpStatus(403))
-  tracker.observe(.network)
+  tracker.observe(.httpStatus(403), now: trackerStart)
+  tracker.observe(.network, now: trackerStart.addingTimeInterval(300))
   #expect(tracker.absence == nil)
-  tracker.observe(.notLoggedIn)
+  tracker.observe(.notLoggedIn, now: trackerStart.addingTimeInterval(600))
   #expect(tracker.absence == .notLoggedIn)
 }
 
 @Test func outageKeepsPortkeyOnly() {
   var tracker = CopilotAbsenceTracker()
-  tracker.observe(.ghNotFound)
-  tracker.observe(.network)
+  tracker.observe(.ghNotFound, now: trackerStart)
+  tracker.observe(.network, now: trackerStart.addingTimeInterval(300))
   #expect(tracker.absence == .ghNotFound)
 }
 
 @Test func outageFirstKeepsNil() {
   var tracker = CopilotAbsenceTracker()
-  tracker.observe(.network)
+  tracker.observe(.network, now: trackerStart)
   #expect(tracker.absence == nil)
 }
 
 @Test func successLeaves() {
   var tracker = CopilotAbsenceTracker()
-  tracker.observe(.ghNotFound)
+  tracker.observe(.ghNotFound, now: trackerStart)
   tracker.observeSuccess()
   #expect(tracker.absence == nil)
 }
 
 @Test func latestCauseWins() {
   var tracker = CopilotAbsenceTracker()
-  tracker.observe(.ghNotFound)
-  tracker.observe(.notLoggedIn)
+  tracker.observe(.ghNotFound, now: trackerStart)
+  tracker.observe(.notLoggedIn, now: trackerStart.addingTimeInterval(1))
   #expect(tracker.absence == .notLoggedIn)
 }
