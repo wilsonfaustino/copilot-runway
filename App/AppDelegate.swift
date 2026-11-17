@@ -57,7 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
   private func updateLabel() {
     withObservationTracking {
       guard let button = statusItem?.button else { return }
-      if let usageError = usageStore.usageError {
+      if usageStore.hasUsageError, let usageError = usageStore.usageError {
         let image = NSImage(
           systemSymbolName: RunwayGlyph.menuBarSymbolName(error: usageError), accessibilityDescription: nil)
         image?.isTemplate = true
@@ -180,8 +180,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
   }
 
   private func share(from anchorView: NSView) {
-    guard let image = ShareCardRenderer.image(usageStore: usageStore), let summary = usageStore.summaryText() else { return }
-    sharePicker.show(image: image, summary: summary, relativeTo: anchorView)
+    guard let image = ShareCardRenderer.image(usageStore: usageStore) else { return }
+    sharePicker.show(image: image, summary: usageStore.summaryText(), relativeTo: anchorView)
   }
 
   func popoverDidClose(_ notification: Notification) {

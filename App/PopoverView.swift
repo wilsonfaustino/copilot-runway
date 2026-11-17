@@ -11,7 +11,6 @@ struct PopoverView: View {
   }
   @AppStorage("localOnlyNoticeDismissed") private var localOnlyNoticeDismissed = false
   @AppStorage("whatsNewLastSeenVersion") private var whatsNewLastSeenVersion: String?
-  @AppStorage(UsageStore.portkeyBudgetKey) private var portkeyBudgetUSD: Double?
   @Environment(\.openWindow) private var openWindow
   @State private var openCount = 0
   @State private var shareAnchor = ShareAnchor()
@@ -357,22 +356,14 @@ struct PopoverView: View {
     }
   }
 
-  // Demo mode shows fake data, so it ignores the real budget.
-  private var shownPortkeyBudgetUSD: Double? {
-    #if DEBUG
-    if DemoLaunch.isActive { return nil }
-    #endif
-    return portkeyBudgetUSD
-  }
-
   @ViewBuilder
   private func portkeyCard(now: Date) -> some View {
     let spend = usageStore.portkeySpend
-    if PortkeyBudget.showsBlock(requestCount: spend.requestCount, budgetUSD: shownPortkeyBudgetUSD) {
+    if PortkeyBudget.showsBlock(requestCount: spend.requestCount, budgetUSD: usageStore.portkeyBudgetUSD) {
       PortkeyCard(
         spend: spend,
         budgetStatus: usageStore.usage.flatMap {
-          PortkeyBudget.status(spentUSD: spend.totalUSD, budgetUSD: shownPortkeyBudgetUSD, resetDate: $0.resetDate, now: now, days: usageStore.runwayDays)
+          PortkeyBudget.status(spentUSD: spend.totalUSD, budgetUSD: usageStore.portkeyBudgetUSD, resetDate: $0.resetDate, now: now, days: usageStore.runwayDays)
         },
         showsCostSourceNote: !forShare,
         showsSetupPrompt: !forShare
@@ -404,7 +395,7 @@ struct PopoverView: View {
       .buttonStyle(FooterButtonStyle(fillOpacity: 0.06))
       .background(ShareAnchorView(anchor: shareAnchor))
       .accessibilityLabel("Share")
-      .disabled(usageStore.usage == nil || usageStore.usageError != nil)
+      .disabled(!(usageStore.isPortkeyOnly || (usageStore.usage != nil && usageStore.usageError == nil)))
       Button {
         openWindow(id: DashboardView.windowId)
         // The app has no Dock icon, so it must come forward or the window opens behind other apps.

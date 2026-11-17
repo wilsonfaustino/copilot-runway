@@ -14,7 +14,6 @@ struct DashboardView: View {
   let usageStore: UsageStore
   @State private var summaryCopied = false
   @AppStorage(Theme.taskPalettePreferenceKey) private var taskPalettePreference = TaskPalettePreference.unset
-  @AppStorage(UsageStore.portkeyBudgetKey) private var portkeyBudgetUSD: Double?
   @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiatesWithoutColor
 
   private var taskPalette: TaskPalette {
@@ -310,22 +309,14 @@ struct DashboardView: View {
 
   // MARK: Portkey
 
-  // Demo mode shows fake data, so it ignores the real budget.
-  private var shownPortkeyBudgetUSD: Double? {
-    #if DEBUG
-    if DemoLaunch.isActive { return nil }
-    #endif
-    return portkeyBudgetUSD
-  }
-
   @ViewBuilder
   private func portkeySection(usage: QuotaUsage) -> some View {
     let spend = usageStore.portkeySpend
-    if PortkeyBudget.showsBlock(requestCount: spend.requestCount, budgetUSD: shownPortkeyBudgetUSD) {
+    if PortkeyBudget.showsBlock(requestCount: spend.requestCount, budgetUSD: usageStore.portkeyBudgetUSD) {
       PortkeyDashboardSection(
         spend: spend,
         budgetStatus: PortkeyBudget.status(
-          spentUSD: spend.totalUSD, budgetUSD: shownPortkeyBudgetUSD, resetDate: usage.resetDate, now: .now, days: usageStore.runwayDays
+          spentUSD: spend.totalUSD, budgetUSD: usageStore.portkeyBudgetUSD, resetDate: usage.resetDate, now: .now, days: usageStore.runwayDays
         ),
         dateRange: "\(day(Runway.cycleStart(resetDate: usage.resetDate))) to \(day(.now))"
       )
