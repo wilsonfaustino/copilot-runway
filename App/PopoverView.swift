@@ -243,6 +243,7 @@ struct PopoverView: View {
     let combined = usageStore.combinedBudget
     let gaugeMode = usageStore.gaugeMode
     let accent = Theme.accent(health)
+    let budgetUnit: BudgetUnit = combined == nil && !usageStore.isPortkeyOnly ? .credits : .usd
     let hasNoBudget = usageStore.isPortkeyOnly && usageStore.portkeyBudgetUSD == nil
     return VStack(alignment: .leading, spacing: Theme.Spacing.section) {
       HStack(spacing: 18) {
@@ -259,41 +260,49 @@ struct PopoverView: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
           if hasNoBudget {
             noBudgetFigure
+            if !forShare {
+              Button("Set a monthly budget to see runway") { openSourcesSettings() }
+                .buttonStyle(.link)
+                .font(.system(size: 12))
+                .multilineTextAlignment(.leading)
+            }
           } else {
-            // "Lasts the cycle" leaves no room for the caption beside it, so the caption goes underneath.
-            let lastsTheCycle = lastsTheCycle(usage: usage, now: now)
-            let figureLayout = lastsTheCycle
-              ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
-              : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: Theme.Spacing.small))
-            figureLayout {
-              Text(daysFigure(usage: usage, now: now))
-                .bigFigureStyle(size: lastsTheCycle ? 24 : 40)
-                .foregroundStyle(accent)
-                // Early in a cycle the burn is tiny, so the day count can have 4 or more digits.
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
-                .layoutPriority(1)
-              Text(daysCaption(usage: usage, now: now))
-                .font(.system(size: 15, weight: .semibold))
-                .lineLimit(1)
-            }
-            if let usage, let insight = RunwayInsight.popoverSentence(usage: usage, now: now, days: usageStore.runwayDays, unit: combined == nil && !usageStore.isPortkeyOnly ? .credits : .usd) {
-              Text(insight)
-                .font(.system(size: 12.5))
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-            }
-            if !forShare, let usage, case .workdays(_, let daysOff) = usageStore.runwayDays {
-              let daysOffCount = DaysOffGrid.inCycle(daysOff, resetDate: usage.resetDate).count
-              if daysOffCount > 0 {
-                Label("Excludes \(daysOffCount) \(daysOffCount == 1 ? "day" : "days") off", systemImage: "calendar")
-                  .captionStyle()
+            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+              // "Lasts the cycle" leaves no room for the caption beside it, so the caption goes underneath.
+              let lastsTheCycle = lastsTheCycle(usage: usage, now: now)
+              let figureLayout = lastsTheCycle
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
+                : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: Theme.Spacing.small))
+              figureLayout {
+                Text(daysFigure(usage: usage, now: now))
+                  .bigFigureStyle(size: lastsTheCycle ? 24 : 40)
+                  .foregroundStyle(accent)
+                  // Early in a cycle the burn is tiny, so the day count can have 4 or more digits.
+                  .lineLimit(1)
+                  .minimumScaleFactor(0.5)
+                  .layoutPriority(1)
+                Text(daysCaption(usage: usage, now: now))
+                  .font(.system(size: 15, weight: .semibold))
+                  .lineLimit(1)
+              }
+              if let usage, let insight = RunwayInsight.popoverSentence(usage: usage, now: now, days: usageStore.runwayDays, unit: budgetUnit) {
+                Text(insight)
+                  .font(.system(size: 12.5))
+                  .foregroundStyle(.secondary)
+                  .lineLimit(2)
+                  .fixedSize(horizontal: false, vertical: true)
+              }
+              if !forShare, let usage, case .workdays(_, let daysOff) = usageStore.runwayDays {
+                let daysOffCount = DaysOffGrid.inCycle(daysOff, resetDate: usage.resetDate).count
+                if daysOffCount > 0 {
+                  Label("Excludes \(daysOffCount) \(daysOffCount == 1 ? "day" : "days") off", systemImage: "calendar")
+                    .captionStyle()
+                }
               }
             }
+            .accessibilityElement(children: .combine)
           }
         }
-        .accessibilityElement(children: .combine)
       }
       if let combined, !usageStore.isPortkeyOnly {
         combinedBox(combined: combined, gaugeMode: gaugeMode, accent: accent)
@@ -310,13 +319,8 @@ struct PopoverView: View {
       Text("spent this month")
         .font(.system(size: 15, weight: .semibold))
         .lineLimit(1)
-      if !forShare {
-        Button("Set a monthly budget to see runway") { openSourcesSettings() }
-          .buttonStyle(.link)
-          .font(.system(size: 12))
-          .multilineTextAlignment(.leading)
-      }
     }
+    .accessibilityElement(children: .combine)
   }
 
   private func combinedBox(combined: CombinedBudget, gaugeMode: GaugeMode, accent: Color) -> some View {
@@ -577,6 +581,7 @@ private struct RunwayRing: View {
   }
 
   private var accessibilityText: String {
+    if hasNoBudget { return "No Portkey budget set" }
     let percentText = gaugePercent.map(String.init)
     if let combined, let percentText {
       let amounts = combined.amountsUSD(mode: gaugeMode)
