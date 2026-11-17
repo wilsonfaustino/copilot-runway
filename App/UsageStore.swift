@@ -231,11 +231,12 @@ final class UsageStore {
       usageError = error
     }
     if let absence = absenceTracker.absence {
-      let cycleStart = Runway.cycleStart(resetDate: PortkeyOnly.resetDate(now: .now))
+      let resetDate = PortkeyOnly.resetDate(now: .now)
+      let cycleStart = Runway.cycleStart(resetDate: resetDate)
       let sessionCredits = await Task.detached(priority: .utility) {
         SessionCredits.load(since: cycleStart, now: .now)
       }.value
-      refreshWithoutCopilot(absence: absence, sessionCredits: sessionCredits)
+      refreshWithoutCopilot(absence: absence, sessionCredits: sessionCredits, resetDate: resetDate)
       return
     }
     // With no Copilot the cycle is the UTC month. Otherwise the cycle start comes from the API, so in an
@@ -247,8 +248,7 @@ final class UsageStore {
       SessionCredits.load(since: cycleStart, now: .now)
     }.value
     apply(sessionCredits)
-    let budgetUSD = UserDefaults.standard.object(forKey: Self.portkeyBudgetKey) as? Double
-    if let portkeyUsage = PortkeyBudget.usage(spentUSD: portkeySpend.totalUSD, budgetUSD: budgetUSD, resetDate: usage.resetDate) {
+    if let portkeyUsage = PortkeyBudget.usage(spentUSD: portkeySpend.totalUSD, budgetUSD: portkeyBudgetUSD, resetDate: usage.resetDate) {
       Task { await runwayNotifier.sendDueNotices(usage: portkeyUsage, days: runwayDays, subject: .portkey) }
     }
   }
@@ -273,10 +273,9 @@ final class UsageStore {
   }
 
   // The Copilot data is cleared, and the Portkey spend uses the UTC month as its cycle.
-  private func refreshWithoutCopilot(absence: CopilotAbsence, sessionCredits: SessionCredits) {
+  private func refreshWithoutCopilot(absence: CopilotAbsence, sessionCredits: SessionCredits, resetDate: Date) {
     usage = nil
     combinedBudget = nil
-    let resetDate = PortkeyOnly.resetDate(now: .now)
     portkeyOnlyResetDate = resetDate
     runwayDays = Self.savedRunwayDays(resetDate: resetDate)
     apply(sessionCredits)
@@ -292,6 +291,8 @@ final class UsageStore {
     cycleComparisonSentence = nil
     outcomes = nil
     copilotReviewCount = nil
+    // A fetch in flight is now stale, and the next Copilot response fetches again at once.
+    lastOutcomesFetch = nil
     // The chart keeps its days and shows only Portkey.
     dailyCredits = dailyCredits.map { DailyCredits(day: $0.day, credits: 0) }
     previousDailyCredits = previousDailyCredits.map { DailyCredits(day: $0.day, credits: 0) }
@@ -320,7 +321,8 @@ final class UsageStore {
       errorMessage = copilotError.message
       absenceTracker.observe(copilotError)
       if let absence = absenceTracker.absence {
-        refreshWithoutCopilot(absence: absence, sessionCredits: demoScenario.sessionCredits)
+        refreshWithoutCopilot(
+          absence: absence, sessionCredits: demoScenario.sessionCredits, resetDate: demoScenario.usage.resetDate)
       }
       return
     }
