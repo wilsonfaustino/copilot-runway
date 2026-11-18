@@ -108,6 +108,16 @@ public enum PriceTable {
       longContextThreshold: 272_000,
       longContext: TokenRates(input: 2.00, cachedInput: 0.10, cacheWrite: 2.50, output: 7.50)
     ),
+    "gpt-6.2-astra": ModelPrice(
+      standard: TokenRates(input: 8.00, cachedInput: 0.40, cacheWrite: 10.00, output: 40.00),
+      longContextThreshold: 272_000,
+      longContext: TokenRates(input: 16.00, cachedInput: 0.80, cacheWrite: 20.00, output: 60.00)
+    ),
+    "gpt-6.2-sol": ModelPrice(
+      standard: TokenRates(input: 2.00, cachedInput: 0.10, cacheWrite: 2.50, output: 10.00),
+      longContextThreshold: 272_000,
+      longContext: TokenRates(input: 4.00, cachedInput: 0.20, cacheWrite: 5.00, output: 15.00)
+    ),
     // Anthropic. All models list a cache write rate. Claude Opus 4.8 (fast mode) is not listed here because its model id is not known.
     "claude-haiku-4.5": ModelPrice(
       standard: TokenRates(input: 1.00, cachedInput: 0.10, cacheWrite: 1.25, output: 5.00)
