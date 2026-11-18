@@ -11,7 +11,6 @@ struct PopoverView: View {
   }
   @AppStorage("localOnlyNoticeDismissed") private var localOnlyNoticeDismissed = false
   @AppStorage("whatsNewLastSeenVersion") private var whatsNewLastSeenVersion: String?
-  @AppStorage(UsageStore.portkeyBudgetKey) private var portkeyBudgetUSD: Double?
   @Environment(\.openWindow) private var openWindow
   @State private var openCount = 0
   @State private var shareAnchor = ShareAnchor()
@@ -21,7 +20,7 @@ struct PopoverView: View {
 
   var body: some View {
     let now = Date.now
-    let health = RunwayHealth(usage: usageStore.gaugeUsage, hasError: usageStore.usageError != nil, now: now, days: usageStore.runwayDays)
+    let health = RunwayHealth(usage: usageStore.gaugeUsage, hasError: usageStore.hasUsageError, now: now, days: usageStore.runwayDays)
     VStack(alignment: .leading, spacing: Theme.Spacing.section) {
       header
       if !forShare && !localOnlyNoticeDismissed {
@@ -30,19 +29,23 @@ struct PopoverView: View {
       if !forShare, let whatsNew = whatsNewDecision.banner {
         whatsNewBanner(whatsNew)
       }
-      if !forShare, let errorMessage = usageStore.errorMessage {
-        Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
-          .font(.system(size: 12, weight: .medium))
-          .foregroundStyle(Theme.accent(.critical))
-          .fixedSize(horizontal: false, vertical: true)
+      if !forShare {
+        copilotStatusRow
+      }
+      if !forShare, case .noPortkeyData = usageStore.copilotState,
+        usageStore.usageError.flatMap(PortkeyOnly.absence(for:)) != nil
+      {
+        noPortkeyDataCard
       }
       // Model bars come from local session files, so a fetch error does not make them stale.
       Group {
         runwaySection(health: health, now: now)
         statCards(now: now)
       }
-      .opacity(usageStore.usageError == nil ? 1 : Self.staleOpacity)
-      modelBars
+      .opacity(usageStore.hasUsageError ? Self.staleOpacity : 1)
+      if !usageStore.isPortkeyOnly {
+        modelBars
+      }
       if !forShare, let sessionsWarning = usageStore.sessionsWarning {
         Label(sessionsWarning, systemImage: "exclamationmark.circle")
           .captionStyle()
@@ -89,6 +92,14 @@ struct PopoverView: View {
         Text("Copilot Runway")
           .font(.system(size: 14, weight: .semibold))
       }
+      if usageStore.isPortkeyOnly {
+        Text("Portkey only")
+          .font(.system(size: 11))
+          .foregroundStyle(.secondary)
+          .padding(.horizontal, 8)
+          .padding(.vertical, 2)
+          .overlay(Capsule().strokeBorder(Color.primary.opacity(0.16)))
+      }
       Spacer()
       if let lastRefresh = usageStore.lastRefresh {
         Text("Updated \(lastRefresh.formatted(date: .omitted, time: .shortened))")
@@ -96,6 +107,44 @@ struct PopoverView: View {
           .monospacedDigit()
       }
     }
+  }
+
+  @ViewBuilder
+  private var copilotStatusRow: some View {
+    switch usageStore.copilotState {
+    case .portkeyOnly(let absence):
+      Label(PortkeyOnly.causeLine(absence, hasBudget: usageStore.portkeyBudgetUSD != nil), systemImage: "info.circle")
+        .font(.system(size: 12))
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+    case .copilot, .noPortkeyData:
+      if let errorMessage = usageStore.errorMessage {
+        Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+          .font(.system(size: 12, weight: .medium))
+          .foregroundStyle(Theme.accent(.critical))
+          .fixedSize(horizontal: false, vertical: true)
+      }
+    }
+  }
+
+  private var noPortkeyDataCard: some View {
+    VStack(alignment: .leading, spacing: Theme.Spacing.regular) {
+      Text("Using Portkey without Copilot?")
+        .font(.system(size: 12, weight: .semibold))
+      Text("Copilot Runway also shows Portkey spend from OpenCode, Pi and omp sessions. It found no Portkey requests this month. Set a monthly budget in Settings to see runway.")
+        .font(.system(size: 12))
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+      Button("Open Settings") { openSourcesSettings() }
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .cardStyle()
+  }
+
+  private func openSourcesSettings() {
+    usageStore.settingsTab = .sources
+    SettingsWindowController.show(usageStore: usageStore)
+    closePopover()
   }
 
   private var whatsNewDecision: WhatsNew.Decision {
@@ -196,6 +245,8 @@ struct PopoverView: View {
     let combined = usageStore.combinedBudget
     let gaugeMode = usageStore.gaugeMode
     let accent = Theme.accent(health)
+    let budgetUnit: BudgetUnit = combined == nil && !usageStore.isPortkeyOnly ? .credits : .usd
+    let hasNoBudget = usageStore.isPortkeyOnly && usageStore.portkeyBudgetUSD == nil
     return VStack(alignment: .leading, spacing: Theme.Spacing.section) {
       HStack(spacing: 18) {
         RunwayRing(
@@ -205,47 +256,74 @@ struct PopoverView: View {
           accent: accent,
           combined: combined,
           openCount: openCount,
-          isStatic: forShare
+          isStatic: forShare,
+          hasNoBudget: hasNoBudget,
+          isPortkeyOnly: usageStore.isPortkeyOnly
         )
         VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-          // "Lasts the cycle" leaves no room for the caption beside it, so the caption goes underneath.
-          let lastsTheCycle = lastsTheCycle(usage: usage, now: now)
-          let figureLayout = lastsTheCycle
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
-            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: Theme.Spacing.small))
-          figureLayout {
-            Text(daysFigure(usage: usage, now: now))
-              .bigFigureStyle(size: lastsTheCycle ? 24 : 40)
-              .foregroundStyle(accent)
-              // Early in a cycle the burn is tiny, so the day count can have 4 or more digits.
-              .lineLimit(1)
-              .minimumScaleFactor(0.5)
-              .layoutPriority(1)
-            Text(daysCaption(usage: usage, now: now))
-              .font(.system(size: 15, weight: .semibold))
-              .lineLimit(1)
-          }
-          if let usage, let insight = RunwayInsight.popoverSentence(usage: usage, now: now, days: usageStore.runwayDays, unit: combined == nil ? .credits : .usd) {
-            Text(insight)
-              .font(.system(size: 12.5))
-              .foregroundStyle(.secondary)
-              .lineLimit(2)
-              .fixedSize(horizontal: false, vertical: true)
-          }
-          if !forShare, let usage, case .workdays(_, let daysOff) = usageStore.runwayDays {
-            let daysOffCount = DaysOffGrid.inCycle(daysOff, resetDate: usage.resetDate).count
-            if daysOffCount > 0 {
-              Label("Excludes \(daysOffCount) \(daysOffCount == 1 ? "day" : "days") off", systemImage: "calendar")
-                .captionStyle()
+          if hasNoBudget {
+            noBudgetFigure
+            if !forShare {
+              Button("Set a monthly budget to see runway") { openSourcesSettings() }
+                .buttonStyle(.link)
+                .font(.system(size: 12))
+                .multilineTextAlignment(.leading)
             }
+          } else {
+            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+              // "Lasts the cycle" leaves no room for the caption beside it, so the caption goes underneath.
+              let lastsTheCycle = lastsTheCycle(usage: usage, now: now)
+              let figureLayout = lastsTheCycle
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
+                : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: Theme.Spacing.small))
+              figureLayout {
+                Text(daysFigure(usage: usage, now: now))
+                  .bigFigureStyle(size: lastsTheCycle ? 24 : 40)
+                  .foregroundStyle(accent)
+                  // Early in a cycle the burn is tiny, so the day count can have 4 or more digits.
+                  .lineLimit(1)
+                  .minimumScaleFactor(0.5)
+                  .layoutPriority(1)
+                Text(daysCaption(usage: usage, now: now))
+                  .font(.system(size: 15, weight: .semibold))
+                  .lineLimit(1)
+              }
+              if let usage, let insight = RunwayInsight.popoverSentence(usage: usage, now: now, days: usageStore.runwayDays, unit: budgetUnit) {
+                Text(insight)
+                  .font(.system(size: 12.5))
+                  .foregroundStyle(.secondary)
+                  .lineLimit(2)
+                  .fixedSize(horizontal: false, vertical: true)
+              }
+              if !forShare, let usage, case .workdays(_, let daysOff) = usageStore.runwayDays {
+                let daysOffCount = DaysOffGrid.inCycle(daysOff, resetDate: usage.resetDate).count
+                if daysOffCount > 0 {
+                  Label("Excludes \(daysOffCount) \(daysOffCount == 1 ? "day" : "days") off", systemImage: "calendar")
+                    .captionStyle()
+                }
+              }
+            }
+            .accessibilityElement(children: .combine)
           }
         }
-        .accessibilityElement(children: .combine)
       }
-      if let combined {
+      if let combined, !usageStore.isPortkeyOnly {
         combinedBox(combined: combined, gaugeMode: gaugeMode, accent: accent)
       }
     }
+  }
+
+  private var noBudgetFigure: some View {
+    VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+      Text(PortkeySpend.formatted(usageStore.portkeySpend.totalUSD))
+        .bigFigureStyle(size: 40)
+        .lineLimit(1)
+        .minimumScaleFactor(0.5)
+      Text("spent this month")
+        .font(.system(size: 15, weight: .semibold))
+        .lineLimit(1)
+    }
+    .accessibilityElement(children: .combine)
   }
 
   private func combinedBox(combined: CombinedBudget, gaugeMode: GaugeMode, accent: Color) -> some View {
@@ -283,7 +361,38 @@ struct PopoverView: View {
     return "\(usageStore.runwayDays.dayWord(count: wholeDays ?? 0)) of runway"
   }
 
+  @ViewBuilder
   private func statCards(now: Date) -> some View {
+    if usageStore.isPortkeyOnly {
+      portkeyOnlyStatCards(now: now)
+    } else {
+      copilotStatCards(now: now)
+    }
+  }
+
+  private func portkeyOnlyStatCards(now: Date) -> some View {
+    let spend = usageStore.portkeySpend
+    let dailyBurn = usageStore.cycleResetDate.map {
+      Runway.averageDailyBurn(credits: spend.totalUSD, resetDate: $0, now: now, days: usageStore.runwayDays)
+    }
+    return HStack(spacing: 8) {
+      if let budgetUSD = usageStore.portkeyBudgetUSD {
+        StatCard(
+          title: "Spent",
+          value: PortkeySpend.formatted(spend.totalUSD),
+          detail: "of \(PortkeySpend.formatted(budgetUSD))"
+        )
+      }
+      StatCard(
+        title: "Daily burn",
+        value: dailyBurn.map { PortkeySpend.formatted($0) } ?? "--",
+        detail: "USD/\(usageStore.runwayDays.dayWord())"
+      )
+      StatCard(title: "Requests", value: String(spend.requestCount), detail: "this month")
+    }
+  }
+
+  private func copilotStatCards(now: Date) -> some View {
     let usage = usageStore.usage
     return HStack(spacing: 8) {
       StatCard(
@@ -310,9 +419,7 @@ struct PopoverView: View {
     )
     if usageStore.organization == nil && !forShare {
       Button {
-        usageStore.settingsTab = .sources
-        SettingsWindowController.show(usageStore: usageStore)
-        closePopover()
+        openSourcesSettings()
       } label: {
         card
       }
@@ -357,22 +464,14 @@ struct PopoverView: View {
     }
   }
 
-  // Demo mode shows fake data, so it ignores the real budget.
-  private var shownPortkeyBudgetUSD: Double? {
-    #if DEBUG
-    if DemoLaunch.isActive { return nil }
-    #endif
-    return portkeyBudgetUSD
-  }
-
   @ViewBuilder
   private func portkeyCard(now: Date) -> some View {
     let spend = usageStore.portkeySpend
-    if PortkeyBudget.showsBlock(requestCount: spend.requestCount, budgetUSD: shownPortkeyBudgetUSD) {
+    if PortkeyBudget.showsBlock(requestCount: spend.requestCount, budgetUSD: usageStore.portkeyBudgetUSD) {
       PortkeyCard(
         spend: spend,
         budgetStatus: usageStore.usage.flatMap {
-          PortkeyBudget.status(spentUSD: spend.totalUSD, budgetUSD: shownPortkeyBudgetUSD, resetDate: $0.resetDate, now: now, days: usageStore.runwayDays)
+          PortkeyBudget.status(spentUSD: spend.totalUSD, budgetUSD: usageStore.portkeyBudgetUSD, resetDate: $0.resetDate, now: now, days: usageStore.runwayDays)
         },
         showsCostSourceNote: !forShare,
         showsSetupPrompt: !forShare
@@ -404,7 +503,7 @@ struct PopoverView: View {
       .buttonStyle(FooterButtonStyle(fillOpacity: 0.06))
       .background(ShareAnchorView(anchor: shareAnchor))
       .accessibilityLabel("Share")
-      .disabled(usageStore.usage == nil || usageStore.usageError != nil)
+      .disabled(!(usageStore.isPortkeyOnly || (usageStore.usage != nil && usageStore.usageError == nil)))
       Button {
         openWindow(id: DashboardView.windowId)
         // The app has no Dock icon, so it must come forward or the window opens behind other apps.
@@ -446,6 +545,9 @@ private struct RunwayRing: View {
   let openCount: Int
   // ImageRenderer draws one frame, where the animator is still at its start fraction.
   let isStatic: Bool
+  // Portkey only with no budget: the ring is an empty track with no percent.
+  let hasNoBudget: Bool
+  let isPortkeyOnly: Bool
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -483,6 +585,7 @@ private struct RunwayRing: View {
   }
 
   private var accessibilityText: String {
+    if hasNoBudget { return "No Portkey budget set" }
     let percentText = gaugePercent.map(String.init)
     if let combined, let percentText {
       let amounts = combined.amountsUSD(mode: gaugeMode)
@@ -490,6 +593,10 @@ private struct RunwayRing: View {
       let portkeyText = PortkeySpend.formatted(amounts.portkey)
       let state = gaugeMode == .spent ? "spent" : "left"
       return "\(percentText) percent of combined budget \(state). Copilot \(copilotText), Portkey \(portkeyText)."
+    }
+    if isPortkeyOnly {
+      let state = gaugeMode == .spent ? "spent" : "left"
+      return percentText.map { "\($0) percent of Portkey budget \(state)" } ?? "Portkey budget \(state) unknown"
     }
     return gaugeMode == .spent
       ? percentText.map { "\($0) percent of credits spent" } ?? "Credits spent unknown"
@@ -518,10 +625,12 @@ private struct RunwayRing: View {
           .animation(reduceMotion ? nil : .easeOut(duration: Self.refreshDuration), value: parts)
       }
       VStack(spacing: 0) {
-        Text(gaugePercent.map { "\($0)%" } ?? "--%")
+        Text(hasNoBudget ? "--" : gaugePercent.map { "\($0)%" } ?? "--%")
           .bigFigureStyle()
-        Text(gaugeMode == .spent ? "spent" : "left")
-          .captionStyle()
+        if !hasNoBudget {
+          Text(gaugeMode == .spent ? "spent" : "left")
+            .captionStyle()
+        }
       }
     }
     .padding(Self.lineWidth / 2)

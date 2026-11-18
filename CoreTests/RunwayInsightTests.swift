@@ -1,4 +1,4 @@
-import Core
+@testable import Core
 import Foundation
 import Testing
 
@@ -384,4 +384,34 @@ private func combinedInsightBudget(copilotUsed: Double = 10216, portkeySpent: Do
   let banner = RunwayInsight.banner(
     usage: copilot, errorMessage: nil, categoryCredits: [], now: combinedInsightNow, locale: usLocale, combined: combined)
   #expect(banner.headline == "At this pace your combined budget lasts past the reset on Dec 1.")
+}
+
+@Test func portkeyOnlyBannerNoBudget() {
+  let banner = RunwayInsight.portkeyOnlyBanner(
+    usage: nil, spentUSD: 10.17, absence: .notLoggedIn, now: utcDate("2026-11-16T00:00:00Z"), locale: usLocale)
+  #expect(banner.headline == "$10.17 spent on Portkey this month.")
+  #expect(banner.detail == PortkeyOnly.causeLine(.notLoggedIn, hasBudget: false))
+}
+
+@Test func portkeyOnlyBannerRunsOut() {
+  let now = utcDate("2026-11-16T00:00:00Z")
+  let usage = PortkeyBudget.usage(spentUSD: 9, budgetUSD: 12, resetDate: utcDate("2026-12-01T00:00:00Z"))!
+  let banner = RunwayInsight.portkeyOnlyBanner(usage: usage, spentUSD: 9, absence: .noSeat, now: now, locale: usLocale)
+  #expect(banner.headline == RunwayInsight.portkeyRunOutSentence(usage: usage, now: now, locale: usLocale, days: .calendar))
+  #expect(banner.headline.contains("your Portkey budget runs out"))
+  #expect(banner.detail == PortkeyOnly.causeLine(.noSeat, hasBudget: true))
+}
+
+@Test func portkeyOnlyBannerOverBudget() {
+  let now = utcDate("2026-11-16T00:00:00Z")
+  let usage = PortkeyBudget.usage(spentUSD: 13, budgetUSD: 12, resetDate: utcDate("2026-12-01T00:00:00Z"))!
+  let banner = RunwayInsight.portkeyOnlyBanner(usage: usage, spentUSD: 13, absence: .noSeat, now: now, locale: usLocale)
+  #expect(banner.headline == RunwayInsight.portkeyLimitSentence(usage: usage, locale: usLocale))
+}
+
+@Test func portkeyOnlyBannerNothingSpent() {
+  let now = utcDate("2026-11-16T00:00:00Z")
+  let usage = PortkeyBudget.usage(spentUSD: 0, budgetUSD: 12, resetDate: utcDate("2026-12-01T00:00:00Z"))!
+  let banner = RunwayInsight.portkeyOnlyBanner(usage: usage, spentUSD: 0, absence: .noSeat, now: now, locale: usLocale)
+  #expect(banner.headline == "Nothing spent on Portkey yet this month.")
 }

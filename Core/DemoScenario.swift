@@ -14,6 +14,9 @@ public struct DemoScenario: Sendable {
     case edgeRunout = "edge-runout"
     case edgeUncategorized = "edge-uncategorized"
     case edgeEmpty = "edge-empty"
+    case portkeyOnly = "portkey-only"
+    case portkeyOnlyNoBudget = "portkey-only-no-budget"
+    case noCopilotEmpty = "no-copilot-empty"
 
     // An unknown or empty value gives typical.
     public init(launchValue: String) {
@@ -33,13 +36,21 @@ public struct DemoScenario: Sendable {
   public let previousTurns: [Turn]
   public let outcomes: GitHubOutcomes
   public let copilotReviewCount: Int
+  // The error the store feeds to the same tracker path as a real Copilot error. nil in the Copilot scenarios.
+  public let copilotError: CopilotUsageError?
+  public let portkeyBudgetUSD: Double?
+  public let portkeyRecords: [PortkeyRecord]
 
   public init(name: Name, now: Date) {
     let shape = Shape.of(name)
     let calendar = Runway.utcCalendar
     let today = calendar.startOfDay(for: now)
     let requestedCycleStart = calendar.date(byAdding: .day, value: -shape.elapsedDays, to: today)!
-    let resetDate = calendar.date(byAdding: .month, value: 1, to: requestedCycleStart)!
+    let copilotError = Self.copilotError(for: name)
+    // The store ignores usage in a no-Copilot state, but the reset date keeps the Portkey cycle on the UTC month.
+    let resetDate =
+      copilotError == nil
+      ? calendar.date(byAdding: .month, value: 1, to: requestedCycleStart)! : PortkeyOnly.resetDate(now: now)
     let creditsRemaining = shape.entitlement - shape.creditsUsed
     self.name = name
     self.now = now
@@ -66,13 +77,65 @@ public struct DemoScenario: Sendable {
     } ?? []
     outcomes = shape.outcomes
     copilotReviewCount = shape.copilotReviewCount
+    self.copilotError = copilotError
+    let portkeyRecords = Self.portkeyRecords(name: name, now: now)
+    self.portkeyRecords = portkeyRecords
+    portkeyBudgetUSD = name == .portkeyOnly ? Self.portkeyBudgetUSD(records: portkeyRecords, resetDate: resetDate, now: now) : nil
   }
 
   // Bundled prices only, so a prices.json override does not change the demo.
   public var sessionCredits: SessionCredits {
     SessionCredits.aggregate(
-      turns: previousTurns + turns, prices: PriceTable.bundled, cycleStart: Runway.cycleStart(resetDate: usage.resetDate), now: now
+      turns: previousTurns + turns, prices: PriceTable.bundled, portkeyRecords: portkeyRecords,
+      cycleStart: Runway.cycleStart(resetDate: usage.resetDate), now: now
     )
+  }
+
+  static func copilotError(for name: Name) -> CopilotUsageError? {
+    switch name {
+    case .portkeyOnly: .httpStatus(403)
+    case .portkeyOnlyNoBudget, .noCopilotEmpty: .notLoggedIn
+    default: nil
+    }
+  }
+
+  // Three records a day at 10:00, 13:00 and 16:00 UTC, from the start of the previous month through now.
+  static func portkeyRecords(name: Name, now: Date) -> [PortkeyRecord] {
+    guard name == .portkeyOnly || name == .portkeyOnlyNoBudget else { return [] }
+    let calendar = Runway.utcCalendar
+    let cycleStart = Runway.cycleStart(resetDate: PortkeyOnly.resetDate(now: now))
+    let models = ["gpt-6.1-sol", "gemini-3.8-flash", "gpt-6-luna"]
+    let costUSDByModel = [0.30, 0.12, 0.06]
+    let sources: [SessionSource] = [.opencode, .pi, .omp]
+    var records: [PortkeyRecord] = []
+    var day = calendar.date(byAdding: .month, value: -1, to: cycleStart)!
+    while day <= now {
+      for hour in [10, 13, 16] {
+        let timestamp = day.addingTimeInterval(Double(hour) * 3_600)
+        guard timestamp <= now else { break }
+        let recordIndex = records.count
+        let modelIndex = recordIndex % models.count
+        // Every seventh record has no stored cost, so the unpriced note shows.
+        records.append(
+          PortkeyRecord(
+            model: models[modelIndex], timestamp: timestamp, source: sources[recordIndex % sources.count],
+            costUSD: recordIndex % 7 == 6 ? nil : costUSDByModel[modelIndex]
+          )
+        )
+      }
+      day = calendar.date(byAdding: .day, value: 1, to: day)!
+    }
+    return records
+  }
+
+  // The runway ends at about half of the days left: this month's spend plus the average daily burn times half
+  // of the days until the reset, at least one day, rounded up to whole dollars. Days count as whole UTC days.
+  // At least $1, so the budget UI shows before the first request of the month.
+  static func portkeyBudgetUSD(records: [PortkeyRecord], resetDate: Date, now: Date) -> Double {
+    let monthSpentUSD = PortkeySpend(records: records.filter { $0.timestamp >= Runway.cycleStart(resetDate: resetDate) }).totalUSD
+    let dailyBurnUSD = Runway.averageDailyBurn(credits: monthSpentUSD, resetDate: resetDate, now: now)
+    let daysUntilReset = Runway.utcCalendar.dateComponents([.day], from: now, to: resetDate).day!
+    return max((monthSpentUSD + dailyBurnUSD * Double(max(daysUntilReset / 2, 1))).rounded(.up), 1)
   }
 
   // The value after -demo. nil without -demo, and empty when -demo is the last argument.
@@ -160,7 +223,7 @@ public struct DemoScenario: Sendable {
           previousTokenScale: nil,
           outcomes: GitHubOutcomes(prsMerged: 1, prsOpen: 1, prsReviewed: 2, commits: 9), copilotReviewCount: 0
         )
-      case .edgeEmpty:
+      case .edgeEmpty, .portkeyOnly, .portkeyOnlyNoBudget, .noCopilotEmpty:
         Shape(
           entitlement: 1_500, creditsUsed: 0, elapsedDays: 0, turnsPerDay: 0,
           models: typicalModels, categories: typicalCategories, tokenScale: 1,

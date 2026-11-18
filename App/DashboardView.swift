@@ -14,7 +14,6 @@ struct DashboardView: View {
   let usageStore: UsageStore
   @State private var summaryCopied = false
   @AppStorage(Theme.taskPalettePreferenceKey) private var taskPalettePreference = TaskPalettePreference.unset
-  @AppStorage(UsageStore.portkeyBudgetKey) private var portkeyBudgetUSD: Double?
   @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiatesWithoutColor
 
   private var taskPalette: TaskPalette {
@@ -22,36 +21,59 @@ struct DashboardView: View {
   }
 
   var body: some View {
-    let health = RunwayHealth(usage: usageStore.usage, hasError: usageStore.usageError != nil, now: .now, days: usageStore.runwayDays)
-    let gaugeHealth = RunwayHealth(usage: usageStore.gaugeUsage, hasError: usageStore.usageError != nil, now: .now, days: usageStore.runwayDays)
+    let health = RunwayHealth(usage: usageStore.usage, hasError: usageStore.hasUsageError, now: .now, days: usageStore.runwayDays)
+    let gaugeHealth = RunwayHealth(usage: usageStore.gaugeUsage, hasError: usageStore.hasUsageError, now: .now, days: usageStore.runwayDays)
     ScrollView {
       VStack(alignment: .leading, spacing: Theme.Spacing.panel) {
-        if let usage = usageStore.usage {
-          insightBanner(usage: usage, health: gaugeHealth)
-          HStack(alignment: .top, spacing: Theme.Spacing.regular) {
-            runwayCard(usage: usageStore.gaugeUsage ?? usage, health: gaugeHealth)
-            remainingCard(usage: usageStore.gaugeUsage ?? usage, health: gaugeHealth)
-            kpiCard("Average daily burn") {
-              Text(Credits.formatted(Runway.averageDailyBurn(usage: usage, now: .now, days: usageStore.runwayDays)))
-                .bigFigureStyle(size: 34)
-              kpiDetail("credits per \(usageStore.runwayDays.dayWord())")
+        switch usageStore.copilotState {
+        case .copilot:
+          if let usage = usageStore.usage {
+            insightBanner(
+              RunwayInsight.banner(
+                usage: usage, errorMessage: usageStore.errorMessage, categoryCredits: usageStore.categoryCredits, now: .now,
+                days: usageStore.runwayDays, combined: usageStore.combinedBudget
+              ),
+              health: gaugeHealth
+            )
+            HStack(alignment: .top, spacing: Theme.Spacing.regular) {
+              runwayCard(usage: usageStore.gaugeUsage ?? usage, health: gaugeHealth)
+              remainingCard(usage: usageStore.gaugeUsage ?? usage, health: gaugeHealth)
+              kpiCard("Average daily burn") {
+                Text(Credits.formatted(Runway.averageDailyBurn(usage: usage, now: .now, days: usageStore.runwayDays)))
+                  .bigFigureStyle(size: 34)
+                kpiDetail("credits per \(usageStore.runwayDays.dayWord())")
+              }
+              outcomesCard(usage: usage)
             }
-            outcomesCard(usage: usage)
+            .fixedSize(horizontal: false, vertical: true)
+            dailyBurnChart(resetDate: usage.resetDate, health: health)
+            HStack(alignment: .top, spacing: Theme.Spacing.regular) {
+              taskCard
+              modelCard(usage: usage)
+              agentCard(usage: usage)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            projectCard
+            topSessionsCard
+            portkeySection(resetDate: usage.resetDate)
+          } else {
+            errorText
           }
-          .fixedSize(horizontal: false, vertical: true)
-          dailyBurnChart(usage: usage, health: health)
-          HStack(alignment: .top, spacing: Theme.Spacing.regular) {
-            taskCard
-            modelCard(usage: usage)
-            agentCard(usage: usage)
+        case .portkeyOnly(let absence):
+          if let resetDate = usageStore.cycleResetDate {
+            insightBanner(
+              RunwayInsight.portkeyOnlyBanner(
+                usage: usageStore.gaugeUsage, spentUSD: usageStore.portkeySpend.totalUSD, absence: absence, now: .now,
+                days: usageStore.runwayDays
+              ),
+              health: gaugeHealth
+            )
+            portkeyOnlyKPIRow(resetDate: resetDate, health: gaugeHealth)
+            dailyBurnChart(resetDate: resetDate, health: gaugeHealth)
+            portkeySection(resetDate: resetDate)
           }
-          .fixedSize(horizontal: false, vertical: true)
-          projectCard
-          topSessionsCard
-          portkeySection(usage: usage)
-        } else {
-          Text(usageStore.errorMessage ?? "Loading usage from GitHub.")
-            .foregroundStyle(.secondary)
+        case .noPortkeyData:
+          errorText
         }
         if let sessionsWarning = usageStore.sessionsWarning {
           Text(sessionsWarning)
@@ -92,21 +114,30 @@ struct DashboardView: View {
     }
   }
 
+  private var errorText: some View {
+    Text(usageStore.errorMessage ?? "Loading usage from GitHub.")
+      .foregroundStyle(.secondary)
+  }
+
   private var cycleSubtitle: String {
+    if usageStore.isPortkeyOnly, let resetDate = usageStore.cycleResetDate {
+      return "Portkey only · \(cycleRange(resetDate: resetDate))"
+    }
     guard let usage = usageStore.usage else { return "" }
-    let cycleStart = Runway.cycleStart(resetDate: usage.resetDate)
-    let lastCycleDay = Runway.lastCycleDay(resetDate: usage.resetDate)
-    return "Cycle \(day(cycleStart)) to \(day(lastCycleDay)) · resets \(day(usage.resetDate))"
+    return "Cycle \(cycleRange(resetDate: usage.resetDate))"
+  }
+
+  private func cycleRange(resetDate: Date) -> String {
+    let cycleStart = Runway.cycleStart(resetDate: resetDate)
+    let lastCycleDay = Runway.lastCycleDay(resetDate: resetDate)
+    return "\(day(cycleStart)) to \(day(lastCycleDay)) · resets \(day(resetDate))"
   }
 
   // MARK: Insight banner
 
-  private func insightBanner(usage: QuotaUsage, health: RunwayHealth) -> some View {
+  private func insightBanner(_ text: (headline: String, detail: String), health: RunwayHealth) -> some View {
     let accent = Theme.accent(health)
-    let (headline, detail) = RunwayInsight.banner(
-      usage: usage, errorMessage: usageStore.errorMessage, categoryCredits: usageStore.categoryCredits, now: .now,
-      days: usageStore.runwayDays, combined: usageStore.combinedBudget
-    )
+    let (headline, detail) = text
     return HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.regular) {
       Image(systemName: bannerSymbolName(health: health))
         .font(.system(size: 15, weight: .semibold))
@@ -124,7 +155,7 @@ struct DashboardView: View {
   }
 
   private func bannerSymbolName(health: RunwayHealth) -> String {
-    if let usageError = usageStore.usageError { return RunwayGlyph.menuBarSymbolName(error: usageError) }
+    if usageStore.hasUsageError, let usageError = usageStore.usageError { return RunwayGlyph.menuBarSymbolName(error: usageError) }
     switch health {
     case .healthy: return "checkmark.circle"
     case .short: return "exclamationmark.triangle"
@@ -243,6 +274,52 @@ struct DashboardView: View {
     }
   }
 
+  // With no budget there is no runway, so Spent takes the place of Left.
+  private func portkeyOnlyKPIRow(resetDate: Date, health: RunwayHealth) -> some View {
+    let spend = usageStore.portkeySpend
+    let runwayDays = usageStore.runwayDays
+    return HStack(alignment: .top, spacing: Theme.Spacing.regular) {
+      if let budgetUsage = usageStore.gaugeUsage {
+        runwayCard(usage: budgetUsage, health: health)
+        kpiCard("Left") {
+          Text(PortkeySpend.formatted(max(budgetUsage.creditsRemaining, 0))).bigFigureStyle(size: 34)
+          shareBar(fraction: MenuBarTitle.gaugeFraction(usage: budgetUsage, mode: .left), color: Theme.accent(health))
+          kpiDetail(
+            "of \(PortkeySpend.formatted(budgetUsage.entitlement)), \(Runway.wholeGaugePercent(usage: budgetUsage, mode: .left))%"
+          )
+        }
+      } else {
+        kpiCard("Runway") {
+          Text("--").bigFigureStyle(size: 34)
+          Button("Set a monthly budget to see runway") {
+            usageStore.settingsTab = .sources
+            SettingsWindowController.show(usageStore: usageStore)
+          }
+          .buttonStyle(.link)
+          .font(.system(size: 12))
+          .lineLimit(3)
+          .fixedSize(horizontal: false, vertical: true)
+        }
+        kpiCard("Spent") {
+          Text(PortkeySpend.formatted(spend.totalUSD)).bigFigureStyle(size: 34)
+          kpiDetail("this month")
+        }
+      }
+      kpiCard("Average daily burn") {
+        Text(PortkeySpend.formatted(Runway.averageDailyBurn(credits: spend.totalUSD, resetDate: resetDate, now: .now, days: runwayDays)))
+          .bigFigureStyle(size: 34)
+        kpiDetail("USD per \(runwayDays.dayWord())")
+      }
+      kpiCard("Requests") {
+        Text("\(spend.requestCount)").bigFigureStyle(size: 34)
+        if let averageUSDPerRequest = spend.averageUSDPerRequest {
+          kpiDetail("\(PortkeySpend.formatted(averageUSDPerRequest)) each")
+        }
+      }
+    }
+    .fixedSize(horizontal: false, vertical: true)
+  }
+
   // MARK: Share cards
 
   private var taskCard: some View {
@@ -310,24 +387,17 @@ struct DashboardView: View {
 
   // MARK: Portkey
 
-  // Demo mode shows fake data, so it ignores the real budget.
-  private var shownPortkeyBudgetUSD: Double? {
-    #if DEBUG
-    if DemoLaunch.isActive { return nil }
-    #endif
-    return portkeyBudgetUSD
-  }
-
   @ViewBuilder
-  private func portkeySection(usage: QuotaUsage) -> some View {
+  private func portkeySection(resetDate: Date) -> some View {
     let spend = usageStore.portkeySpend
-    if PortkeyBudget.showsBlock(requestCount: spend.requestCount, budgetUSD: shownPortkeyBudgetUSD) {
+    if PortkeyBudget.showsBlock(requestCount: spend.requestCount, budgetUSD: usageStore.portkeyBudgetUSD) {
       PortkeyDashboardSection(
         spend: spend,
         budgetStatus: PortkeyBudget.status(
-          spentUSD: spend.totalUSD, budgetUSD: shownPortkeyBudgetUSD, resetDate: usage.resetDate, now: .now, days: usageStore.runwayDays
+          spentUSD: spend.totalUSD, budgetUSD: usageStore.portkeyBudgetUSD, resetDate: resetDate, now: .now, days: usageStore.runwayDays
         ),
-        dateRange: "\(day(Runway.cycleStart(resetDate: usage.resetDate))) to \(day(.now))"
+        dateRange: "\(day(Runway.cycleStart(resetDate: resetDate))) to \(day(.now))",
+        isPortkeyOnly: usageStore.isPortkeyOnly
       )
       .padding(.top, Theme.Spacing.regular)
     }
@@ -496,9 +566,18 @@ struct DashboardView: View {
       }
   }
 
-  private func dailyBurnChart(usage: QuotaUsage, health: RunwayHealth) -> some View {
-    let cycleDayCount = Runway.cycleDayCount(resetDate: usage.resetDate)
-    if let combined = usageStore.combinedBudget {
+  // The USD form for Portkey only and for a combined budget, else the credits form.
+  private func dailyBurnChart(resetDate: Date, health: RunwayHealth) -> some View {
+    let cycleDayCount = Runway.cycleDayCount(resetDate: resetDate)
+    let usdAverageDailyBurn: Double? =
+      if usageStore.isPortkeyOnly {
+        usageStore.gaugeUsage.map { Runway.averageDailyBurn(usage: $0, now: .now, days: usageStore.runwayDays) }
+          ?? Runway.averageDailyBurn(
+            credits: usageStore.portkeySpend.totalUSD, resetDate: resetDate, now: .now, days: usageStore.runwayDays)
+      } else {
+        usageStore.combinedBudget.map { Runway.averageDailyBurn(usage: $0.usage, now: .now, days: usageStore.runwayDays) }
+      }
+    if let usdAverageDailyBurn {
       let days = CombinedDailyBurn.days(copilot: usageStore.dailyCredits, portkeyRecords: usageStore.portkeySpend.records)
       let previousDays = CombinedDailyBurn.days(
         copilot: usageStore.previousDailyCredits, portkeyRecords: usageStore.previousPortkeySpend.records
@@ -512,10 +591,11 @@ struct DashboardView: View {
         previousTotals: previousTotals,
         comparisonSentence: comparison?.sentence(unit: .usd),
         cycleDayCount: cycleDayCount,
-        averageDailyBurn: Runway.averageDailyBurn(usage: combined.usage, now: .now, days: usageStore.runwayDays),
+        averageDailyBurn: usdAverageDailyBurn,
         unit: .usd,
         runwayDays: usageStore.runwayDays,
-        health: health
+        health: health,
+        isPortkeyOnly: usageStore.isPortkeyOnly
       )
     }
     return DailyBurnChart(
@@ -523,7 +603,7 @@ struct DashboardView: View {
       previousTotals: usageStore.previousDailyCredits,
       comparisonSentence: usageStore.cycleComparisonSentence,
       cycleDayCount: cycleDayCount,
-      averageDailyBurn: Runway.averageDailyBurn(usage: usage, now: .now, days: usageStore.runwayDays),
+      averageDailyBurn: usageStore.usage.map { Runway.averageDailyBurn(usage: $0, now: .now, days: usageStore.runwayDays) } ?? 0,
       unit: .credits,
       runwayDays: usageStore.runwayDays,
       health: health
@@ -567,7 +647,13 @@ private struct DailyBurnChart: View {
   }
   let runwayDays: RunwayDays
   let health: RunwayHealth
+  // Portkey only has no Copilot series, so the Portkey bars take the full bar color and no text names Copilot.
+  var isPortkeyOnly = false
   @State private var selectedDayPosition: Double?
+
+  private var portkeyColor: Color {
+    isPortkeyOnly ? DashboardView.barColor : Self.portkeyBarColor
+  }
 
   static func dayLabel(_ index: Int) -> String {
     "Day \(index + 1)"
@@ -596,7 +682,7 @@ private struct DailyBurnChart: View {
     let copilotTotal = days.reduce(0) { $0 + $1.copilot }
     let portkeyTotal = days.reduce(0) { $0 + $1.portkey }
     let previousTotal = previousTotals.reduce(0) { $0 + $1.credits }
-    let averageName = unit == .usd ? "Combined average" : "GitHub average"
+    let averageName = isPortkeyOnly ? "Portkey average" : unit == .usd ? "Combined average" : "GitHub average"
     let showsPreviousCycle = previousTotal > 0
     let averageColor = Theme.accent(health)
     let dayCount = max(cycleDayCount, days.count, showsPreviousCycle ? previousTotals.count : 0)
@@ -610,16 +696,18 @@ private struct DailyBurnChart: View {
             .captionStyle()
           Spacer()
           HStack(spacing: Theme.Spacing.panel) {
-            HStack(spacing: Theme.Spacing.small) {
-              RoundedRectangle(cornerRadius: 2)
-                .fill(DashboardView.barColor)
-                .frame(width: 10, height: 10)
-              Text(unit == .usd ? "Copilot, \(amount(copilotTotal)) local" : "This cycle, \(amount(copilotTotal)) local credits")
+            if !isPortkeyOnly {
+              HStack(spacing: Theme.Spacing.small) {
+                RoundedRectangle(cornerRadius: 2)
+                  .fill(DashboardView.barColor)
+                  .frame(width: 10, height: 10)
+                Text(unit == .usd ? "Copilot, \(amount(copilotTotal)) local" : "This cycle, \(amount(copilotTotal)) local credits")
+              }
             }
             if unit == .usd {
               HStack(spacing: Theme.Spacing.small) {
                 RoundedRectangle(cornerRadius: 2)
-                  .fill(Self.portkeyBarColor)
+                  .fill(portkeyColor)
                   .frame(width: 10, height: 10)
                 Text("Portkey, \(amount(portkeyTotal))")
               }
@@ -647,16 +735,18 @@ private struct DailyBurnChart: View {
       Chart {
         ForEach(Array(days.enumerated()), id: \.offset) { index, chartDay in
           let dayName = chartDay.day.formatted(DashboardView.dayLabelStyle)
-          RectangleMark(
-            xStart: .value("Day start", Self.dayPosition(index) - Self.barHalfWidth),
-            xEnd: .value("Day end", Self.dayPosition(index) + Self.barHalfWidth),
-            yStart: .value("Baseline", 0.0),
-            yEnd: .value(unit == .usd ? "Copilot USD" : "Credits", chartDay.copilot)
-          )
-          .foregroundStyle(DashboardView.barColor)
-          .cornerRadius(4)
-          .accessibilityLabel(unit == .usd ? "This cycle, \(dayName), Copilot" : "This cycle, \(dayName)")
-          .accessibilityValue(unit == .usd ? amount(chartDay.copilot) : "\(amount(chartDay.copilot)) local credits")
+          if !isPortkeyOnly {
+            RectangleMark(
+              xStart: .value("Day start", Self.dayPosition(index) - Self.barHalfWidth),
+              xEnd: .value("Day end", Self.dayPosition(index) + Self.barHalfWidth),
+              yStart: .value("Baseline", 0.0),
+              yEnd: .value(unit == .usd ? "Copilot USD" : "Credits", chartDay.copilot)
+            )
+            .foregroundStyle(DashboardView.barColor)
+            .cornerRadius(4)
+            .accessibilityLabel(unit == .usd ? "This cycle, \(dayName), Copilot" : "This cycle, \(dayName)")
+            .accessibilityValue(unit == .usd ? amount(chartDay.copilot) : "\(amount(chartDay.copilot)) local credits")
+          }
           if chartDay.portkey > 0 {
             RectangleMark(
               xStart: .value("Day start", Self.dayPosition(index) - Self.barHalfWidth),
@@ -664,7 +754,7 @@ private struct DailyBurnChart: View {
               yStart: .value("Copilot USD", chartDay.copilot),
               yEnd: .value("Total USD", chartDay.total)
             )
-            .foregroundStyle(Self.portkeyBarColor)
+            .foregroundStyle(portkeyColor)
             .cornerRadius(4)
             .accessibilityLabel("This cycle, \(dayName), Portkey")
             .accessibilityValue(amount(chartDay.portkey))
@@ -770,6 +860,7 @@ private struct DailyBurnChart: View {
   private func hoverLine(_ chartDay: ChartDay) -> String {
     let dayName = chartDay.day.formatted(DashboardView.dayLabelStyle)
     guard unit == .usd else { return "\(dayName): \(amount(chartDay.total)) credits" }
+    if isPortkeyOnly { return "\(dayName): \(amount(chartDay.portkey))" }
     return "\(dayName): \(amount(chartDay.total)) (\(amount(chartDay.copilot)) Copilot, \(amount(chartDay.portkey)) Portkey)"
   }
 
@@ -784,7 +875,9 @@ private struct DailyBurnChart: View {
 
   private func accessibilitySummary(copilotTotal: Double, portkeyTotal: Double, previousTotal: Double) -> String {
     var sentences: [String]
-    if unit == .usd {
+    if isPortkeyOnly {
+      sentences = ["This cycle, \(amount(portkeyTotal)) Portkey over \(days.count) days."]
+    } else if unit == .usd {
       sentences = ["This cycle, \(amount(copilotTotal)) Copilot and \(amount(portkeyTotal)) Portkey over \(days.count) days."]
     } else {
       sentences = ["This cycle, \(amount(copilotTotal)) local credits over \(days.count) days."]

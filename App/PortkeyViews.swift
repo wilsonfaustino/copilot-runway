@@ -186,13 +186,14 @@ struct PortkeyDashboardSection: View {
   let spend: PortkeySpend
   let budgetStatus: PortkeyBudget.Status?
   let dateRange: String
+  var isPortkeyOnly = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: Theme.Spacing.regular) {
       HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.regular) {
         Text("Portkey")
           .font(.system(size: 20, weight: .semibold))
-        Text("\(dateRange), USD. Not part of the Copilot runway.")
+        Text(isPortkeyOnly ? "\(dateRange), USD." : "\(dateRange), USD. Not part of the Copilot runway.")
           .captionStyle()
         Spacer()
       }

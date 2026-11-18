@@ -161,4 +161,67 @@ func demoScenarioPreviousTurnsFallInsideTheLastCycle(name: DemoScenario.Name, la
   #expect(DemoScenario.Name(launchValue: "no-such-scenario") == .typical)
   #expect(DemoScenario.Name(launchValue: "") == .typical)
 }
+
+let portkeyDemoNow = utcDate("2026-11-16T12:00:00Z")
+let copilotDemoNames: [DemoScenario.Name] = [
+  .typical, .manyModels, .heavyPlanning, .edgeUnpriced, .edgeRunout, .edgeUncategorized, .edgeEmpty,
+]
+
+@Test(arguments: copilotDemoNames)
+func copilotScenariosHaveNoPortkeyOnlyData(name: DemoScenario.Name) {
+  let scenario = DemoScenario(name: name, now: portkeyDemoNow)
+  #expect(scenario.copilotError == nil)
+  #expect(scenario.portkeyBudgetUSD == nil)
+  #expect(scenario.portkeyRecords.isEmpty)
+}
+
+@Test func portkeyOnlyScenario() throws {
+  let scenario = DemoScenario(name: .portkeyOnly, now: portkeyDemoNow)
+  let copilotError = try #require(scenario.copilotError)
+  #expect(PortkeyOnly.absence(for: copilotError) == .noSeat)
+  #expect(scenario.usage.resetDate == PortkeyOnly.resetDate(now: portkeyDemoNow))
+  let sessionCredits = scenario.sessionCredits
+  let monthStart = utcDate("2026-11-01T00:00:00Z")
+  #expect(!sessionCredits.portkey.records.isEmpty)
+  #expect(sessionCredits.portkey.records.allSatisfy { $0.timestamp >= monthStart && $0.timestamp <= portkeyDemoNow })
+  #expect(sessionCredits.portkey.byModel.count == 3)
+  #expect(sessionCredits.portkey.bySource.count == 3)
+  #expect(sessionCredits.portkey.unpricedCount > 0)
+  #expect(sessionCredits.byModel.isEmpty)
+  let budgetUsage = try #require(
+    PortkeyBudget.usage(
+      spentUSD: sessionCredits.portkey.totalUSD, budgetUSD: scenario.portkeyBudgetUSD, resetDate: scenario.usage.resetDate
+    )
+  )
+  #expect(!Runway.lastsTheCycle(usage: budgetUsage, now: portkeyDemoNow))
+  let wholeDaysLeft = try #require(Runway.wholeDaysLeft(usage: budgetUsage, now: portkeyDemoNow))
+  #expect((1...15).contains(wholeDaysLeft))
+}
+
+@Test func portkeyOnlyKeepsABudgetBeforeTheFirstRequestOfTheMonth() throws {
+  let firstMorning = utcDate("2026-12-01T09:00:00Z")
+  let scenario = DemoScenario(name: .portkeyOnly, now: firstMorning)
+  #expect(scenario.sessionCredits.portkey.requestCount == 0)
+  let budgetUSD = try #require(scenario.portkeyBudgetUSD)
+  #expect(budgetUSD > 0)
+}
+
+@Test func portkeyOnlyHasLastMonth() {
+  let sessionCredits = DemoScenario(name: .portkeyOnly, now: portkeyDemoNow).sessionCredits
+  #expect(sessionCredits.previousPortkey.requestCount > 0)
+}
+
+@Test func portkeyOnlyNoBudgetScenario() {
+  let scenario = DemoScenario(name: .portkeyOnlyNoBudget, now: portkeyDemoNow)
+  #expect(scenario.copilotError == .notLoggedIn)
+  #expect(scenario.portkeyBudgetUSD == nil)
+  #expect(scenario.sessionCredits.portkey.requestCount > 0)
+}
+
+@Test func noCopilotEmptyScenario() {
+  let scenario = DemoScenario(name: .noCopilotEmpty, now: portkeyDemoNow)
+  #expect(scenario.copilotError == .notLoggedIn)
+  #expect(scenario.portkeyBudgetUSD == nil)
+  #expect(scenario.portkeyRecords.isEmpty)
+}
 #endif

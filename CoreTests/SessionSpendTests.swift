@@ -206,7 +206,8 @@ func spend(credits: Double, turnCount: Int = 9, first: String, last: String, big
 func demoScenarioHasProjectsAndSessionsThatAddUp(name: DemoScenario.Name) {
   let sessionCredits = DemoScenario(name: name, now: demoNow).sessionCredits
   let modelTotal = sessionCredits.byModel.compactMap(\.credits).reduce(0, +)
-  if name == .edgeEmpty {
+  // The Portkey-only scenarios have no Copilot sessions.
+  if [.edgeEmpty, .portkeyOnly, .portkeyOnlyNoBudget, .noCopilotEmpty].contains(name) {
     #expect(sessionCredits.byProject.isEmpty)
     #expect(sessionCredits.bySession.isEmpty)
     return

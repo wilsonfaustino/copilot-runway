@@ -59,6 +59,29 @@ public enum RunwayInsight {
     "You used all of your Portkey budget for this cycle. Resets \(day(usage.resetDate, locale: locale))."
   }
 
+  public static func portkeyOnlyBanner(
+    usage: QuotaUsage?,
+    spentUSD: Double,
+    absence: CopilotAbsence,
+    now: Date,
+    locale: Locale = .current,
+    days: RunwayDays = .calendar
+  ) -> (headline: String, detail: String) {
+    let headline: String
+    if let usage {
+      if usage.creditsRemaining <= 0 {
+        headline = portkeyLimitSentence(usage: usage, locale: locale)
+      } else {
+        headline =
+          portkeyRunOutSentence(usage: usage, now: now, locale: locale, days: days)
+          ?? "Nothing spent on Portkey yet this month."
+      }
+    } else {
+      headline = "\(PortkeyOnly.spentTitle(spentUSD: spentUSD, locale: locale)) spent on Portkey this month."
+    }
+    return (headline, PortkeyOnly.causeLine(absence, hasBudget: usage != nil))
+  }
+
   // The highest average burn from now on that still reaches the reset with credits left.
   public static func requiredDailyBurn(usage: QuotaUsage, now: Date, days: RunwayDays = .calendar) -> Double? {
     guard !usage.isUnlimited, now < usage.resetDate else { return nil }

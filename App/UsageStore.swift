@@ -2,6 +2,12 @@ import AppKit
 import Core
 import Observation
 
+enum CopilotState: Equatable {
+  case copilot
+  case portkeyOnly(CopilotAbsence)
+  case noPortkeyData(CopilotAbsence)
+}
+
 @MainActor
 @Observable
 final class UsageStore {
@@ -38,6 +44,10 @@ final class UsageStore {
   private(set) var sessionsWarning: String?
   private(set) var portkeySpend = PortkeySpend(records: [])
   private(set) var previousPortkeySpend = PortkeySpend(records: [])
+  private(set) var copilotState = CopilotState.copilot
+  // 0 or less counts as no budget.
+  private(set) var portkeyBudgetUSD: Double?
+  private(set) var portkeyOnlyResetDate: Date?
   private(set) var organization = UserDefaults.standard.string(forKey: organizationKey)
     .flatMap(GitHubOutcomesClient.normalizedOrganization)
   private(set) var outcomes: GitHubOutcomes?
@@ -61,6 +71,7 @@ final class UsageStore {
   @ObservationIgnored private var lastReleaseCheck: Date?
   // The poll and the wake observer can both call refresh() at wake.
   @ObservationIgnored private var isRefreshing = false
+  @ObservationIgnored private var absenceTracker = CopilotAbsenceTracker()
   #if DEBUG
   // Fixed fake data from -demo. Demo mode makes no network calls, reads no session files and writes no settings.
   @ObservationIgnored private let demoScenario = DemoLaunch.scenario
@@ -71,6 +82,7 @@ final class UsageStore {
     // Set before the first render, so the real organization never shows in demo mode.
     if demoScenario != nil { organization = DemoScenario.organization }
     #endif
+    portkeyBudgetUSD = savedPortkeyBudgetUSD()
     pollingTask = Task { [weak self] in
       while !Task.isCancelled {
         await self?.refresh()
@@ -113,38 +125,77 @@ final class UsageStore {
     return Set((UserDefaults.standard.stringArray(forKey: daysOffKey) ?? []).compactMap(LocalDay.init(string:)))
   }
 
-  // didChangeNotification fires for every setting, so only a new mode or day unit changes the store.
+  // Demo mode ignores the saved budget and uses the scenario budget, which is nil for the Copilot scenarios.
+  private func savedPortkeyBudgetUSD() -> Double? {
+    #if DEBUG
+    if let demoScenario { return demoScenario.portkeyBudgetUSD }
+    #endif
+    guard let budgetUSD = UserDefaults.standard.object(forKey: Self.portkeyBudgetKey) as? Double, budgetUSD > 0 else {
+      return nil
+    }
+    return budgetUSD
+  }
+
+  // didChangeNotification fires for every setting, so only a new mode, day unit or budget changes the store.
   private func reloadGaugeMode() {
     let savedMode = Self.savedGaugeMode()
-    let savedDays = Self.savedRunwayDays(resetDate: usage?.resetDate)
-    guard savedMode != gaugeMode || savedDays != runwayDays || currentCombinedBudget() != combinedBudget else { return }
+    let savedDays = Self.savedRunwayDays(resetDate: cycleResetDate)
+    let savedBudgetUSD = savedPortkeyBudgetUSD()
+    let budgetChanged = savedBudgetUSD != portkeyBudgetUSD
+    if budgetChanged {
+      portkeyBudgetUSD = savedBudgetUSD
+      if copilotState != .copilot, let absence = absenceTracker.absence { chooseNoCopilotState(absence: absence) }
+    }
+    guard budgetChanged || savedMode != gaugeMode || savedDays != runwayDays || currentCombinedBudget() != combinedBudget else {
+      return
+    }
     gaugeMode = savedMode
     runwayDays = savedDays
     updateGauge()
   }
 
-  // Demo mode ignores the saved budget, like the popover, so demo builds show no combined gauge.
   private func currentCombinedBudget() -> CombinedBudget? {
     guard let usage else { return nil }
-    var budgetUSD = UserDefaults.standard.object(forKey: Self.portkeyBudgetKey) as? Double
-    #if DEBUG
-    if DemoLaunch.isActive { budgetUSD = nil }
-    #endif
-    return CombinedBudget.make(copilot: usage, portkeySpentUSD: portkeySpend.totalUSD, portkeyBudgetUSD: budgetUSD)
+    return CombinedBudget.make(copilot: usage, portkeySpentUSD: portkeySpend.totalUSD, portkeyBudgetUSD: portkeyBudgetUSD)
   }
 
-  // The one place that sets the combined budget and the title. An error title stays as it is.
+  // The one place that sets the combined budget and the title. In Copilot mode an error title stays as it is.
   private func updateGauge() {
     combinedBudget = currentCombinedBudget()
-    if usageError == nil, let gaugeUsage {
-      title = MenuBarTitle.title(usage: gaugeUsage, now: .now, mode: gaugeMode, days: runwayDays)
+    switch copilotState {
+    case .copilot:
+      if usageError == nil, let gaugeUsage {
+        title = MenuBarTitle.title(usage: gaugeUsage, now: .now, mode: gaugeMode, days: runwayDays)
+      }
+    case .portkeyOnly:
+      title =
+        gaugeUsage.map { MenuBarTitle.title(usage: $0, now: .now, mode: gaugeMode, days: runwayDays) }
+        ?? PortkeyOnly.spentTitle(spentUSD: portkeySpend.totalUSD)
+    case .noPortkeyData:
+      if let usageError { title = MenuBarTitle.title(error: usageError) }
     }
   }
 
-  var gaugeUsage: QuotaUsage? { combinedBudget?.usage ?? usage }
+  var isPortkeyOnly: Bool {
+    if case .portkeyOnly = copilotState { return true }
+    return false
+  }
+
+  var hasUsageError: Bool { usageError != nil && !isPortkeyOnly }
+
+  // nil before the first fetch, so gaugeUsage is nil then.
+  var cycleResetDate: Date? { copilotState == .copilot ? usage?.resetDate : portkeyOnlyResetDate }
+
+  var gaugeUsage: QuotaUsage? {
+    guard isPortkeyOnly else { return combinedBudget?.usage ?? usage }
+    return cycleResetDate.flatMap {
+      PortkeyBudget.usage(spentUSD: portkeySpend.totalUSD, budgetUSD: portkeyBudgetUSD, resetDate: $0)
+    }
+  }
 
   var gaugeParts: GaugeParts {
-    MenuBarTitle.gaugeParts(usage: usage, combined: combinedBudget, mode: gaugeMode)
+    guard isPortkeyOnly else { return MenuBarTitle.gaugeParts(usage: usage, combined: combinedBudget, mode: gaugeMode) }
+    return GaugeParts(copilot: MenuBarTitle.gaugeFraction(usage: gaugeUsage, mode: gaugeMode), portkey: 0)
   }
 
   func refresh() async {
@@ -160,6 +211,8 @@ final class UsageStore {
     Task { await refreshReleaseIfDue() }
     do throws(CopilotUsageError) {
       let usage = try await CopilotUsageClient.fetchCurrentUsage()
+      absenceTracker.observeSuccess()
+      copilotState = .copilot
       // A store that runs across the reset drops the marks of the past cycle here.
       let cycleRunwayDays = Self.savedRunwayDays(resetDate: usage.resetDate)
       if cycleRunwayDays != runwayDays { runwayDays = cycleRunwayDays }
@@ -171,11 +224,23 @@ final class UsageStore {
       // Not awaited, because a permission prompt can stay open and must not stop the poll.
       Task { await runwayNotifier.sendDueNotices(usage: usage, days: runwayDays) }
     } catch {
-      title = MenuBarTitle.title(error: error)
+      absenceTracker.observe(error, now: .now)
+      // With no Copilot, refreshWithoutCopilot sets the title.
+      if absenceTracker.absence == nil { title = MenuBarTitle.title(error: error) }
       errorMessage = error.message
       usageError = error
     }
-    // The cycle start comes from the API, so session credits wait for at least one good response.
+    if let absence = absenceTracker.absence {
+      let resetDate = PortkeyOnly.resetDate(now: .now)
+      let cycleStart = Runway.cycleStart(resetDate: resetDate)
+      let sessionCredits = await Task.detached(priority: .utility) {
+        SessionCredits.load(since: cycleStart, now: .now)
+      }.value
+      refreshWithoutCopilot(absence: absence, sessionCredits: sessionCredits, resetDate: resetDate)
+      return
+    }
+    // With no Copilot the cycle is the UTC month. Otherwise the cycle start comes from the API, so in an
+    // outage with no good response yet, session credits wait.
     guard let usage else { return }
     Task { await refreshOutcomesIfDue() }
     let cycleStart = Runway.cycleStart(resetDate: usage.resetDate)
@@ -183,8 +248,7 @@ final class UsageStore {
       SessionCredits.load(since: cycleStart, now: .now)
     }.value
     apply(sessionCredits)
-    let budgetUSD = UserDefaults.standard.object(forKey: Self.portkeyBudgetKey) as? Double
-    if let portkeyUsage = PortkeyBudget.usage(spentUSD: portkeySpend.totalUSD, budgetUSD: budgetUSD, resetDate: usage.resetDate) {
+    if let portkeyUsage = PortkeyBudget.usage(spentUSD: portkeySpend.totalUSD, budgetUSD: portkeyBudgetUSD, resetDate: usage.resetDate) {
       Task { await runwayNotifier.sendDueNotices(usage: portkeyUsage, days: runwayDays, subject: .portkey) }
     }
   }
@@ -208,9 +272,60 @@ final class UsageStore {
     updateGauge()
   }
 
+  // The Copilot data is cleared, and the Portkey spend uses the UTC month as its cycle.
+  private func refreshWithoutCopilot(absence: CopilotAbsence, sessionCredits: SessionCredits, resetDate: Date) {
+    usage = nil
+    combinedBudget = nil
+    portkeyOnlyResetDate = resetDate
+    runwayDays = Self.savedRunwayDays(resetDate: resetDate)
+    apply(sessionCredits)
+    modelCredits = []
+    categoryCredits = []
+    modelCategoryCredits = []
+    sourceCredits = []
+    projectCredits = []
+    sessionSpends = []
+    cacheHits = []
+    lowCacheSentences = []
+    modelEfficiencyNote = nil
+    cycleComparisonSentence = nil
+    outcomes = nil
+    copilotReviewCount = nil
+    // A fetch in flight is now stale, and the next Copilot response fetches again at once.
+    lastOutcomesFetch = nil
+    // The chart keeps its days and shows only Portkey.
+    dailyCredits = dailyCredits.map { DailyCredits(day: $0.day, credits: 0) }
+    previousDailyCredits = previousDailyCredits.map { DailyCredits(day: $0.day, credits: 0) }
+    chooseNoCopilotState(absence: absence)
+    lastRefresh = .now
+    updateGauge()
+    #if DEBUG
+    if demoScenario != nil { return }
+    #endif
+    if isPortkeyOnly, let gaugeUsage {
+      Task { await runwayNotifier.sendDueNotices(usage: gaugeUsage, days: runwayDays, subject: .portkey) }
+    }
+  }
+
+  private func chooseNoCopilotState(absence: CopilotAbsence) {
+    copilotState =
+      PortkeyBudget.showsBlock(requestCount: portkeySpend.requestCount, budgetUSD: portkeyBudgetUSD)
+      ? .portkeyOnly(absence) : .noPortkeyData(absence)
+  }
+
   #if DEBUG
   // No usage poll, release check, outcomes fetch, session files or run-out notices.
   private func applyDemo(_ demoScenario: DemoScenario) {
+    if let copilotError = demoScenario.copilotError {
+      usageError = copilotError
+      errorMessage = copilotError.message
+      absenceTracker.observe(copilotError, now: .now)
+      if let absence = absenceTracker.absence {
+        refreshWithoutCopilot(
+          absence: absence, sessionCredits: demoScenario.sessionCredits, resetDate: demoScenario.usage.resetDate)
+      }
+      return
+    }
     usage = demoScenario.usage
     updateGauge()
     lastRefresh = .now

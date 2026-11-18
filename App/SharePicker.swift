@@ -4,8 +4,9 @@ import SwiftUI
 // AppKit keeps only a weak reference to the picker delegate, so the app delegate owns this for the whole flow.
 @MainActor
 final class SharePicker: NSObject, @preconcurrency NSSharingServicePickerDelegate {
-  func show(image: NSImage, summary: String, relativeTo anchorView: NSView) {
-    let picker = NSSharingServicePicker(items: [image, summary])
+  // Portkey only shares the image alone, so the summary is optional.
+  func show(image: NSImage, summary: String?, relativeTo anchorView: NSView) {
+    let picker = NSSharingServicePicker(items: [image] + (summary.map { [$0] } ?? []))
     picker.delegate = self
     picker.show(relativeTo: anchorView.bounds, of: anchorView, preferredEdge: .minY)
   }
@@ -16,9 +17,7 @@ final class SharePicker: NSObject, @preconcurrency NSSharingServicePickerDelegat
     sharingServicesForItems items: [Any],
     proposedSharingServices proposedServices: [NSSharingService]
   ) -> [NSSharingService] {
-    guard let image = items.first(where: { $0 is NSImage }) as? NSImage,
-      let summary = items.first(where: { $0 is String }) as? String
-    else { return proposedServices }
+    guard let image = items.first(where: { $0 is NSImage }) as? NSImage else { return proposedServices }
     let copyImage = NSSharingService(
       title: "Copy image", image: NSImage(systemSymbolName: "photo", accessibilityDescription: nil) ?? NSImage(),
       alternateImage: nil
@@ -26,6 +25,7 @@ final class SharePicker: NSObject, @preconcurrency NSSharingServicePickerDelegat
       NSPasteboard.general.clearContents()
       NSPasteboard.general.writeObjects([image])
     }
+    guard let summary = items.first(where: { $0 is String }) as? String else { return proposedServices + [copyImage] }
     let copySummary = NSSharingService(
       title: "Copy summary", image: NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: nil) ?? NSImage(),
       alternateImage: nil
