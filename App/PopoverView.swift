@@ -292,7 +292,8 @@ struct PopoverView: View {
                 Text(insight)
                   .font(.system(size: 12.5))
                   .foregroundStyle(.secondary)
-                  .lineLimit(2)
+                  // "Runs out Nov 26, 3 workdays early." can wrap, and the headroom line must still show.
+                  .lineLimit(3)
                   .fixedSize(horizontal: false, vertical: true)
               }
               if !forShare, let usage, case .workdays(_, let daysOff) = usageStore.runwayDays {

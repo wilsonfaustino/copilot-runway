@@ -351,6 +351,15 @@ private let workdayGapNow = utcDate("2026-11-16T00:00:00Z")
       == "At this pace you run out on Nov 26, 3 workdays before the reset on Dec 1.")
 }
 
+// Nov 30 00:30 UTC is still Sun Nov 29 in Los Angeles. The gap uses the UTC date, so Mon Nov 30 counts.
+@Test func workdayGapUsesTheUTCDateInAnyTimeZone() {
+  let usage = makeUsage(creditsUsed: 13000, resetDate: workdayGapReset)
+  let days = RunwayDays.workdays(TimeZone(identifier: "America/Los_Angeles")!)
+  #expect(
+    RunwayInsight.runOutSentence(usage: usage, now: utcDate("2026-11-30T00:30:00Z"), locale: usLocale, days: days)
+      == "At this pace you run out on Nov 30, 1 workday before the reset on Dec 1.")
+}
+
 // Overage on Sat Jan 30 2027 with the reset on Mon Feb 1: no workday is left, so the text has no count.
 @Test func noWorkdayLeftBeforeResetDropsTheCount() {
   let usage = makeUsage(creditsUsed: 13000, resetDate: utcDate("2027-02-01T00:00:00Z"))

@@ -26,7 +26,8 @@ public enum RunwayDays: Equatable, Sendable {
   }
 
   // Whole UTC days from the day of start up to the day of end, the end day not counted. In workday mode a day counts
-  // when its calendar date is Monday to Friday and not a day off, the same rule as the days off grid.
+  // when its UTC date is Monday to Friday and not a day off, the same rule as the days off grid. The time zone of
+  // the mode is not used here, because the sentences show UTC dates.
   func wholeUTCDayCount(fromDayOf start: Date, toDayOf end: Date) -> Int {
     let calendar = Runway.utcCalendar
     let startDay = calendar.startOfDay(for: start)
