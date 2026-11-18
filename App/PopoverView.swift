@@ -292,7 +292,7 @@ struct PopoverView: View {
                 Text(insight)
                   .font(.system(size: 12.5))
                   .foregroundStyle(.secondary)
-                  .lineLimit(2)
+                  // No line limit: in workday mode both the run-out sentence and the headroom sentence can wrap.
                   .fixedSize(horizontal: false, vertical: true)
               }
               if !forShare, let usage, case .workdays(_, let daysOff) = usageStore.runwayDays {

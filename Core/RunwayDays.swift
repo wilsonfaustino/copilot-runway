@@ -25,6 +25,25 @@ public enum RunwayDays: Equatable, Sendable {
     return workdaySeconds / Self.secondsPerDay
   }
 
+  // Whole UTC days from the day of start up to the day of end, the end day not counted. In workday mode a day counts
+  // when its UTC date is Monday to Friday and not a day off, the same rule as the days off grid. The time zone of
+  // the mode is not used here, because the sentences show UTC dates.
+  func wholeUTCDayCount(fromDayOf start: Date, toDayOf end: Date) -> Int {
+    let calendar = Runway.utcCalendar
+    let startDay = calendar.startOfDay(for: start)
+    let endDay = calendar.startOfDay(for: end)
+    guard case .workdays(_, let daysOff) = self else {
+      return calendar.dateComponents([.day], from: startDay, to: endDay).day ?? 0
+    }
+    var workdayCount = 0
+    var cursor = startDay
+    while cursor < endDay {
+      if Self.isWorkday(cursor, in: calendar, daysOff: daysOff) { workdayCount += 1 }
+      cursor = Self.nextMidnight(after: cursor, in: calendar)
+    }
+    return workdayCount
+  }
+
   public func date(addingDays days: Double, to start: Date) -> Date {
     guard case .workdays(let timeZone, let daysOff) = self, days > 0 else {
       return start.addingTimeInterval(days * Self.secondsPerDay)

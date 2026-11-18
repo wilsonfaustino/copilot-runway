@@ -19,12 +19,14 @@ public enum RunwayInsight {
     // Overage gives a run-out in the past, but the credits ran out by now at the latest.
     let runOutDate = max(estimatedRunOut, now)
     guard runOutDate < usage.resetDate else { return .pastReset }
-    // Count calendar days in UTC so the number matches the two dates in the sentence, in both day modes.
-    let calendar = Runway.utcCalendar
-    let daysBeforeReset = calendar.dateComponents(
-      [.day], from: calendar.startOfDay(for: runOutDate), to: calendar.startOfDay(for: usage.resetDate)
-    ).day ?? 0
+    // The UTC days of the two dates in the sentence, so the run-out day counts. In workday mode only workdays count.
+    let daysBeforeReset = days.wholeUTCDayCount(fromDayOf: runOutDate, toDayOf: usage.resetDate)
     return .beforeReset(runOutDate: runOutDate, daysBeforeReset: daysBeforeReset)
+  }
+
+  // "3 workdays". nil when no workday is left before the reset, because "0 workdays" says nothing.
+  private static func gapText(daysBeforeReset: Int, days: RunwayDays) -> String? {
+    daysBeforeReset > 0 ? "\(daysBeforeReset) \(days.dayWord(count: daysBeforeReset))" : nil
   }
 
   public static func runOutSentence(usage: QuotaUsage, now: Date, locale: Locale = .current, days: RunwayDays = .calendar) -> String? {
@@ -39,8 +41,8 @@ public enum RunwayInsight {
     case nil: return nil
     case .pastReset?: return "At this pace \(lastsText) past the reset on \(resetText)."
     case .beforeReset(let runOutDate, let daysBeforeReset)?:
-      let daysText = daysBeforeReset == 1 ? "1 day" : "\(daysBeforeReset) days"
-      return "At this pace \(runsOutText) on \(day(runOutDate, locale: locale)), \(daysText) before the reset on \(resetText)."
+      let gapPrefix = gapText(daysBeforeReset: daysBeforeReset, days: days).map { "\($0) " } ?? ""
+      return "At this pace \(runsOutText) on \(day(runOutDate, locale: locale)), \(gapPrefix)before the reset on \(resetText)."
     }
   }
 
@@ -200,8 +202,8 @@ public enum RunwayInsight {
     // The figure above already says "Lasts the cycle" with the reset day, so only the headroom line is left.
     case .pastReset?: return headroomText(usage: usage, now: now, locale: locale, days: days, unit: unit).map { "\($0)." }
     case .beforeReset(let runOutDate, let daysBeforeReset)?:
-      let daysText = daysBeforeReset == 1 ? "1 day" : "\(daysBeforeReset) days"
-      return "Runs out \(day(runOutDate, locale: locale)), \(daysText) early.\(headroomLine)"
+      let earlyText = gapText(daysBeforeReset: daysBeforeReset, days: days).map { "\($0) early" } ?? "before the reset"
+      return "Runs out \(day(runOutDate, locale: locale)), \(earlyText).\(headroomLine)"
     case nil: break
     }
     if usage.isUnlimited { return "Unlimited plan, no run-out." }
