@@ -685,6 +685,10 @@ Bundled rates, in USD per 1 million tokens, from GitHub's
 | `gpt-6.1-sol` | Long context, prompt > 272K | 4.00 | 0.20 | 5.00 | 15.00 |
 | `gpt-6.1-terra` | Default, prompt <= 272K | 1.00 | 0.05 | 1.25 | 5.00 |
 | `gpt-6.1-terra` | Long context, prompt > 272K | 2.00 | 0.10 | 2.50 | 7.50 |
+| `gpt-6.2-astra` | Default, prompt <= 272K | 8.00 | 0.40 | 10.00 | 40.00 |
+| `gpt-6.2-astra` | Long context, prompt > 272K | 16.00 | 0.80 | 20.00 | 60.00 |
+| `gpt-6.2-sol` | Default, prompt <= 272K | 2.00 | 0.10 | 2.50 | 10.00 |
+| `gpt-6.2-sol` | Long context, prompt > 272K | 4.00 | 0.20 | 5.00 | 15.00 |
 | `claude-haiku-4.5` | Default, no tier | 1.00 | 0.10 | 1.25 | 5.00 |
 | `claude-haiku-5.5` | Default, prompt <= 100K | 0.10 | 0.01 | 0.125 | 0.50 |
 | `claude-haiku-5.5` | Long context, prompt > 100K | 0.50 | 0.05 | 0.625 | 2.50 |

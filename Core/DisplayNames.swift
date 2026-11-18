@@ -34,6 +34,8 @@ public enum ModelDisplayName {
     "gpt-6-sol": "GPT-6 Sol",
     "gpt-6.1-sol": "GPT-6.1 Sol",
     "gpt-6.1-terra": "GPT-6.1 Terra",
+    "gpt-6.2-astra": "GPT-6.2 Astra",
+    "gpt-6.2-sol": "GPT-6.2 Sol",
     "claude-haiku-4.5": "Claude Haiku 4.5",
     "claude-haiku-5.5": "Claude Haiku 5.5",
     "claude-sonnet-4": "Claude Sonnet 4",

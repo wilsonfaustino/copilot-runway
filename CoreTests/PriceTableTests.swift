@@ -68,6 +68,23 @@ import Testing
   #expect(ModelDisplayName.name(for: "gpt-6.1-terra") == "GPT-6.1 Terra")
 }
 
+@Test func gpt62PricesMatchGitHubTable() {
+  let astraPrice = PriceTable.bundled["gpt-6.2-astra"]
+  #expect(astraPrice == ModelPrice(
+    standard: TokenRates(input: 8.00, cachedInput: 0.40, cacheWrite: 10.00, output: 40.00),
+    longContextThreshold: 272_000,
+    longContext: TokenRates(input: 16.00, cachedInput: 0.80, cacheWrite: 20.00, output: 60.00)
+  ))
+  #expect(astraPrice?.rates(promptTokens: 272_001).input == 16.00)
+  #expect(PriceTable.bundled["gpt-6.2-sol"] == ModelPrice(
+    standard: TokenRates(input: 2.00, cachedInput: 0.10, cacheWrite: 2.50, output: 10.00),
+    longContextThreshold: 272_000,
+    longContext: TokenRates(input: 4.00, cachedInput: 0.20, cacheWrite: 5.00, output: 15.00)
+  ))
+  #expect(ModelDisplayName.name(for: "gpt-6.2-astra") == "GPT-6.2 Astra")
+  #expect(ModelDisplayName.name(for: "gpt-6.2-sol") == "GPT-6.2 Sol")
+}
+
 @Test func bundledAnthropicPricesMatchGitHubTable() {
   #expect(PriceTable.bundled["claude-sonnet-4.6"] == ModelPrice(
     standard: TokenRates(input: 3.00, cachedInput: 0.30, cacheWrite: 3.75, output: 15.00)

@@ -400,7 +400,7 @@ Copilot bills AI credits at published per-model rates for input, cached input, c
 output tokens. 1 AI credit is $0.01 USD, so credits = USD x 100. The app has a bundled price table
 for every model on GitHub's
 [Models and pricing for GitHub Copilot](https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing)
-page: OpenAI GPT-5 to GPT-6.1, Anthropic Claude Haiku, Sonnet, Opus and Fable, Google Gemini,
+page: OpenAI GPT-5 to GPT-6.2, Anthropic Claude Haiku, Sonnet, Opus and Fable, Google Gemini,
 Microsoft MAI-Code, xAI Grok and Moonshot AI Kimi. Core/README.md has the full list of ids and rates.
 For models with a long context tier, the long context rates apply to the whole request when the
 prompt is more than the tier threshold (272,000 tokens for most models). The app prices each
