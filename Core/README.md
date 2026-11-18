@@ -463,7 +463,10 @@ as non-workdays, like weekends. Each date is matched in the given time zone.
 - `dailyHeadroom` is nil when no workday is left before the reset, for example on a weekend
   before a Monday reset.
 - `dayWord(count:)` gives "day" or "workday", with an "s" unless the count is 1. Core text uses it.
-- "N days before the reset" in the run-out sentences is calendar days in both modes.
+- "N days before the reset" and "N days early" in the run-out sentences count the UTC days from the
+  run-out day to the reset day, the run-out day included. In workday mode only Monday to Friday, except
+  days off, count, and the text says "workdays". With no workday left, the text leaves out the count:
+  "Runs out Jan 30, before the reset."
 
 `DaysOffGrid` lays out the Settings days off calendar. It lists the calendar days of the cycle's UTC
 month, marks weekends and gives the blank cells before the 1st for a first weekday (1 is Sunday).

@@ -307,11 +307,60 @@ let usLocale = Locale(identifier: "en_US")
   #expect(banner.detail.hasPrefix("To reach Nov 1, keep the burn under 333 credits/workday. 667 credits/workday over budget."))
 }
 
-@Test func runOutSentenceKeepsCalendarDaysBeforeResetInWorkdayMode() {
+@Test func runOutSentenceCountsWorkdaysBeforeResetInWorkdayMode() {
+  // The run-out is Sat Oct 17 00:00, and the gap to Nov 1 has 10 workdays.
   let sentence = RunwayInsight.runOutSentence(
     usage: makeUsage(creditsUsed: 7000), now: utcDate("2026-10-11T00:00:00Z"), locale: usLocale, days: utcWorkdays
   )
-  #expect(sentence == "At this pace you run out on Oct 17, 15 days before the reset on Nov 1.")
+  #expect(sentence == "At this pace you run out on Oct 17, 10 workdays before the reset on Nov 1.")
+}
+
+// The cycle resets Tue Dec 1. On Mon Nov 16 10 workdays have passed, so the burn is creditsUsed / 10 per workday.
+private let workdayGapReset = utcDate("2026-12-01T00:00:00Z")
+private let workdayGapNow = utcDate("2026-11-16T00:00:00Z")
+
+@Test func popoverCountsWorkdaysEarlyInWorkdayMode() {
+  // 850 left at 100/workday: 8.5 workdays, run-out Thu Nov 26. Nov 26, 27 and 30 are workdays.
+  let usage = makeUsage(creditsUsed: 1000, entitlement: 1850, resetDate: workdayGapReset)
+  let sentence = RunwayInsight.popoverSentence(usage: usage, now: workdayGapNow, locale: usLocale, days: utcWorkdays)
+  #expect(sentence?.hasPrefix("Runs out Nov 26, 3 workdays early.\n") == true)
+  #expect(
+    RunwayInsight.runOutSentence(usage: usage, now: workdayGapNow, locale: usLocale, days: utcWorkdays)
+      == "At this pace you run out on Nov 26, 3 workdays before the reset on Dec 1.")
+}
+
+@Test func workdaysEarlySkipsDaysOff() {
+  let usage = makeUsage(creditsUsed: 1000, entitlement: 1850, resetDate: workdayGapReset)
+  let days = RunwayDays.workdays(TimeZone(identifier: "UTC")!, daysOff: [LocalDay(string: "2026-11-27")!])
+  let sentence = RunwayInsight.popoverSentence(usage: usage, now: workdayGapNow, locale: usLocale, days: days)
+  #expect(sentence?.hasPrefix("Runs out Nov 26, 2 workdays early.\n") == true)
+}
+
+@Test func oneWorkdayEarlyUsesSingularWorkday() {
+  // 1050 left at 100/workday: 10.5 workdays, run-out Mon Nov 30.
+  let usage = makeUsage(creditsUsed: 1000, entitlement: 2050, resetDate: workdayGapReset)
+  let sentence = RunwayInsight.popoverSentence(usage: usage, now: workdayGapNow, locale: usLocale, days: utcWorkdays)
+  #expect(sentence?.hasPrefix("Runs out Nov 30, 1 workday early.\n") == true)
+}
+
+@Test func overageCountsWorkdaysFromToday() {
+  let usage = makeUsage(creditsUsed: 13000, resetDate: workdayGapReset)
+  let now = utcDate("2026-11-26T12:00:00Z")
+  #expect(
+    RunwayInsight.runOutSentence(usage: usage, now: now, locale: usLocale, days: utcWorkdays)
+      == "At this pace you run out on Nov 26, 3 workdays before the reset on Dec 1.")
+}
+
+// Overage on Sat Jan 30 2027 with the reset on Mon Feb 1: no workday is left, so the text has no count.
+@Test func noWorkdayLeftBeforeResetDropsTheCount() {
+  let usage = makeUsage(creditsUsed: 13000, resetDate: utcDate("2027-02-01T00:00:00Z"))
+  let now = utcDate("2027-01-30T12:00:00Z")
+  #expect(
+    RunwayInsight.popoverSentence(usage: usage, now: now, locale: usLocale, days: utcWorkdays)
+      == "Runs out Jan 30, before the reset.")
+  #expect(
+    RunwayInsight.runOutSentence(usage: usage, now: now, locale: usLocale, days: utcWorkdays)
+      == "At this pace you run out on Jan 30, before the reset on Feb 1.")
 }
 
 private let combinedInsightReset = utcDate("2026-12-01T00:00:00Z")
