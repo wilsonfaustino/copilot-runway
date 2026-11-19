@@ -156,20 +156,26 @@ private let portkeyNow = utcDate("2026-10-11T00:00:00Z")
   #expect(status?.text == "$29.00 of $30.00 left, lasts the cycle")
 }
 
-// The pace line: the budget left per day to the reset, 21 days after portkeyNow.
-@Test func dailyPaceSpreadsTheBudgetLeftOverTheDaysToTheReset() throws {
+// The pace line: the budget left per UTC date to the reset, 21 dates after portkeyNow.
+@Test func dailyPaceSpreadsTheBudgetLeftOverTheDatesToTheReset() throws {
   let pace = try #require(PortkeyBudget.dailyPaceUSD(spentUSD: 4, budgetUSD: 25, resetDate: portkeyResetDate, now: portkeyNow))
   #expect(pace == 1)
 }
 
-@Test func dailyPaceCountsOnlyWorkdaysInWorkdayMode() throws {
-  // 15 workdays from Sunday 2026-10-11 to the reset.
+// Today still counts as a whole date late in the day, so the pace does not jump before midnight.
+@Test func dailyPaceAtMiddayCountsTodayAsAWholeDate() throws {
   let pace = try #require(
-    PortkeyBudget.dailyPaceUSD(
-      spentUSD: 4, budgetUSD: 25, resetDate: portkeyResetDate, now: portkeyNow, days: .workdays(TimeZone(identifier: "UTC")!)
-    )
+    PortkeyBudget.dailyPaceUSD(spentUSD: 4, budgetUSD: 25, resetDate: portkeyResetDate, now: utcDate("2026-10-11T13:30:00Z"))
   )
-  #expect(pace == 1.4)
+  #expect(pace == 1)
+}
+
+// One minute before the reset, today is the only date left, so the pace is the whole amount left.
+@Test func dailyPaceInTheLastMinuteIsTheAmountLeft() throws {
+  let pace = try #require(
+    PortkeyBudget.dailyPaceUSD(spentUSD: 9, budgetUSD: 10, resetDate: portkeyResetDate, now: utcDate("2026-10-31T23:59:00Z"))
+  )
+  #expect(pace == 1)
 }
 
 @Test func dailyPaceWithoutBudgetIsNil() {
@@ -182,14 +188,22 @@ private let portkeyNow = utcDate("2026-10-11T00:00:00Z")
   #expect(PortkeyBudget.dailyPaceUSD(spentUSD: 12, budgetUSD: 10, resetDate: portkeyResetDate, now: portkeyNow) == 0)
 }
 
-// With no counted day left the pace would divide by 0.
-@Test func dailyPaceWithNoDayLeftIsNil() {
+// At the reset instant no date is left, and the pace would divide by 0.
+@Test func dailyPaceAtTheResetIsNil() {
   #expect(PortkeyBudget.dailyPaceUSD(spentUSD: 4, budgetUSD: 10, resetDate: portkeyResetDate, now: portkeyResetDate) == nil)
-  // Saturday 2026-10-31: the weekend before the reset has no workday.
-  #expect(
-    PortkeyBudget.dailyPaceUSD(
-      spentUSD: 4, budgetUSD: 10, resetDate: portkeyResetDate, now: utcDate("2026-10-31T00:00:00Z"),
-      days: .workdays(TimeZone(identifier: "UTC")!)
-    ) == nil
-  )
+}
+
+// The Runway card: with a budget and no spend yet, the budget lasts the cycle.
+@Test func noSpendWithBudgetLastsTheCycle() throws {
+  let usage = try #require(PortkeyBudget.usage(spentUSD: 0, budgetUSD: 10, resetDate: portkeyResetDate))
+  #expect(PortkeyBudget.lastsTheCycle(usage: usage, now: portkeyNow))
+  #expect(RunwayHealth(usage: usage, now: portkeyNow) == .healthy)
+  #expect(!PortkeyBudget.lastsTheCycle(usage: usage, now: portkeyResetDate))
+}
+
+@Test func spendFollowsTheRunwayRuleForLastsTheCycle() throws {
+  let shortUsage = try #require(PortkeyBudget.usage(spentUSD: 4, budgetUSD: 10, resetDate: portkeyResetDate))
+  #expect(!PortkeyBudget.lastsTheCycle(usage: shortUsage, now: portkeyNow))
+  let longUsage = try #require(PortkeyBudget.usage(spentUSD: 1, budgetUSD: 30, resetDate: portkeyResetDate))
+  #expect(PortkeyBudget.lastsTheCycle(usage: longUsage, now: portkeyNow))
 }

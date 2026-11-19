@@ -213,12 +213,14 @@ struct DashboardView: View {
       .monospacedDigit()
   }
 
-  private func runwayCard(usage: QuotaUsage, health: RunwayHealth, figureSize: CGFloat = 34) -> some View {
+  private func runwayCard(
+    usage: QuotaUsage, health: RunwayHealth, figureSize: CGFloat = 34, lastsTheCycle: Bool? = nil
+  ) -> some View {
     kpiCard("Runway") {
       if usage.isUnlimited {
         Text("∞").bigFigureStyle(size: 34)
         kpiDetail("Unlimited plan")
-      } else if Runway.lastsTheCycle(usage: usage, now: .now, days: usageStore.runwayDays) {
+      } else if lastsTheCycle ?? Runway.lastsTheCycle(usage: usage, now: .now, days: usageStore.runwayDays) {
         Text("Lasts the cycle")
           .bigFigureStyle(size: 22)
           .foregroundStyle(Theme.accent(health))
@@ -520,7 +522,8 @@ struct DashboardView: View {
       spentUSD: usageStore.portkeySpend.totalUSD, budgetUSD: usageStore.portkeyBudgetUSD, resetDate: resetDate
     ) {
       runwayCard(
-        usage: budgetUsage, health: RunwayHealth(usage: budgetUsage, now: .now, days: usageStore.runwayDays), figureSize: 26
+        usage: budgetUsage, health: RunwayHealth(usage: budgetUsage, now: .now, days: usageStore.runwayDays), figureSize: 26,
+        lastsTheCycle: PortkeyBudget.lastsTheCycle(usage: budgetUsage, now: .now, days: usageStore.runwayDays)
       )
     } else {
       kpiCard("Runway") {
@@ -543,13 +546,13 @@ struct DashboardView: View {
     return DailyBurnChart(
       days: days.map { DailyBurnChart.ChartDay(day: $0.day, copilot: 0, portkey: $0.credits) },
       previousTotals: previousTotals,
-      comparisonSentence: CycleComparison.compare(current: days, previous: previousTotals)?.sentence(unit: .usd),
+      comparisonSentence: nil,
       cycleDayCount: Runway.cycleDayCount(resetDate: resetDate),
       averageDailyBurn: nil,
       unit: .usd,
       title: "Daily spend",
       budgetPace: PortkeyBudget.dailyPaceUSD(
-        spentUSD: spend.totalUSD, budgetUSD: usageStore.portkeyBudgetUSD, resetDate: resetDate, now: .now, days: usageStore.runwayDays
+        spentUSD: spend.totalUSD, budgetUSD: usageStore.portkeyBudgetUSD, resetDate: resetDate, now: .now
       ),
       runwayDays: usageStore.runwayDays,
       health: budgetUsage.map { RunwayHealth(usage: $0, now: .now, days: usageStore.runwayDays) } ?? .healthy,
@@ -887,7 +890,7 @@ private struct DailyBurnChart: View {
             if let budgetPace {
               HStack(spacing: Theme.Spacing.small) {
                 legendLine(color: averageColor, style: StrokeStyle(lineWidth: 2, dash: [3, 2]))
-                Text("Budget pace, \(amount(budgetPace))/\(runwayDays.dayWord())")
+                Text("Budget pace, \(amount(budgetPace))/day")
               }
             }
           }
