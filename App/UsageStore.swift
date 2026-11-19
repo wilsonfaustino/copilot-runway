@@ -2,12 +2,6 @@ import AppKit
 import Core
 import Observation
 
-enum CopilotState: Equatable {
-  case copilot
-  case portkeyOnly(CopilotAbsence)
-  case noPortkeyData(CopilotAbsence)
-}
-
 @MainActor
 @Observable
 final class UsageStore {

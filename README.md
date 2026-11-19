@@ -83,20 +83,54 @@ Click the title to open the popover:
 
 ### Dashboard
 
-"Open dashboard" in the popover opens a window with:
+"Open dashboard" in the popover opens a window with a sidebar and a content panel. The title bar
+shows the name of the open tab, the cycle dates and the reset date. It also has a "Copy summary"
+button.
 
-- The cycle dates and the reset date.
+The sidebar has a row for each tab. Each row shows the tab name, a status line, for example
+"1,800 credits left · 60%", and a small gauge. The gauge and the status line use the Gauge shows
+setting. The row color follows the runway health. The gauge is not there while data loads, after
+an error, with an unlimited plan, or with Portkey spend and no Portkey budget.
+
+The tabs depend on your data:
+
+| Your data | Tabs |
+|---|---|
+| Copilot and Portkey data | General, Copilot and Portkey |
+| Copilot data and no Portkey data | General and Copilot |
+| Portkey data and no Copilot (see "Without Copilot") | General and Portkey. The Copilot tab shows "Copilot data is off" and you cannot select it. |
+| No data | General only |
+
+The Portkey tab shows when there are Portkey messages this cycle or a Portkey budget (see "Portkey").
+In Portkey only mode, the General row shows the Portkey status.
+
+Open or hide the sidebar with the sidebar button in the toolbar, Cmd-Ctrl-S, or View > Show
+Sidebar or Hide Sidebar. The width is 200 to 260 pt. The app saves the last tab, the open or
+hidden state and the width. If the saved tab is not in the sidebar, the window opens on General.
+
+Each tab scrolls on its own.
+
+#### General
+
 - A banner with the run-out sentence. When the credits run out before the reset, it gives the
   highest daily burn that still reaches the reset. It also gives the category with the largest
   share of local credits. With a Portkey budget set, the banner uses the combined budget in USD
   and gives the average daily burn of Copilot and of Portkey.
-- Cards for days of runway, percent remaining, average daily burn and credits per PR authored.
+- Cards for days of runway and percent remaining.
 - A daily burn chart for the cycle, one bar per UTC day from local sessions, with a line at the
   GitHub average daily burn. Select a bar to see the credits for that day.
 - A dashed line for last cycle, paired by day of the cycle, when last cycle has credits. Hover a
   day to see both cycles. A sentence under the chart title compares this cycle with the same days
   of last cycle. Today is left out. The sentence shows only when last cycle has at least 5 days
   with credits in the paired days.
+
+In Portkey only mode, General shows a Portkey banner, the Portkey cards and the daily burn chart in USD.
+
+#### Copilot
+
+- Cards for days of runway, percent remaining, average daily burn and credits per PR authored.
+  They stay in credits, also with a Portkey budget.
+- The daily burn chart, in credits, with the same last cycle line.
 - Local credits by task category, by model and by agent (OpenCode, Pi, omp, Copilot CLI or Copilot app).
 - A "By project" card with local credits by project. The app names a project from the repo root,
   so worktree sessions count with their repo. All Copilot app chats count as one project, "Copilot app chats".
@@ -105,8 +139,15 @@ Click the title to open the popover:
   the agent, the top model and the biggest task. It has no prompt text and no titles.
 - A note with the percent of GitHub credits that local sessions do not explain, and the number of
   models with no price.
-- A "Copy summary" button. It puts a short plain-text report on the clipboard that you can paste
-  into a quota request:
+
+#### Portkey
+
+The Portkey section. See "Portkey".
+
+#### Copy summary
+
+The "Copy summary" button puts a short plain-text report on the clipboard that you can paste
+into a quota request:
 
 ```
 GitHub Copilot AI credits, cycle 2026-10-01 to 2026-10-31 (UTC)
@@ -128,14 +169,14 @@ Top categories (same local sessions):
 
 When your Pi, omp or OpenCode sessions send messages through Portkey (any provider id that
 contains "portkey"), the popover shows a Portkey card under the Copilot numbers, and the
-Dashboard shows a Portkey section. The amounts are USD, not Copilot credits. With a Portkey
+Dashboard has a Portkey tab. The amounts are USD, not Copilot credits. With a Portkey
 budget set, the gauge, the runway days and the run-out date combine the Copilot limit in USD
 and the Portkey budget, and the gauge draws them in two tones. The burn rate, the breakdowns
 and Copy summary stay Copilot only.
 
 - The card shows the spend this cycle, the request count, the spend by model and by agent, and
   one insight sentence. With Copilot, the cycle is the Copilot cycle. Without Copilot, see "Without Copilot".
-- The Dashboard section shows the spend, the requests, the average cost per request, a model by
+- The Portkey tab shows the spend, the requests, the average cost per request, a model by
   agent table and agent share bars.
 - The cost is the cost each agent stores in its session files. The app makes no call to Portkey.
   A message without a stored cost, or with tokens and a cost of 0, counts as a request and adds

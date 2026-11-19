@@ -12,7 +12,9 @@ struct DashboardView: View {
   static let dayLabelStyle = Date.FormatStyle(timeZone: TimeZone(identifier: "UTC")!).month(.abbreviated).day()
 
   let usageStore: UsageStore
-  @State private var summaryCopied = false
+  let selection: DashboardSelection
+  // The window controller owns the title bar: the tab title, the cycle dates and the Copy summary button.
+  let chromeDidChange: (_ title: String, _ subtitle: String, _ canCopy: Bool) -> Void
   @AppStorage(Theme.taskPalettePreferenceKey) private var taskPalettePreference = TaskPalettePreference.unset
   @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiatesWithoutColor
 
@@ -20,98 +22,123 @@ struct DashboardView: View {
     TaskPalette.resolve(preference: taskPalettePreference, systemDifferentiatesWithoutColor: differentiatesWithoutColor)
   }
 
+  private var chrome: [String] {
+    [selection.tab.title, cycleSubtitle, usageStore.usage == nil ? "no usage" : "usage"]
+  }
+
   var body: some View {
-    let health = RunwayHealth(usage: usageStore.usage, hasError: usageStore.hasUsageError, now: .now, days: usageStore.runwayDays)
-    let gaugeHealth = RunwayHealth(usage: usageStore.gaugeUsage, hasError: usageStore.hasUsageError, now: .now, days: usageStore.runwayDays)
-    ScrollView {
+    tabContent(selection.tab)
+      .frame(minWidth: 720, minHeight: 560)
+      .onChange(of: chrome, initial: true) {
+        chromeDidChange(selection.tab.title, cycleSubtitle, usageStore.usage != nil)
+      }
+  }
+
+  // Each tab scrolls on its own, so the toolbar stays in place.
+  private func tabContent(_ tab: DashboardTab) -> some View {
+    ScrollView(.vertical) {
       VStack(alignment: .leading, spacing: Theme.Spacing.panel) {
-        switch usageStore.copilotState {
-        case .copilot:
-          if let usage = usageStore.usage {
-            insightBanner(
-              RunwayInsight.banner(
-                usage: usage, errorMessage: usageStore.errorMessage, categoryCredits: usageStore.categoryCredits, now: .now,
-                days: usageStore.runwayDays, combined: usageStore.combinedBudget
-              ),
-              health: gaugeHealth
-            )
-            HStack(alignment: .top, spacing: Theme.Spacing.regular) {
-              runwayCard(usage: usageStore.gaugeUsage ?? usage, health: gaugeHealth)
-              remainingCard(usage: usageStore.gaugeUsage ?? usage, health: gaugeHealth)
-              kpiCard("Average daily burn") {
-                Text(Credits.formatted(Runway.averageDailyBurn(usage: usage, now: .now, days: usageStore.runwayDays)))
-                  .bigFigureStyle(size: 34)
-                kpiDetail("credits per \(usageStore.runwayDays.dayWord())")
-              }
-              outcomesCard(usage: usage)
-            }
-            .fixedSize(horizontal: false, vertical: true)
-            dailyBurnChart(resetDate: usage.resetDate, health: health)
-            HStack(alignment: .top, spacing: Theme.Spacing.regular) {
-              taskCard
-              modelCard(usage: usage)
-              agentCard(usage: usage)
-            }
-            .fixedSize(horizontal: false, vertical: true)
-            projectCard
-            topSessionsCard
-            portkeySection(resetDate: usage.resetDate)
-          } else {
-            errorText
-          }
-        case .portkeyOnly(let absence):
-          if let resetDate = usageStore.cycleResetDate {
-            insightBanner(
-              RunwayInsight.portkeyOnlyBanner(
-                usage: usageStore.gaugeUsage, spentUSD: usageStore.portkeySpend.totalUSD, absence: absence, now: .now,
-                days: usageStore.runwayDays
-              ),
-              health: gaugeHealth
-            )
-            portkeyOnlyKPIRow(resetDate: resetDate, health: gaugeHealth)
-            dailyBurnChart(resetDate: resetDate, health: gaugeHealth)
-            portkeySection(resetDate: resetDate)
-          }
-        case .noPortkeyData:
-          errorText
+        switch tab {
+        case .general: generalTab
+        case .copilot: copilotTab
+        case .portkey: portkeyTab
         }
-        if let sessionsWarning = usageStore.sessionsWarning {
+        if tab != .portkey, let sessionsWarning = usageStore.sessionsWarning {
           Text(sessionsWarning)
             .foregroundStyle(.orange)
         }
       }
       .padding(20)
+      .background(OverlayScrollerStyle())
     }
-    .background(.regularMaterial)
-    .frame(minWidth: 720, minHeight: 560)
-    .navigationSubtitle(cycleSubtitle)
-    .onAppear {
-      NSApp.setActivationPolicy(.regular)
-      NSApp.activate()
-      #if DEBUG
-      // Demo mode does not save the dashboard frame, so a later real run keeps its own frame.
-      if DemoLaunch.scenario != nil {
-        NSApp.windows.filter { $0.frameAutosaveName == Self.windowId }.forEach { $0.setFrameAutosaveName("") }
-      }
-      #endif
-    }
-    .onDisappear {
-      NSApp.setActivationPolicy(.accessory)
-    }
-    .toolbar {
-      ToolbarItem(placement: .primaryAction) {
-        Button {
-          guard let summaryText = usageStore.summaryText() else { return }
-          NSPasteboard.general.clearContents()
-          NSPasteboard.general.setString(summaryText, forType: .string)
-          summaryCopied = true
-        } label: {
-          Label(summaryCopied ? "Copied" : "Copy summary", systemImage: "doc.on.doc")
+    .scrollBounceBehavior(.basedOnSize)
+    .id(tab)
+  }
+
+  private var copilotHealth: RunwayHealth {
+    RunwayHealth(usage: usageStore.usage, hasError: usageStore.hasUsageError, now: .now, days: usageStore.runwayDays)
+  }
+
+  private var gaugeHealth: RunwayHealth {
+    RunwayHealth(usage: usageStore.gaugeUsage, hasError: usageStore.hasUsageError, now: .now, days: usageStore.runwayDays)
+  }
+
+  @ViewBuilder
+  private var generalTab: some View {
+    switch usageStore.copilotState {
+    case .copilot:
+      if let usage = usageStore.usage {
+        insightBanner(
+          RunwayInsight.banner(
+            usage: usage, errorMessage: usageStore.errorMessage, categoryCredits: usageStore.categoryCredits, now: .now,
+            days: usageStore.runwayDays, combined: usageStore.combinedBudget
+          ),
+          health: gaugeHealth
+        )
+        HStack(alignment: .top, spacing: Theme.Spacing.regular) {
+          runwayCard(usage: usageStore.gaugeUsage ?? usage, health: gaugeHealth)
+          remainingCard(usage: usageStore.gaugeUsage ?? usage, health: gaugeHealth, combined: usageStore.combinedBudget)
+          averageDailyBurnCard(usage: usage, combined: usageStore.combinedBudget)
+          outcomesCard(usage: usage)
         }
-        .labelStyle(.titleAndIcon)
-        .disabled(usageStore.usage == nil)
+        .fixedSize(horizontal: false, vertical: true)
+        dailyBurnChart(resetDate: usage.resetDate, health: gaugeHealth)
+      } else {
+        errorText
       }
+    case .portkeyOnly(let absence):
+      if let resetDate = usageStore.cycleResetDate {
+        insightBanner(
+          RunwayInsight.portkeyOnlyBanner(
+            usage: usageStore.gaugeUsage, spentUSD: usageStore.portkeySpend.totalUSD, absence: absence, now: .now,
+            days: usageStore.runwayDays
+          ),
+          health: gaugeHealth
+        )
+        portkeyOnlyKPIRow(resetDate: resetDate, health: gaugeHealth)
+        dailyBurnChart(resetDate: resetDate, health: gaugeHealth)
+      }
+    case .noPortkeyData:
+      errorText
     }
+  }
+
+  // Copilot only: no combined budget, so the banner, the cards and the chart stay in credits.
+  @ViewBuilder
+  private var copilotTab: some View {
+    if let usage = usageStore.usage {
+      let health = copilotHealth
+      insightBanner(
+        RunwayInsight.banner(
+          usage: usage, errorMessage: usageStore.errorMessage, categoryCredits: usageStore.categoryCredits, now: .now,
+          days: usageStore.runwayDays, combined: nil
+        ),
+        health: health
+      )
+      HStack(alignment: .top, spacing: Theme.Spacing.regular) {
+        runwayCard(usage: usage, health: health)
+        remainingCard(usage: usage, health: health, combined: nil)
+        averageDailyBurnCard(usage: usage, combined: nil)
+        outcomesCard(usage: usage)
+      }
+      .fixedSize(horizontal: false, vertical: true)
+      dailyBurnChart(resetDate: usage.resetDate, health: health, allowsUSD: false)
+      HStack(alignment: .top, spacing: Theme.Spacing.regular) {
+        taskCard
+        modelCard(usage: usage)
+        agentCard(usage: usage)
+      }
+      .fixedSize(horizontal: false, vertical: true)
+      projectCard
+      topSessionsCard
+    } else {
+      errorText
+    }
+  }
+
+  // The Portkey cycle is the Copilot cycle, so it has a reset date also while Copilot loads.
+  private var portkeyTab: some View {
+    portkeySection(resetDate: usageStore.cycleResetDate ?? PortkeyOnly.resetDate(now: .now))
   }
 
   private var errorText: some View {
@@ -209,7 +236,7 @@ struct DashboardView: View {
     }
   }
 
-  private func remainingCard(usage: QuotaUsage, health: RunwayHealth) -> some View {
+  private func remainingCard(usage: QuotaUsage, health: RunwayHealth, combined: CombinedBudget?) -> some View {
     let gaugeMode = usageStore.gaugeMode
     return kpiCard(gaugeMode == .spent ? "Spent" : "Remaining") {
       if usage.isUnlimited {
@@ -217,7 +244,7 @@ struct DashboardView: View {
         kpiDetail("\(Credits.formatted(usage.creditsUsed)) used")
       } else {
         Text("\(Runway.wholeGaugePercent(usage: usage, mode: gaugeMode))%").bigFigureStyle(size: 34)
-        if let combined = usageStore.combinedBudget {
+        if let combined {
           let accent = Theme.accent(health)
           combinedBar(parts: usageStore.gaugeParts, color: accent)
           kpiDetail("\(PortkeySpend.formatted(usage.creditsUsed)) of \(PortkeySpend.formatted(usage.entitlement)) used")
@@ -226,6 +253,22 @@ struct DashboardView: View {
           shareBar(fraction: MenuBarTitle.gaugeFraction(usage: usage, mode: gaugeMode), color: Theme.accent(health))
           kpiDetail("\(Credits.formatted(usage.creditsUsed)) of \(Credits.formatted(usage.entitlement)) used")
         }
+      }
+    }
+  }
+
+  // In USD for a combined budget, else in Copilot credits.
+  private func averageDailyBurnCard(usage: QuotaUsage, combined: CombinedBudget?) -> some View {
+    let runwayDays = usageStore.runwayDays
+    return kpiCard("Average daily burn") {
+      if let combined {
+        Text(PortkeySpend.formatted(Runway.averageDailyBurn(usage: combined.usage, now: .now, days: runwayDays)))
+          .bigFigureStyle(size: 34)
+        kpiDetail("USD per \(runwayDays.dayWord())")
+      } else {
+        Text(Credits.formatted(Runway.averageDailyBurn(usage: usage, now: .now, days: runwayDays)))
+          .bigFigureStyle(size: 34)
+        kpiDetail("credits per \(runwayDays.dayWord())")
       }
     }
   }
@@ -399,7 +442,6 @@ struct DashboardView: View {
         dateRange: "\(day(Runway.cycleStart(resetDate: resetDate))) to \(day(.now))",
         isPortkeyOnly: usageStore.isPortkeyOnly
       )
-      .padding(.top, Theme.Spacing.regular)
     }
   }
 
@@ -566,11 +608,13 @@ struct DashboardView: View {
       }
   }
 
-  // The USD form for Portkey only and for a combined budget, else the credits form.
-  private func dailyBurnChart(resetDate: Date, health: RunwayHealth) -> some View {
+  // The USD form for Portkey only and for a combined budget, else the credits form. allowsUSD false forces credits.
+  private func dailyBurnChart(resetDate: Date, health: RunwayHealth, allowsUSD: Bool = true) -> some View {
     let cycleDayCount = Runway.cycleDayCount(resetDate: resetDate)
     let usdAverageDailyBurn: Double? =
-      if usageStore.isPortkeyOnly {
+      if !allowsUSD {
+        nil
+      } else if usageStore.isPortkeyOnly {
         usageStore.gaugeUsage.map { Runway.averageDailyBurn(usage: $0, now: .now, days: usageStore.runwayDays) }
           ?? Runway.averageDailyBurn(
             credits: usageStore.portkeySpend.totalUSD, resetDate: resetDate, now: .now, days: usageStore.runwayDays)

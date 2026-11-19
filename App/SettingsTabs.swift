@@ -202,7 +202,7 @@ struct SettingsRunwayTab: View {
       gaugeMode = mode
     } label: {
       VStack(spacing: Theme.Spacing.small) {
-        GaugeTileRing(tile: tile, color: tile.isSample ? .secondary : Theme.accent(health))
+        HorseshoeRing(tile: tile, color: tile.isSample ? .secondary : Theme.accent(health))
           .frame(width: 112, height: 76)
           .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
           .overlay(
@@ -338,38 +338,6 @@ private struct DaysOffCalendar: View {
     } else {
       UserDefaults.standard.set(days.sorted().map(\.string), forKey: UsageStore.daysOffKey)
     }
-  }
-}
-
-// The popover ring's horseshoe at tile size, with the percent in the middle.
-private struct GaugeTileRing: View {
-  let tile: GaugeTile
-  let color: Color
-
-  private static let lineWidth: CGFloat = 6
-
-  private func horseshoe(fraction: Double, color: Color) -> some View {
-    Circle()
-      .trim(from: 0, to: RunwayGlyph.trackSweepDegrees / 360 * fraction)
-      .stroke(color, style: StrokeStyle(lineWidth: Self.lineWidth, lineCap: .round))
-      .rotationEffect(.degrees(RunwayGlyph.trackStartDegrees))
-  }
-
-  var body: some View {
-    ZStack {
-      horseshoe(fraction: 1, color: color.opacity(RunwayGlyph.trackOpacity))
-      if tile.parts.portkey > 0 {
-        horseshoe(fraction: tile.parts.total, color: color.opacity(RunwayGlyph.portkeyOpacity))
-      }
-      if tile.parts.copilot > 0 {
-        horseshoe(fraction: tile.parts.copilot, color: color)
-      }
-      Text("\(tile.percent)%")
-        .font(.system(size: 12, weight: .semibold))
-        .monospacedDigit()
-    }
-    .padding(Self.lineWidth / 2)
-    .frame(width: 56, height: 56)
   }
 }
 
