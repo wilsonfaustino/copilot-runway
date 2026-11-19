@@ -369,8 +369,7 @@ struct DashboardView: View {
   private func providerCard(usage: QuotaUsage) -> some View {
     let accent = Theme.accent(gaugeHealth)
     let rows = ProviderRows.rows(
-      copilotUsage: usage, portkeySpentUSD: usageStore.portkeySpend.totalUSD,
-      portkeyRequestCount: usageStore.portkeySpend.requestCount, portkeyBudgetUSD: usageStore.portkeyBudgetUSD,
+      copilotUsage: usage, portkeySpend: usageStore.portkeySpend, portkeyBudgetUSD: usageStore.portkeyBudgetUSD,
       mode: usageStore.gaugeMode, days: usageStore.runwayDays, now: .now)
     return VStack(alignment: .leading, spacing: Theme.Spacing.regular) {
       Text("By provider")

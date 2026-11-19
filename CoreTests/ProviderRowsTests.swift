@@ -13,8 +13,12 @@ private func providerRows(
   mode: GaugeMode = .left,
   days: RunwayDays = .calendar
 ) -> [ProviderRow] {
-  ProviderRows.rows(
-    copilotUsage: copilotUsage, portkeySpentUSD: portkeySpentUSD, portkeyRequestCount: portkeyRequestCount,
+  // The first record carries the whole spend; the others only add to the request count.
+  let portkeyRecords = (0..<portkeyRequestCount).map { recordIndex in
+    PortkeyRecord(model: "demo-model", timestamp: providerNow, source: .pi, costUSD: recordIndex == 0 ? portkeySpentUSD : 0)
+  }
+  return ProviderRows.rows(
+    copilotUsage: copilotUsage, portkeySpend: PortkeySpend(records: portkeyRecords),
     portkeyBudgetUSD: portkeyBudgetUSD, mode: mode, days: days, now: providerNow, locale: usLocale)
 }
 

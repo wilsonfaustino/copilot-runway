@@ -15,15 +15,19 @@ public struct ProviderRow: Equatable, Sendable {
 // The By provider card on the General tab: one row per provider, each with its own budget, in USD.
 public enum ProviderRows {
   public static func rows(
-    copilotUsage: QuotaUsage, portkeySpentUSD: Double, portkeyRequestCount: Int,
-    portkeyBudgetUSD: Double?, mode: GaugeMode, days: RunwayDays, now: Date, locale: Locale = .current
+    copilotUsage: QuotaUsage, portkeySpend: PortkeySpend, portkeyBudgetUSD: Double?, mode: GaugeMode, days: RunwayDays,
+    now: Date, locale: Locale = .current
   ) -> [ProviderRow] {
     let resetDate = copilotUsage.resetDate
+    let portkeySpentUSD = portkeySpend.totalUSD
+    let burnUSD = { (spentUSD: Double) in
+      Runway.averageDailyBurn(credits: spentUSD, resetDate: resetDate, now: now, days: days)
+    }
     let copilotSpentUSD = copilotUsage.creditsUsed * Credits.usdPerCredit
     let copilotRow =
       if copilotUsage.isUnlimited {
         row(.copilot, amountText: "\(PortkeySpend.formatted(copilotSpentUSD, locale: locale)) spent", barFraction: nil,
-          spentUSD: copilotSpentUSD, resetDate: resetDate, days: days, now: now, locale: locale)
+          burnUSD: burnUSD(copilotSpentUSD), days: days, locale: locale)
       } else {
         row(
           .copilot,
@@ -31,9 +35,9 @@ public enum ProviderRows {
             shownUSD: DashboardSidebar.shownAmount(copilotUsage, mode: mode) * Credits.usdPerCredit,
             budgetUSD: copilotUsage.entitlement * Credits.usdPerCredit, mode: mode, locale: locale),
           barFraction: MenuBarTitle.gaugeFraction(usage: copilotUsage, mode: mode),
-          spentUSD: copilotSpentUSD, resetDate: resetDate, days: days, now: now, locale: locale)
+          burnUSD: burnUSD(copilotSpentUSD), days: days, locale: locale)
       }
-    guard PortkeyBudget.showsBlock(requestCount: portkeyRequestCount, budgetUSD: portkeyBudgetUSD) else {
+    guard PortkeyBudget.showsBlock(requestCount: portkeySpend.requestCount, budgetUSD: portkeyBudgetUSD) else {
       return [copilotRow]
     }
     guard
@@ -42,7 +46,7 @@ public enum ProviderRows {
       return [
         copilotRow,
         row(.portkey, amountText: "\(PortkeySpend.formatted(portkeySpentUSD, locale: locale)) spent", barFraction: nil,
-          spentUSD: portkeySpentUSD, resetDate: resetDate, days: days, now: now, locale: locale),
+          burnUSD: burnUSD(portkeySpentUSD), days: days, locale: locale),
       ]
     }
     let portkeyRow = row(
@@ -51,16 +55,14 @@ public enum ProviderRows {
         shownUSD: DashboardSidebar.shownAmount(portkeyUsage, mode: mode),
         budgetUSD: portkeyUsage.entitlement, mode: mode, locale: locale),
       barFraction: MenuBarTitle.gaugeFraction(usage: portkeyUsage, mode: mode),
-      spentUSD: portkeySpentUSD, resetDate: resetDate, days: days, now: now, locale: locale)
+      burnUSD: burnUSD(portkeySpentUSD), days: days, locale: locale)
     return [copilotRow, portkeyRow]
   }
 
   private static func row(
-    _ tab: DashboardTab, amountText: String, barFraction: Double?, spentUSD: Double, resetDate: Date, days: RunwayDays,
-    now: Date, locale: Locale
+    _ tab: DashboardTab, amountText: String, barFraction: Double?, burnUSD: Double, days: RunwayDays, locale: Locale
   ) -> ProviderRow {
-    let burnUSD = Runway.averageDailyBurn(credits: spentUSD, resetDate: resetDate, now: now, days: days)
-    return ProviderRow(
+    ProviderRow(
       tab: tab, amountText: amountText, barFraction: barFraction,
       burnAmountText: PortkeySpend.formatted(burnUSD, locale: locale), dayWord: days.dayWord())
   }
