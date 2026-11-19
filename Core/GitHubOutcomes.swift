@@ -22,6 +22,13 @@ public struct GitHubOutcomes: Equatable, Sendable {
     prs > 0 ? creditsUsed / Double(prs) : nil
   }
 
+  // Spend in USD this cycle per PR authored. The combined budget holds Copilot plus Portkey USD.
+  // Without one, only Copilot spend counts.
+  public func usdPerPRAuthored(copilotCreditsUsed: Double, combined: CombinedBudget?) -> Double? {
+    let spentUSD = combined?.usage.creditsUsed ?? copilotCreditsUsed * Credits.usdPerCredit
+    return creditsPerPRAuthored(creditsUsed: spentUSD)
+  }
+
   // PR and commit counts are exact totals from search, also above GitHubOutcomesClient.resultLimit.
   public static func countText(_ count: Int) -> String {
     count.formatted(.number.locale(Locale(identifier: "en_US")))

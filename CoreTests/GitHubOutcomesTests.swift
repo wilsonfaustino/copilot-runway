@@ -232,6 +232,28 @@ func reviewNode(_ submittedAt: String) -> String {
   #expect(outcomes.creditsPerPRAuthored(creditsUsed: 3000) == nil)
 }
 
+@Test func usdPerPRAuthoredUsesCombinedSpendWhenABudgetExists() throws {
+  // US$10 of Copilot credits plus US$5 on Portkey, 3 PRs.
+  let copilot = QuotaUsage(
+    creditsUsed: 1000, entitlement: 15000, creditsRemaining: 14000, percentRemaining: 93.33,
+    isUnlimited: false, resetDate: utcDate("2026-11-01T00:00:00Z"))
+  let combined = try #require(CombinedBudget.make(copilot: copilot, portkeySpentUSD: 5, portkeyBudgetUSD: 50))
+  let outcomes = GitHubOutcomes(prsMerged: 2, prsOpen: 1, prsReviewed: 9, commits: 30)
+  let usdPerPR = try #require(outcomes.usdPerPRAuthored(copilotCreditsUsed: 1000, combined: combined))
+  #expect(abs(usdPerPR - 5) < 1e-9)
+}
+
+@Test func usdPerPRAuthoredUsesCopilotSpendWithoutACombinedBudget() throws {
+  let outcomes = GitHubOutcomes(prsMerged: 3, prsOpen: 1, prsReviewed: 0, commits: 0)
+  let usdPerPR = try #require(outcomes.usdPerPRAuthored(copilotCreditsUsed: 1000, combined: nil))
+  #expect(abs(usdPerPR - 2.5) < 1e-9)
+}
+
+@Test func usdPerPRAuthoredIsNilWithoutPRs() {
+  let outcomes = GitHubOutcomes(prsMerged: 0, prsOpen: 0, prsReviewed: 6, commits: 5)
+  #expect(outcomes.usdPerPRAuthored(copilotCreditsUsed: 1000, combined: nil) == nil)
+}
+
 @Test func countTextIsExactAboveTheSearchLimit() {
   #expect(GitHubOutcomes.countText(999) == "999")
   #expect(GitHubOutcomes.countText(1000) == "1,000")
