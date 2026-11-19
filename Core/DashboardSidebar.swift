@@ -137,7 +137,7 @@ public enum DashboardSidebar {
   }
 
   // Over the budget, the amount left stops at 0.
-  private static func shownAmount(_ usage: QuotaUsage, mode: GaugeMode) -> Double {
+  static func shownAmount(_ usage: QuotaUsage, mode: GaugeMode) -> Double {
     switch mode {
     case .left: max(usage.creditsRemaining, 0)
     case .spent: usage.creditsUsed
