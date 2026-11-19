@@ -965,7 +965,7 @@ private struct DailyBurnChart: View {
             .foregroundStyle(averageColor)
             .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 4]))
             .accessibilityLabel("Budget pace")
-            .accessibilityValue("\(amount(budgetPace)) per \(runwayDays.dayWord())")
+            .accessibilityValue("\(amount(budgetPace)) per day")
         }
         if let selectedIndex {
           RuleMark(x: .value("Day", Self.dayPosition(selectedIndex)))
