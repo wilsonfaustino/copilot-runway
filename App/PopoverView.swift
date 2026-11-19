@@ -11,7 +11,6 @@ struct PopoverView: View {
   }
   @AppStorage("localOnlyNoticeDismissed") private var localOnlyNoticeDismissed = false
   @AppStorage("whatsNewLastSeenVersion") private var whatsNewLastSeenVersion: String?
-  @Environment(\.openWindow) private var openWindow
   @State private var openCount = 0
   @State private var shareAnchor = ShareAnchor()
 
@@ -505,9 +504,7 @@ struct PopoverView: View {
       .accessibilityLabel("Share")
       .disabled(!(usageStore.isPortkeyOnly || (usageStore.usage != nil && usageStore.usageError == nil)))
       Button {
-        openWindow(id: DashboardView.windowId)
-        // The app has no Dock icon, so it must come forward or the window opens behind other apps.
-        NSApplication.shared.activate()
+        DashboardWindowController.show(usageStore: usageStore)
         closePopover()
       } label: {
         Label("Open dashboard", systemImage: "chart.bar.xaxis")

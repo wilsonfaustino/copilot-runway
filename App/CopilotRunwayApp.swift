@@ -3,16 +3,18 @@ import SwiftUI
 @main
 struct CopilotRunwayApp: App {
   @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-  @Environment(\.openWindow) private var openWindow
 
+  // The Dashboard is an AppKit window (DashboardWindowController), so this scene only carries the menu commands.
   var body: some Scene {
-    let _ = appDelegate.openDashboard = { [openWindow] in openWindow(id: DashboardView.windowId) }
-    Window("Copilot Runway", id: DashboardView.windowId) {
-      DashboardView(usageStore: appDelegate.usageStore)
-    }
-    .defaultSize(width: 760, height: 640)
-    .defaultLaunchBehavior(.suppressed)
+    Settings { EmptyView() }
     .commands {
+      // The same toggleSidebar(_:) as the toolbar button, sent to the Dashboard split view controller.
+      CommandGroup(before: .toolbar) {
+        Button(DashboardSidebarMenuState.shared.isSidebarVisible ? "Hide Sidebar" : "Show Sidebar") {
+          NSApp.sendAction(#selector(NSSplitViewController.toggleSidebar(_:)), to: nil, from: nil)
+        }
+        .keyboardShortcut("s", modifiers: [.command, .control])
+      }
       CommandGroup(replacing: .appSettings) {
         Button("Settings…") { SettingsWindowController.show(usageStore: appDelegate.usageStore) }
           .keyboardShortcut(",")

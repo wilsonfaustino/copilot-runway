@@ -10,7 +10,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
   private let sharePicker = SharePicker()
   // Room for the popover arrow below the menu bar and a small gap above the Dock.
   private static let popoverScreenMargin: CGFloat = 24
-  var openDashboard: (() -> Void)?
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -41,7 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     #if DEBUG
     if DemoLaunch.opensDashboard {
       // Async, because an argument that AppKit opens as a file makes SwiftUI skip .presented, and that happens in this launch pass.
-      DispatchQueue.main.async { [weak self] in self?.openDashboard?() }
+      DispatchQueue.main.async { [weak self] in self?.openDashboardWindow() }
     }
     if DemoLaunch.runsPortkeyNoticeDrill {
       Task { await usageStore.runwayNotifier.runPortkeyNoticeDrill() }
@@ -145,8 +144,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
   }
 
   @objc private func openDashboardWindow() {
-    openDashboard?()
-    NSApp.activate()
+    DashboardWindowController.show(usageStore: usageStore)
   }
 
   @objc private func openSettings() {
