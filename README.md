@@ -124,7 +124,7 @@ Each tab scrolls on its own.
   of last cycle. Today is left out. The sentence shows only when last cycle has at least 5 days
   with credits in the paired days.
 - A By provider card with one row for Copilot and one for Portkey: a bar of the budget left or spent,
-  the amount and the average burn per day in USD. Click a row to open that tab.
+  the amount and the average burn per day (or workday, as the runway counts) in USD. Click a row to open that tab.
 
 In Portkey only mode, General shows a Portkey banner, the Portkey cards and the daily burn chart in USD.
 

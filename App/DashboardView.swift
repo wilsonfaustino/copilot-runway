@@ -369,7 +369,7 @@ struct DashboardView: View {
   private func providerCard(usage: QuotaUsage) -> some View {
     let accent = Theme.accent(gaugeHealth)
     let rows = ProviderRows.rows(
-      copilotUsage: usage, combined: usageStore.combinedBudget, portkeySpentUSD: usageStore.portkeySpend.totalUSD,
+      copilotUsage: usage, portkeySpentUSD: usageStore.portkeySpend.totalUSD,
       portkeyRequestCount: usageStore.portkeySpend.requestCount, portkeyBudgetUSD: usageStore.portkeyBudgetUSD,
       mode: usageStore.gaugeMode, days: usageStore.runwayDays, now: .now)
     return VStack(alignment: .leading, spacing: Theme.Spacing.regular) {
@@ -385,6 +385,7 @@ struct DashboardView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(row.accessibilityLabel)
+        .accessibilityHint("Opens the \(row.tab.title) tab")
       }
     }
     .frame(maxWidth: .infinity, alignment: .leading)
@@ -400,6 +401,10 @@ struct DashboardView: View {
         kpiDetail(row.amountText)
         kpiDetail(row.burnText)
           .foregroundStyle(.secondary)
+        Image(systemName: "chevron.right")
+          .font(.system(size: 10, weight: .semibold))
+          .foregroundStyle(.tertiary)
+          .accessibilityHidden(true)
       }
       if let barFraction = row.barFraction {
         shareBar(fraction: barFraction, color: color)
