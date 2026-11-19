@@ -28,9 +28,10 @@ public enum PortkeyBudget {
     return max(usage.creditsRemaining, 0) / Double(datesUntilReset)
   }
 
-  // With a budget and no spend yet, the budget reaches the reset. Otherwise the Runway.lastsTheCycle rule.
-  public static func lastsTheCycle(usage: QuotaUsage, now: Date, days: RunwayDays = .calendar) -> Bool {
-    if usage.creditsUsed <= 0 { return now < usage.resetDate }
+  // With a budget and no request yet, the budget reaches the reset. Requests with no price also add 0 USD, so they do
+  // not count as no spend. Otherwise the Runway.lastsTheCycle rule.
+  public static func lastsTheCycle(usage: QuotaUsage, requestCount: Int, now: Date, days: RunwayDays = .calendar) -> Bool {
+    if usage.creditsUsed <= 0 && requestCount == 0 { return now < usage.resetDate }
     return Runway.lastsTheCycle(usage: usage, now: now, days: days)
   }
 

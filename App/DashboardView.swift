@@ -523,7 +523,9 @@ struct DashboardView: View {
     ) {
       runwayCard(
         usage: budgetUsage, health: RunwayHealth(usage: budgetUsage, now: .now, days: usageStore.runwayDays), figureSize: 26,
-        lastsTheCycle: PortkeyBudget.lastsTheCycle(usage: budgetUsage, now: .now, days: usageStore.runwayDays)
+        lastsTheCycle: PortkeyBudget.lastsTheCycle(
+          usage: budgetUsage, requestCount: usageStore.portkeySpend.requestCount, now: .now, days: usageStore.runwayDays
+        )
       )
     } else {
       kpiCard("Runway") {

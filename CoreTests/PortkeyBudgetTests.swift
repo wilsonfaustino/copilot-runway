@@ -196,14 +196,19 @@ private let portkeyNow = utcDate("2026-10-11T00:00:00Z")
 // The Runway card: with a budget and no spend yet, the budget lasts the cycle.
 @Test func noSpendWithBudgetLastsTheCycle() throws {
   let usage = try #require(PortkeyBudget.usage(spentUSD: 0, budgetUSD: 10, resetDate: portkeyResetDate))
-  #expect(PortkeyBudget.lastsTheCycle(usage: usage, now: portkeyNow))
+  #expect(PortkeyBudget.lastsTheCycle(usage: usage, requestCount: 0, now: portkeyNow))
   #expect(RunwayHealth(usage: usage, now: portkeyNow) == .healthy)
-  #expect(!PortkeyBudget.lastsTheCycle(usage: usage, now: portkeyResetDate))
+  #expect(!PortkeyBudget.lastsTheCycle(usage: usage, requestCount: 0, now: portkeyResetDate))
+}
+
+@Test func unpricedRequestsDoNotLastTheCycle() throws {
+  let usage = try #require(PortkeyBudget.usage(spentUSD: 0, budgetUSD: 10, resetDate: portkeyResetDate))
+  #expect(!PortkeyBudget.lastsTheCycle(usage: usage, requestCount: 3, now: portkeyNow))
 }
 
 @Test func spendFollowsTheRunwayRuleForLastsTheCycle() throws {
   let shortUsage = try #require(PortkeyBudget.usage(spentUSD: 4, budgetUSD: 10, resetDate: portkeyResetDate))
-  #expect(!PortkeyBudget.lastsTheCycle(usage: shortUsage, now: portkeyNow))
+  #expect(!PortkeyBudget.lastsTheCycle(usage: shortUsage, requestCount: 5, now: portkeyNow))
   let longUsage = try #require(PortkeyBudget.usage(spentUSD: 1, budgetUSD: 30, resetDate: portkeyResetDate))
-  #expect(PortkeyBudget.lastsTheCycle(usage: longUsage, now: portkeyNow))
+  #expect(PortkeyBudget.lastsTheCycle(usage: longUsage, requestCount: 5, now: portkeyNow))
 }
