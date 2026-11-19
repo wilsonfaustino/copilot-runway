@@ -83,6 +83,7 @@ struct DashboardView: View {
         }
         .fixedSize(horizontal: false, vertical: true)
         dailyBurnChart(resetDate: usage.resetDate, health: gaugeHealth)
+        providerCard(usage: usage)
       } else {
         errorText
       }
@@ -244,11 +245,10 @@ struct DashboardView: View {
         kpiDetail("\(Credits.formatted(usage.creditsUsed)) used")
       } else {
         Text("\(Runway.wholeGaugePercent(usage: usage, mode: gaugeMode))%").bigFigureStyle(size: 34)
-        if let combined {
+        if combined != nil {
           let accent = Theme.accent(health)
           combinedBar(parts: usageStore.gaugeParts, color: accent)
           kpiDetail("\(PortkeySpend.formatted(usage.creditsUsed)) of \(PortkeySpend.formatted(usage.entitlement)) used")
-          GaugeLegend(amountsUSD: combined.amountsUSD(mode: gaugeMode), color: accent)
         } else {
           shareBar(fraction: MenuBarTitle.gaugeFraction(usage: usage, mode: gaugeMode), color: Theme.accent(health))
           kpiDetail("\(Credits.formatted(usage.creditsUsed)) of \(Credits.formatted(usage.entitlement)) used")
@@ -361,6 +361,51 @@ struct DashboardView: View {
       }
     }
     .fixedSize(horizontal: false, vertical: true)
+  }
+
+  // MARK: By provider
+
+  // Each bar measures its own budget. Copilot takes the full accent and Portkey the 0.6 tone, as in the gauges.
+  private func providerCard(usage: QuotaUsage) -> some View {
+    let accent = Theme.accent(gaugeHealth)
+    let rows = ProviderRows.rows(
+      copilotUsage: usage, combined: usageStore.combinedBudget, portkeySpentUSD: usageStore.portkeySpend.totalUSD,
+      portkeyRequestCount: usageStore.portkeySpend.requestCount, portkeyBudgetUSD: usageStore.portkeyBudgetUSD,
+      mode: usageStore.gaugeMode, days: usageStore.runwayDays, now: .now)
+    return VStack(alignment: .leading, spacing: Theme.Spacing.regular) {
+      Text("By provider")
+        .font(Self.cardTitleFont)
+      ForEach(rows, id: \.tab) { row in
+        Button {
+          selection.tab = row.tab
+          selection.chosenTab = row.tab
+          DashboardDefaults.save(row.tab.rawValue, forKey: DashboardDefaults.tabKey)
+        } label: {
+          providerRowView(row, color: row.tab == .portkey ? accent.opacity(RunwayGlyph.portkeyOpacity) : accent)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(row.accessibilityLabel)
+      }
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .cardStyle(padding: Theme.Spacing.panel)
+  }
+
+  private func providerRowView(_ row: ProviderRow, color: Color) -> some View {
+    VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+      HStack(alignment: .firstTextBaseline) {
+        Text(row.tab.title)
+          .font(.system(size: 12, weight: .medium))
+        Spacer()
+        kpiDetail(row.amountText)
+        kpiDetail(row.burnText)
+          .foregroundStyle(.secondary)
+      }
+      if let barFraction = row.barFraction {
+        shareBar(fraction: barFraction, color: color)
+      }
+    }
+    .contentShape(Rectangle())
   }
 
   // MARK: Share cards
