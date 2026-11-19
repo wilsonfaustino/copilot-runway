@@ -78,9 +78,11 @@ struct DashboardView: View {
         HStack(alignment: .top, spacing: Theme.Spacing.regular) {
           runwayCard(usage: usageStore.gaugeUsage ?? usage, health: gaugeHealth)
           remainingCard(usage: usageStore.gaugeUsage ?? usage, health: gaugeHealth, combined: usageStore.combinedBudget)
+          averageDailyBurnCard(usage: usage, combined: usageStore.combinedBudget)
+          outcomesCard(usage: usage)
         }
         .fixedSize(horizontal: false, vertical: true)
-        dailyBurnChart(resetDate: usage.resetDate, health: copilotHealth)
+        dailyBurnChart(resetDate: usage.resetDate, health: gaugeHealth)
       } else {
         errorText
       }
@@ -101,19 +103,22 @@ struct DashboardView: View {
     }
   }
 
-  // Copilot only: no combined budget, so the cards and the chart stay in credits.
+  // Copilot only: no combined budget, so the banner, the cards and the chart stay in credits.
   @ViewBuilder
   private var copilotTab: some View {
     if let usage = usageStore.usage {
       let health = copilotHealth
+      insightBanner(
+        RunwayInsight.banner(
+          usage: usage, errorMessage: usageStore.errorMessage, categoryCredits: usageStore.categoryCredits, now: .now,
+          days: usageStore.runwayDays, combined: nil
+        ),
+        health: health
+      )
       HStack(alignment: .top, spacing: Theme.Spacing.regular) {
         runwayCard(usage: usage, health: health)
         remainingCard(usage: usage, health: health, combined: nil)
-        kpiCard("Average daily burn") {
-          Text(Credits.formatted(Runway.averageDailyBurn(usage: usage, now: .now, days: usageStore.runwayDays)))
-            .bigFigureStyle(size: 34)
-          kpiDetail("credits per \(usageStore.runwayDays.dayWord())")
-        }
+        averageDailyBurnCard(usage: usage, combined: nil)
         outcomesCard(usage: usage)
       }
       .fixedSize(horizontal: false, vertical: true)
@@ -248,6 +253,22 @@ struct DashboardView: View {
           shareBar(fraction: MenuBarTitle.gaugeFraction(usage: usage, mode: gaugeMode), color: Theme.accent(health))
           kpiDetail("\(Credits.formatted(usage.creditsUsed)) of \(Credits.formatted(usage.entitlement)) used")
         }
+      }
+    }
+  }
+
+  // In USD for a combined budget, else in Copilot credits.
+  private func averageDailyBurnCard(usage: QuotaUsage, combined: CombinedBudget?) -> some View {
+    let runwayDays = usageStore.runwayDays
+    return kpiCard("Average daily burn") {
+      if let combined {
+        Text(PortkeySpend.formatted(Runway.averageDailyBurn(usage: combined.usage, now: .now, days: runwayDays)))
+          .bigFigureStyle(size: 34)
+        kpiDetail("USD per \(runwayDays.dayWord())")
+      } else {
+        Text(Credits.formatted(Runway.averageDailyBurn(usage: usage, now: .now, days: runwayDays)))
+          .bigFigureStyle(size: 34)
+        kpiDetail("credits per \(runwayDays.dayWord())")
       }
     }
   }
