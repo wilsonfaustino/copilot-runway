@@ -18,6 +18,23 @@ public enum PortkeyBudget {
     )
   }
 
+  // The budget left per UTC date to the reset, for the Daily spend pace line. Today counts and the reset date does
+  // not. Every date counts, also in workday mode, because the chart has one bar per UTC date. 0 over budget. nil
+  // without a budget, or with no date left before the reset.
+  public static func dailyPaceUSD(spentUSD: Double, budgetUSD: Double?, resetDate: Date, now: Date) -> Double? {
+    guard let usage = usage(spentUSD: spentUSD, budgetUSD: budgetUSD, resetDate: resetDate) else { return nil }
+    let datesUntilReset = RunwayDays.calendar.wholeUTCDayCount(fromDayOf: now, toDayOf: resetDate)
+    guard datesUntilReset > 0 else { return nil }
+    return max(usage.creditsRemaining, 0) / Double(datesUntilReset)
+  }
+
+  // With a budget and no request yet, the budget reaches the reset. Requests with no price also add 0 USD, so they do
+  // not count as no spend. Otherwise the Runway.lastsTheCycle rule.
+  public static func lastsTheCycle(usage: QuotaUsage, requestCount: Int, now: Date, days: RunwayDays = .calendar) -> Bool {
+    if usage.creditsUsed <= 0 && requestCount == 0 { return now < usage.resetDate }
+    return Runway.lastsTheCycle(usage: usage, now: now, days: days)
+  }
+
   public struct Status: Equatable, Sendable {
     public let text: String
     public let health: RunwayHealth

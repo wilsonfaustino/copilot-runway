@@ -155,3 +155,60 @@ private let portkeyNow = utcDate("2026-10-11T00:00:00Z")
   )
   #expect(status?.text == "$29.00 of $30.00 left, lasts the cycle")
 }
+
+// The pace line: the budget left per UTC date to the reset, 21 dates after portkeyNow.
+@Test func dailyPaceSpreadsTheBudgetLeftOverTheDatesToTheReset() throws {
+  let pace = try #require(PortkeyBudget.dailyPaceUSD(spentUSD: 4, budgetUSD: 25, resetDate: portkeyResetDate, now: portkeyNow))
+  #expect(pace == 1)
+}
+
+// Today still counts as a whole date late in the day, so the pace does not jump before midnight.
+@Test func dailyPaceAtMiddayCountsTodayAsAWholeDate() throws {
+  let pace = try #require(
+    PortkeyBudget.dailyPaceUSD(spentUSD: 4, budgetUSD: 25, resetDate: portkeyResetDate, now: utcDate("2026-10-11T13:30:00Z"))
+  )
+  #expect(pace == 1)
+}
+
+// One minute before the reset, today is the only date left, so the pace is the whole amount left.
+@Test func dailyPaceInTheLastMinuteIsTheAmountLeft() throws {
+  let pace = try #require(
+    PortkeyBudget.dailyPaceUSD(spentUSD: 9, budgetUSD: 10, resetDate: portkeyResetDate, now: utcDate("2026-10-31T23:59:00Z"))
+  )
+  #expect(pace == 1)
+}
+
+@Test func dailyPaceWithoutBudgetIsNil() {
+  #expect(PortkeyBudget.dailyPaceUSD(spentUSD: 4, budgetUSD: nil, resetDate: portkeyResetDate, now: portkeyNow) == nil)
+  #expect(PortkeyBudget.dailyPaceUSD(spentUSD: 4, budgetUSD: 0, resetDate: portkeyResetDate, now: portkeyNow) == nil)
+}
+
+// Over budget there is nothing left to spend, so the line sits at 0 and not below it.
+@Test func dailyPaceOverBudgetIsZero() {
+  #expect(PortkeyBudget.dailyPaceUSD(spentUSD: 12, budgetUSD: 10, resetDate: portkeyResetDate, now: portkeyNow) == 0)
+}
+
+// At the reset instant no date is left, and the pace would divide by 0.
+@Test func dailyPaceAtTheResetIsNil() {
+  #expect(PortkeyBudget.dailyPaceUSD(spentUSD: 4, budgetUSD: 10, resetDate: portkeyResetDate, now: portkeyResetDate) == nil)
+}
+
+// The Runway card: with a budget and no spend yet, the budget lasts the cycle.
+@Test func noSpendWithBudgetLastsTheCycle() throws {
+  let usage = try #require(PortkeyBudget.usage(spentUSD: 0, budgetUSD: 10, resetDate: portkeyResetDate))
+  #expect(PortkeyBudget.lastsTheCycle(usage: usage, requestCount: 0, now: portkeyNow))
+  #expect(RunwayHealth(usage: usage, now: portkeyNow) == .healthy)
+  #expect(!PortkeyBudget.lastsTheCycle(usage: usage, requestCount: 0, now: portkeyResetDate))
+}
+
+@Test func unpricedRequestsDoNotLastTheCycle() throws {
+  let usage = try #require(PortkeyBudget.usage(spentUSD: 0, budgetUSD: 10, resetDate: portkeyResetDate))
+  #expect(!PortkeyBudget.lastsTheCycle(usage: usage, requestCount: 3, now: portkeyNow))
+}
+
+@Test func spendFollowsTheRunwayRuleForLastsTheCycle() throws {
+  let shortUsage = try #require(PortkeyBudget.usage(spentUSD: 4, budgetUSD: 10, resetDate: portkeyResetDate))
+  #expect(!PortkeyBudget.lastsTheCycle(usage: shortUsage, requestCount: 5, now: portkeyNow))
+  let longUsage = try #require(PortkeyBudget.usage(spentUSD: 1, budgetUSD: 30, resetDate: portkeyResetDate))
+  #expect(PortkeyBudget.lastsTheCycle(usage: longUsage, requestCount: 5, now: portkeyNow))
+}

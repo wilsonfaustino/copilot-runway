@@ -213,12 +213,14 @@ struct DashboardView: View {
       .monospacedDigit()
   }
 
-  private func runwayCard(usage: QuotaUsage, health: RunwayHealth) -> some View {
+  private func runwayCard(
+    usage: QuotaUsage, health: RunwayHealth, figureSize: CGFloat = 34, lastsTheCycle: Bool? = nil
+  ) -> some View {
     kpiCard("Runway") {
       if usage.isUnlimited {
         Text("∞").bigFigureStyle(size: 34)
         kpiDetail("Unlimited plan")
-      } else if Runway.lastsTheCycle(usage: usage, now: .now, days: usageStore.runwayDays) {
+      } else if lastsTheCycle ?? Runway.lastsTheCycle(usage: usage, now: .now, days: usageStore.runwayDays) {
         Text("Lasts the cycle")
           .bigFigureStyle(size: 22)
           .foregroundStyle(Theme.accent(health))
@@ -227,11 +229,11 @@ struct DashboardView: View {
         let runOutDate = Runway.runOutDate(usage: usage, now: .now, days: usageStore.runwayDays)
       {
         Text("\(wholeDays) \(usageStore.runwayDays.dayWord(count: wholeDays))")
-          .bigFigureStyle(size: 34)
+          .bigFigureStyle(size: figureSize)
           .foregroundStyle(Theme.accent(health))
         kpiDetail("Run-out \(day(max(runOutDate, .now)))")
       } else {
-        Text("--").bigFigureStyle(size: 34)
+        Text("--").bigFigureStyle(size: figureSize)
         kpiDetail("No burn yet")
       }
     }
@@ -506,9 +508,58 @@ struct DashboardView: View {
           spentUSD: spend.totalUSD, budgetUSD: usageStore.portkeyBudgetUSD, resetDate: resetDate, now: .now, days: usageStore.runwayDays
         ),
         dateRange: "\(day(Runway.cycleStart(resetDate: resetDate))) to \(day(.now))",
-        isPortkeyOnly: usageStore.isPortkeyOnly
+        isPortkeyOnly: usageStore.isPortkeyOnly,
+        runwayCard: portkeyRunwayCard(resetDate: resetDate),
+        dailySpendChart: portkeyDailySpendChart(resetDate: resetDate)
       )
     }
+  }
+
+  // The Portkey budget alone, never the combined or Copilot usage, so a Copilot error does not change its tone.
+  @ViewBuilder
+  private func portkeyRunwayCard(resetDate: Date) -> some View {
+    if let budgetUsage = PortkeyBudget.usage(
+      spentUSD: usageStore.portkeySpend.totalUSD, budgetUSD: usageStore.portkeyBudgetUSD, resetDate: resetDate
+    ) {
+      runwayCard(
+        usage: budgetUsage, health: RunwayHealth(usage: budgetUsage, now: .now, days: usageStore.runwayDays), figureSize: 26,
+        lastsTheCycle: PortkeyBudget.lastsTheCycle(
+          usage: budgetUsage, requestCount: usageStore.portkeySpend.requestCount, now: .now, days: usageStore.runwayDays
+        )
+      )
+    } else {
+      kpiCard("Runway") {
+        Text("--").bigFigureStyle(size: 26)
+        kpiDetail("No budget set")
+      }
+    }
+  }
+
+  // Portkey USD per UTC day, the last cycle line and the budget pace line. Copilot days are only the day list.
+  private func portkeyDailySpendChart(resetDate: Date) -> some View {
+    let spend = usageStore.portkeySpend
+    let days = CombinedDailyBurn.days(copilot: usageStore.dailyCredits, portkeyRecords: spend.records)
+      .map { DailyCredits(day: $0.day, credits: $0.portkeyUSD) }
+    let previousTotals = CombinedDailyBurn.days(
+      copilot: usageStore.previousDailyCredits, portkeyRecords: usageStore.previousPortkeySpend.records
+    )
+    .map { DailyCredits(day: $0.day, credits: $0.portkeyUSD) }
+    let budgetUsage = PortkeyBudget.usage(spentUSD: spend.totalUSD, budgetUSD: usageStore.portkeyBudgetUSD, resetDate: resetDate)
+    return DailyBurnChart(
+      days: days.map { DailyBurnChart.ChartDay(day: $0.day, copilot: 0, portkey: $0.credits) },
+      previousTotals: previousTotals,
+      comparisonSentence: nil,
+      cycleDayCount: Runway.cycleDayCount(resetDate: resetDate),
+      averageDailyBurn: nil,
+      unit: .usd,
+      title: "Daily spend",
+      budgetPace: PortkeyBudget.dailyPaceUSD(
+        spentUSD: spend.totalUSD, budgetUSD: usageStore.portkeyBudgetUSD, resetDate: resetDate, now: .now
+      ),
+      runwayDays: usageStore.runwayDays,
+      health: budgetUsage.map { RunwayHealth(usage: $0, now: .now, days: usageStore.runwayDays) } ?? .healthy,
+      isPortkeyOnly: true
+    )
   }
 
   // MARK: Top sessions
@@ -748,8 +799,12 @@ private struct DailyBurnChart: View {
   let previousTotals: [DailyCredits]
   let comparisonSentence: String?
   let cycleDayCount: Int
-  let averageDailyBurn: Double
+  // nil hides the average line.
+  let averageDailyBurn: Double?
   let unit: BudgetUnit
+  var title = "Daily burn"
+  // The budget left per day to the reset, in USD. nil hides the pace line.
+  var budgetPace: Double?
 
   // Half a credit in either unit, so the invisible hover mark never stretches the y axis past the data.
   private var hoverMarkPadding: Double {
@@ -800,7 +855,7 @@ private struct DailyBurnChart: View {
     VStack(alignment: .leading, spacing: 12) {
       VStack(alignment: .leading, spacing: Theme.Spacing.small) {
         HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.regular) {
-          Text("Daily burn")
+          Text(title)
             .font(DashboardView.cardTitleFont)
           Text("Days are UTC.")
             .captionStyle()
@@ -828,9 +883,17 @@ private struct DailyBurnChart: View {
                 Text(unit == .usd ? "Last cycle, \(amount(previousTotal))" : "Last cycle, \(amount(previousTotal)) local credits")
               }
             }
-            HStack(spacing: Theme.Spacing.small) {
-              legendLine(color: averageColor, style: StrokeStyle(lineWidth: 2, dash: [3, 2]))
-              Text("\(averageName), \(amount(averageDailyBurn))/\(runwayDays.dayWord())")
+            if let averageDailyBurn {
+              HStack(spacing: Theme.Spacing.small) {
+                legendLine(color: averageColor, style: StrokeStyle(lineWidth: 2, dash: [3, 2]))
+                Text("\(averageName), \(amount(averageDailyBurn))/\(runwayDays.dayWord())")
+              }
+            }
+            if let budgetPace {
+              HStack(spacing: Theme.Spacing.small) {
+                legendLine(color: averageColor, style: StrokeStyle(lineWidth: 2, dash: [3, 2]))
+                Text("Budget pace, \(amount(budgetPace))/day")
+              }
             }
           }
           .captionStyle()
@@ -892,11 +955,20 @@ private struct DailyBurnChart: View {
             .accessibilityValue(unit == .usd ? amount(dayCredits.credits) : "\(amount(dayCredits.credits)) local credits")
           }
         }
-        RuleMark(y: .value(averageName, averageDailyBurn))
-          .foregroundStyle(averageColor)
-          .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 4]))
-          .accessibilityLabel(averageName)
-          .accessibilityValue(unit == .usd ? "\(amount(averageDailyBurn)) per \(runwayDays.dayWord())" : "\(amount(averageDailyBurn)) credits per \(runwayDays.dayWord())")
+        if let averageDailyBurn {
+          RuleMark(y: .value(averageName, averageDailyBurn))
+            .foregroundStyle(averageColor)
+            .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 4]))
+            .accessibilityLabel(averageName)
+            .accessibilityValue(unit == .usd ? "\(amount(averageDailyBurn)) per \(runwayDays.dayWord())" : "\(amount(averageDailyBurn)) credits per \(runwayDays.dayWord())")
+        }
+        if let budgetPace {
+          RuleMark(y: .value("Budget pace", budgetPace))
+            .foregroundStyle(averageColor)
+            .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 4]))
+            .accessibilityLabel("Budget pace")
+            .accessibilityValue("\(amount(budgetPace)) per day")
+        }
         if let selectedIndex {
           RuleMark(x: .value("Day", Self.dayPosition(selectedIndex)))
             .foregroundStyle(.secondary.opacity(0.4))
@@ -934,7 +1006,7 @@ private struct DailyBurnChart: View {
         }
       }
       .frame(height: 200)
-      .accessibilityLabel("Daily burn")
+      .accessibilityLabel(title)
       .accessibilityValue(accessibilitySummary(copilotTotal: copilotTotal, portkeyTotal: portkeyTotal, previousTotal: previousTotal))
     }
     .cardStyle(padding: Theme.Spacing.panel)
