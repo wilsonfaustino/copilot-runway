@@ -117,6 +117,8 @@ Each tab scrolls on its own.
   share of local credits. With a Portkey budget set, the banner uses the combined budget in USD
   and gives the average daily burn of Copilot and of Portkey.
 - Cards for days of runway and percent remaining.
+- A By provider card with one row for Copilot and one for Portkey: a bar of the budget left or spent,
+  the amount and the average burn per day in USD. Click a row to open that tab.
 - A daily burn chart for the cycle, one bar per UTC day from local sessions, with a line at the
   GitHub average daily burn. Select a bar to see the credits for that day.
 - A dashed line for last cycle, paired by day of the cycle, when last cycle has credits. Hover a
