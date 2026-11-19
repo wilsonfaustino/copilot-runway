@@ -182,11 +182,14 @@ private struct PortkeyModelShareBar: View {
   }
 }
 
-struct PortkeyDashboardSection: View {
+// The Dashboard passes in the Runway card and the Daily spend chart, because their views are private to DashboardView.
+struct PortkeyDashboardSection<RunwayCard: View, DailySpendChart: View>: View {
   let spend: PortkeySpend
   let budgetStatus: PortkeyBudget.Status?
   let dateRange: String
   var isPortkeyOnly = false
+  let runwayCard: RunwayCard
+  let dailySpendChart: DailySpendChart
 
   var body: some View {
     VStack(alignment: .leading, spacing: Theme.Spacing.regular) {
@@ -198,6 +201,7 @@ struct PortkeyDashboardSection: View {
         Spacer()
       }
       HStack(alignment: .top, spacing: Theme.Spacing.regular) {
+        runwayCard
         summaryCard("Spend this cycle", value: { DollarFigure(usd: spend.totalUSD, size: 26) }) {
           if let budgetStatus {
             Text(budgetStatus.text)
@@ -218,6 +222,7 @@ struct PortkeyDashboardSection: View {
         }
       }
       .fixedSize(horizontal: false, vertical: true)
+      dailySpendChart
       if spend.byModel.isEmpty {
         Text("No Portkey requests in this cycle.")
           .captionStyle()
