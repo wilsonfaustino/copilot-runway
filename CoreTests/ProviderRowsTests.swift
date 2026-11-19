@@ -13,9 +13,8 @@ private func providerRows(
   mode: GaugeMode = .left,
   days: RunwayDays = .calendar
 ) -> [ProviderRow] {
-  let combined = CombinedBudget.make(copilot: copilotUsage, portkeySpentUSD: portkeySpentUSD, portkeyBudgetUSD: portkeyBudgetUSD)
-  return ProviderRows.rows(
-    copilotUsage: copilotUsage, combined: combined, portkeySpentUSD: portkeySpentUSD, portkeyRequestCount: portkeyRequestCount,
+  ProviderRows.rows(
+    copilotUsage: copilotUsage, portkeySpentUSD: portkeySpentUSD, portkeyRequestCount: portkeyRequestCount,
     portkeyBudgetUSD: portkeyBudgetUSD, mode: mode, days: days, now: providerNow, locale: usLocale)
 }
 
@@ -87,4 +86,12 @@ private func providerRows(
   #expect(rows[0].burnText == "$5.55/workday")
   #expect(rows[1].burnText == "$0.84/workday")
   #expect(rows[1].accessibilityLabel == "Portkey, $40.74 of $50.00 left, $0.84 per workday")
+}
+
+@Test func unlimitedCopilotAndPortkeyWithoutBudgetShowNoBars() {
+  let rows = providerRows(
+    copilotUsage: makeUsage(creditsUsed: 6100, isUnlimited: true), portkeySpentUSD: 12.34, portkeyRequestCount: 5)
+  #expect(rows.map(\.tab) == [.copilot, .portkey])
+  #expect(rows.map(\.barFraction) == [nil, nil])
+  #expect(rows.map(\.burnText) == ["$4.07/day", "$0.82/day"])
 }
