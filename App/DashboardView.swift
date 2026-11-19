@@ -79,7 +79,7 @@ struct DashboardView: View {
           runwayCard(usage: usageStore.gaugeUsage ?? usage, health: gaugeHealth)
           remainingCard(usage: usageStore.gaugeUsage ?? usage, health: gaugeHealth, combined: usageStore.combinedBudget)
           averageDailyBurnCard(usage: usage, combined: usageStore.combinedBudget)
-          outcomesCard(usage: usage)
+          outcomesCard(usage: usage, showsUSD: true)
         }
         .fixedSize(horizontal: false, vertical: true)
         dailyBurnChart(resetDate: usage.resetDate, health: gaugeHealth)
@@ -120,7 +120,7 @@ struct DashboardView: View {
         runwayCard(usage: usage, health: health)
         remainingCard(usage: usage, health: health, combined: nil)
         averageDailyBurnCard(usage: usage, combined: nil)
-        outcomesCard(usage: usage)
+        outcomesCard(usage: usage, showsUSD: false)
       }
       .fixedSize(horizontal: false, vertical: true)
       dailyBurnChart(resetDate: usage.resetDate, health: health, allowsUSD: false)
@@ -273,11 +273,13 @@ struct DashboardView: View {
     }
   }
 
-  private func outcomesCard(usage: QuotaUsage) -> some View {
-    kpiCard("Credits per PR authored") {
+  // General shows cost per PR in USD, the Copilot tab shows credits per PR authored.
+  private func outcomesCard(usage: QuotaUsage, showsUSD: Bool) -> some View {
+    let title = showsUSD ? "Cost per PR" : "Credits per PR authored"
+    return kpiCard(title) {
       if usageStore.organization == nil {
         Text("--").bigFigureStyle(size: 34)
-        Text("Set a GitHub organization in Settings to see credits per PR authored.")
+        Text("Set a GitHub organization in Settings to see \(showsUSD ? "cost per PR" : "credits per PR authored").")
           .font(.system(size: 12))
           .lineLimit(3)
           .fixedSize(horizontal: false, vertical: true)
@@ -289,17 +291,32 @@ struct DashboardView: View {
         .controlSize(.small)
       } else {
         if let outcomes = usageStore.outcomes {
-          Text(outcomes.creditsPerPRAuthored(creditsUsed: usage.creditsUsed).map { Credits.formatted($0) } ?? "No PRs yet")
+          if showsUSD {
+            let combined = usageStore.combinedBudget
+            Text(
+              outcomes.usdPerPRAuthored(copilotCreditsUsed: usage.creditsUsed, combined: combined).map { PortkeySpend.formatted($0) }
+                ?? "No PRs yet"
+            )
             .bigFigureStyle(size: 34)
-          kpiDetail(
-            "\(GitHubOutcomes.countText(outcomes.prsMerged)) merged · \(GitHubOutcomes.countText(outcomes.prsOpen)) open"
-              + " · \(GitHubOutcomes.countText(outcomes.prsReviewed)) reviewed · \(GitHubOutcomes.countText(outcomes.commits)) commits"
-          )
-          .lineLimit(1)
-          .minimumScaleFactor(0.85)
-          .help(
-            "PRs authored are merged and open PRs you created this cycle. Closed PRs that were not merged, PRs reviewed and commits are not counted."
-          )
+            kpiDetail("\(GitHubOutcomes.countText(outcomes.prsMerged)) merged · \(GitHubOutcomes.countText(outcomes.prsOpen)) open")
+              .lineLimit(1)
+              .minimumScaleFactor(0.85)
+              .help(
+                "Spend this cycle (\(combined == nil ? "Copilot only" : "Copilot plus Portkey")) divided by the merged and open PRs you created this cycle. Closed PRs that were not merged are not counted."
+              )
+          } else {
+            Text(outcomes.creditsPerPRAuthored(creditsUsed: usage.creditsUsed).map { Credits.formatted($0) } ?? "No PRs yet")
+              .bigFigureStyle(size: 34)
+            kpiDetail(
+              "\(GitHubOutcomes.countText(outcomes.prsMerged)) merged · \(GitHubOutcomes.countText(outcomes.prsOpen)) open"
+                + " · \(GitHubOutcomes.countText(outcomes.prsReviewed)) reviewed · \(GitHubOutcomes.countText(outcomes.commits)) commits"
+            )
+            .lineLimit(1)
+            .minimumScaleFactor(0.85)
+            .help(
+              "PRs authored are merged and open PRs you created this cycle. Closed PRs that were not merged, PRs reviewed and commits are not counted."
+            )
+          }
         } else {
           Text("--").bigFigureStyle(size: 34)
           if usageStore.outcomesError == nil {

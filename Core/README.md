@@ -590,6 +590,8 @@ The commit search is `author:@me author-date:>=<cycle start> user:<org>`. These 
   (`credits_used` on unlimited plans). PRs reviewed and commits are
   shown as counts but are not in the divisor. With 0 PRs there is no value. Credits used is all Copilot use on
   the account, also outside the organization.
+- `GitHubOutcomes.usdPerPRAuthored` is the USD form on the Dashboard General tab ("Cost per PR"): combined Copilot plus Portkey
+  spend when a combined budget exists, else Copilot credits used x US$0.01, divided by the same PRs. With 0 PRs there is no value.
 
 ### Copilot code reviews
 
