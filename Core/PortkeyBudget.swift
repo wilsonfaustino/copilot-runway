@@ -18,6 +18,17 @@ public enum PortkeyBudget {
     )
   }
 
+  // The budget left per day to the reset, for the Daily spend pace line. 0 over budget. nil without a budget, or
+  // with no counted day left before the reset.
+  public static func dailyPaceUSD(
+    spentUSD: Double, budgetUSD: Double?, resetDate: Date, now: Date, days: RunwayDays = .calendar
+  ) -> Double? {
+    guard let usage = usage(spentUSD: spentUSD, budgetUSD: budgetUSD, resetDate: resetDate) else { return nil }
+    let daysUntilReset = days.dayCount(from: now, to: resetDate)
+    guard daysUntilReset > 0 else { return nil }
+    return max(usage.creditsRemaining, 0) / daysUntilReset
+  }
+
   public struct Status: Equatable, Sendable {
     public let text: String
     public let health: RunwayHealth
