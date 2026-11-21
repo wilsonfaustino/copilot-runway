@@ -84,6 +84,7 @@ struct DashboardView: View {
         .fixedSize(horizontal: false, vertical: true)
         dailyBurnChart(resetDate: usage.resetDate, health: gaugeHealth)
         providerCard(usage: usage)
+        combinedTaskCard
       } else {
         errorText
       }
@@ -98,6 +99,7 @@ struct DashboardView: View {
         )
         portkeyOnlyKPIRow(resetDate: resetDate, health: gaugeHealth)
         dailyBurnChart(resetDate: resetDate, health: gaugeHealth)
+        combinedTaskCard
       }
     case .noPortkeyData:
       errorText
@@ -433,11 +435,25 @@ struct DashboardView: View {
 
   // MARK: Share cards
 
+  private var taskColors: [ShareItem.ID: Color] {
+    Dictionary(uniqueKeysWithValues: TaskCategory.allCases.map { (.entry($0.displayName), Theme.taskColor($0, palette: taskPalette)) })
+  }
+
   private var taskCard: some View {
     shareCard(
       title: "By task",
       breakdown: ShareBreakdown.tasks(usageStore.categoryCredits),
-      colors: Dictionary(uniqueKeysWithValues: TaskCategory.allCases.map { (.entry($0.displayName), Theme.taskColor($0, palette: taskPalette)) }),
+      colors: taskColors,
+      marksSmallShares: true
+    )
+  }
+
+  // General: Copilot and Portkey in USD. In Portkey only mode categoryCredits is empty, so the card shows Portkey alone.
+  private var combinedTaskCard: some View {
+    shareCard(
+      title: "By task",
+      breakdown: CombinedTaskSpend.breakdown(copilot: usageStore.categoryCredits, portkeyRecords: usageStore.portkeySpend.records),
+      colors: taskColors,
       marksSmallShares: true
     )
   }
@@ -657,7 +673,7 @@ struct DashboardView: View {
         Text(title)
           .font(Self.cardTitleFont)
         Spacer()
-        Text(Credits.formatted(breakdown.shareTotal))
+        Text(breakdown.formattedAmount(breakdown.shareTotal))
           .bigFigureStyle(size: 26)
         Text(breakdown.unit)
           .captionStyle()
@@ -680,7 +696,7 @@ struct DashboardView: View {
           highlightsOnHover: true
         )
       } else {
-        Text("No local sessions in this cycle.")
+        Text(breakdown.isUSD ? "No priced spend in this cycle." : "No local sessions in this cycle.")
           .captionStyle()
       }
       Spacer(minLength: 0)

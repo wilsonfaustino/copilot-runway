@@ -2,7 +2,7 @@
 INSERT INTO session_message VALUES ('msg_pk_user', 'ses_portkey', 'user', 1, 1791190740000, 1791190740000,
   '{"content":[{"type":"text","text":"Synthetic prompt."}]}');
 INSERT INTO session_message VALUES ('msg_pk_deepseek', 'ses_portkey', 'assistant', 2, 1791190800000, 1791190800000,
-  '{"model":{"id":"@fireworks-ai-global/accounts/fireworks/models/deepseek-v4p1-flash-1017","providerID":"portkey-openai-compatible"},"cost":0.01,"tokens":{"input":1000,"output":200,"reasoning":0,"cache":{"read":0,"write":0}}}');
+  '{"model":{"id":"@fireworks-ai-global/accounts/fireworks/models/deepseek-v4p1-flash-1017","providerID":"portkey-openai-compatible"},"content":[{"type":"tool","id":"tool_pk_1","name":"edit","executed":true,"state":{"status":"completed","input":{"filePath":"/p/a.swift"}},"time":{"created":0}}],"cost":0.01,"tokens":{"input":1000,"output":200,"reasoning":0,"cache":{"read":0,"write":0}}}');
 INSERT INTO session_message VALUES ('msg_pk_glm', 'ses_portkey', 'assistant', 3, 1791191100000, 1791191100000,
   '{"model":{"id":"@fireworks-ai-global/accounts/fireworks/models/glm-5p3-flash","providerID":"portkey-openai-compatible"},"cost":0.001,"tokens":{"input":100,"output":20,"reasoning":0,"cache":{"read":0,"write":0}}}');
 INSERT INTO session_message VALUES ('msg_pk_no_cost', 'ses_portkey', 'assistant', 4, 1791191400000, 1791191400000,

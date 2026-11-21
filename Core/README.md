@@ -144,7 +144,10 @@ never count as Copilot credits. Checked on real data in November 2026.
   are never read.
 - Pi and omp records are unique by `responseId`, with the same set as Copilot records, so a message copied
   between `~/.pi` and `~/.omp` counts once, as Pi.
-- Portkey records are never part of a turn. A turn with only Portkey messages has no Copilot record and drops out.
+- Portkey records are never in `Turn.records`, but each gets the `TaskCategorizer` category of the turn that holds
+  its message (`PortkeyRecord.category`), set by the parser when the turn ends. A turn with only Portkey messages
+  has no Copilot record: the parser categorizes it, then drops it, so it is in no Copilot aggregate. See
+  Turns and task categories.
 - `SessionCredits.load` returns them as `portkey`, with records before the cycle start left out.
 - `PortkeySpend` gives the total, request count, unpriced count, average per priced request, spend by model, by
   source and by model and source, and an insight sentence. `PortkeyBudget.usage` maps the spend and a monthly
@@ -248,6 +251,16 @@ Rules, checked in this order. The first match wins.
 | Planning | No read, shell or edit calls, and at least 1,000 output tokens (reasoning included) |
 | Uncategorized | None of the above |
 
+Portkey messages are in the same session files and turns as Copilot messages, and their tool calls join the turn
+the same way. The Pi and OpenCode parsers give each `PortkeyRecord` the category of its turn when the turn ends, so
+a turn with Copilot and Portkey messages gives both the same category, as one task. A turn with only Portkey
+messages is categorized before it drops out. The Planning output token rule counts only Copilot records, so a
+Portkey-only turn without read, shell or edit calls is Uncategorized, unless it runs the OpenCode `plan` agent or a
+pull request review tool.
+A Pi or omp turn can cross the cycle start. `SessionCredits` passes the cycle start as `splitAt`, and the parser
+counts only the Copilot records on the Portkey record's side of it, as `SessionCredits.aggregate` does for the
+Copilot turn, so both get the same category.
+
 ## Dashboard aggregates
 
 All dashboard numbers come from the same turns, so they add up to the same local total.
@@ -292,8 +305,16 @@ with `PriceTable`. Messages from models without a price and without billed credi
     See Copilot code reviews.
   - `unpricedModelsNote(_:)` is the dashboard By model note: "1 model has no price: <name>" or
     "2 models have no price: <name1>, <name2>", sorted by id. `nil` when every model has a price.
-  - `unit` names what `shareTotal` counts ("local credits" or "GitHub credits"). `isEmpty` is true when
-    there is no bar to draw.
+  - `unit` names what `shareTotal` counts ("local credits", "GitHub credits", or "local" for USD). `isEmpty` is
+    true when there is no bar to draw. `isUSD` is true when the amounts are USD. `formattedAmount(_:)` shows
+    whole credits, or USD with cents (`PortkeySpend.formatted`).
+- `CombinedTaskSpend`: the General By task card, in USD. `byCategory(copilot:portkeyRecords:)` adds
+  `Credits.byCategory` credits at US$0.01 each to the cost of the Portkey records of each category
+  (`PortkeyRecord.category`), highest first, then by category. An unpriced Portkey record adds no amount and no
+  category row. The card says "No priced spend in this cycle." when it has no amount.
+  `breakdown(copilot:portkeyRecords:)` is `ShareBreakdown.tasks(_:)` on those amounts, with the same
+  categories, order, Uncategorized item and largest remainder shares, and `isUSD` true. With no Copilot data
+  (Portkey only mode) it is Portkey alone. With no Portkey records it is Copilot credits in USD.
 - `ModelTaskSplit`: the dashboard By model card draws one full-width bar per model item, split by task.
   The segments of a bar are the `byModelAndCategory` credits of that model, so they show its task mix.
   "Other models" sums the folded models. "Not in local sessions" has no task and keeps its striped bar.

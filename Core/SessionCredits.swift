@@ -48,14 +48,16 @@ public struct SessionCredits: Sendable {
     var seenResponseIds = Set<String>()
     var portkeyRecords: [PortkeyRecord] = []
     let piTurns = PiSessionParser.turns(
-      inDirectory: piDirectory, source: .pi, since: previousCycleStart, seenResponseIds: &seenResponseIds, portkeyRecords: &portkeyRecords
+      inDirectory: piDirectory, source: .pi, since: previousCycleStart, splitAt: cycleStart, seenResponseIds: &seenResponseIds,
+      portkeyRecords: &portkeyRecords
     )
     var turns = piTurns.turns
     if piTurns.hasUndecodableFile {
       warnings.append("Cannot read some Pi sessions.")
     }
     let ompTurns = PiSessionParser.turns(
-      inDirectory: ompDirectory, source: .omp, since: previousCycleStart, seenResponseIds: &seenResponseIds, portkeyRecords: &portkeyRecords
+      inDirectory: ompDirectory, source: .omp, since: previousCycleStart, splitAt: cycleStart, seenResponseIds: &seenResponseIds,
+      portkeyRecords: &portkeyRecords
     )
     turns += ompTurns.turns
     if ompTurns.hasUndecodableFile {

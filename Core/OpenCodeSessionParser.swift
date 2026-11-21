@@ -83,7 +83,8 @@ public enum OpenCodeSessionParser {
     try read(inDirectory: directory, since: cycleStart, splitAt: splitAt).turns
   }
 
-  // The turns, plus the Portkey assistant messages in the cycle. Portkey messages are never part of a turn.
+  // The turns, plus the Portkey assistant messages in the cycle. Portkey messages are never part of a turn, but each
+  // gets the category of its turn. A turn with only Portkey messages is categorized, then dropped.
   public static func read(
     inDirectory directory: URL = dataDirectory,
     since cycleStart: Date,
@@ -130,7 +131,6 @@ public enum OpenCodeSessionParser {
 
     // Index 0 for rows from splitAt on, 1 for rows before it.
     var builders = [TurnBuilder(), TurnBuilder()]
-    var portkeyRecords: [PortkeyRecord] = []
     try forEachRow(query: sessionTurnQuery, in: database, since: cycleStartMilliseconds) { statement in
       guard let messageId = text(statement, 0), let sessionId = text(statement, 1), let type = text(statement, 2) else { return }
       let timestamp = Date(timeIntervalSince1970: Double(sqlite3_column_int64(statement, 3)) / 1000)
@@ -138,28 +138,31 @@ public enum OpenCodeSessionParser {
       let session = TurnBuilder.Session(
         id: sessionId, directory: text(statement, 12), parentId: text(statement, 13), projectRoot: text(statement, 14)
       )
-      builders[isBeforeSplit ? 1 : 0].add(session: session, type: type, timestamp: timestamp) { turn in
-        turn.agent = turn.agent ?? text(statement, 4)
-        turn.toolCalls += toolCallsByMessageId[messageId] ?? []
-        if text(statement, 5) == copilotProvider, let model = text(statement, 6) {
-          turn.records.append(UsageRecord(model: model, timestamp: timestamp, tokens: tokens(statement, firstColumn: 7)))
-        }
-      }
       // The cost is data.cost in USD, as OpenCode stored it. NULL, or 0 with tokens, when OpenCode has no price: the
       // record is unpriced.
+      var portkeyRecord: PortkeyRecord?
       if type == "assistant", let provider = text(statement, 5), PortkeyRecord.isPortkey(provider: provider),
         let model = text(statement, 6)
       {
         let storedCostUSD = sqlite3_column_type(statement, 15) == SQLITE_NULL ? nil : sqlite3_column_double(statement, 15)
         let rowTokens = tokens(statement, firstColumn: 7)
         let costUSD = PortkeyRecord.costUSD(stored: storedCostUSD, tokenCount: rowTokens.promptTokens + rowTokens.output)
-        portkeyRecords.append(PortkeyRecord(model: model, timestamp: timestamp, source: .opencode, costUSD: costUSD))
+        portkeyRecord = PortkeyRecord(model: model, timestamp: timestamp, source: .opencode, costUSD: costUSD)
+      }
+      builders[isBeforeSplit ? 1 : 0].add(session: session, type: type, timestamp: timestamp, portkeyRecord: portkeyRecord) { turn in
+        turn.agent = turn.agent ?? text(statement, 4)
+        turn.toolCalls += toolCallsByMessageId[messageId] ?? []
+        if text(statement, 5) == copilotProvider, let model = text(statement, 6) {
+          turn.records.append(UsageRecord(model: model, timestamp: timestamp, tokens: tokens(statement, firstColumn: 7)))
+        }
       }
     }
-    return (builders.flatMap { $0.finishedTurns() }.filter { !$0.records.isEmpty }, portkeyRecords)
+    let finished = builders.map { $0.finished() }
+    return (finished.flatMap(\.turns).filter { !$0.records.isEmpty }, finished.flatMap(\.portkeyRecords))
   }
 
-  // Groups rows in session order: a user row or a new session starts a turn.
+  // Groups rows in session order: a user row or a new session starts a turn. The Portkey records of a turn get its
+  // category when the turn ends.
   private struct TurnBuilder {
     struct Session {
       let id: String
@@ -169,13 +172,21 @@ public enum OpenCodeSessionParser {
     }
 
     private var turns: [Turn] = []
+    private var portkeyRecords: [PortkeyRecord] = []
     private var currentTurn: Turn?
+    private var currentTurnPortkeyRecords: [PortkeyRecord] = []
     private var currentSessionId: String?
 
-    mutating func add(session: Session, type: String, timestamp: Date, addAssistant: (inout Turn) -> Void) {
+    mutating func add(
+      session: Session, type: String, timestamp: Date, portkeyRecord: PortkeyRecord?, addAssistant: (inout Turn) -> Void
+    ) {
       if session.id != currentSessionId || type == "user" {
-        if let currentTurn { turns.append(currentTurn) }
+        if let currentTurn {
+          turns.append(currentTurn)
+          portkeyRecords += PortkeyRecord.categorized(currentTurnPortkeyRecords, turn: currentTurn)
+        }
         currentTurn = nil
+        currentTurnPortkeyRecords = []
         currentSessionId = session.id
       }
       var turn = currentTurn ?? Turn(
@@ -183,11 +194,13 @@ public enum OpenCodeSessionParser {
         projectRoot: session.projectRoot, parentSessionId: session.parentId
       )
       if type == "assistant" { addAssistant(&turn) }
+      if let portkeyRecord { currentTurnPortkeyRecords.append(portkeyRecord) }
       currentTurn = turn
     }
 
-    func finishedTurns() -> [Turn] {
-      turns + (currentTurn.map { [$0] } ?? [])
+    func finished() -> (turns: [Turn], portkeyRecords: [PortkeyRecord]) {
+      guard let currentTurn else { return (turns, portkeyRecords) }
+      return (turns + [currentTurn], portkeyRecords + PortkeyRecord.categorized(currentTurnPortkeyRecords, turn: currentTurn))
     }
   }
 
