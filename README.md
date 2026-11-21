@@ -125,8 +125,12 @@ Each tab scrolls on its own.
   with credits in the paired days.
 - A By provider card with one row for Copilot and one for Portkey: a bar of the budget left or spent,
   the amount and the average burn per day (or workday, as the runway counts) in USD. Click a row to open that tab.
+- A By task card in USD: local Copilot credits at $0.01 each plus Portkey spend, per task category, with the same
+  categories and colors as the By task card on the Copilot tab, highest spend first. Each Portkey request gets the
+  category of its session turn. A Portkey request with no price adds nothing.
 
-In Portkey only mode, General shows a Portkey banner, the Portkey cards and the daily burn chart in USD.
+In Portkey only mode, General shows a Portkey banner, the Portkey cards, the daily burn chart and the By task card
+in USD, with Portkey spend only.
 
 #### Copilot
 
@@ -219,7 +223,8 @@ In this mode:
 - With no Portkey requests this month and no budget, the app shows the error and a short card
   that explains how to set a budget.
 - The popover and the Dashboard hide the Copilot credit cards, By model (credits), Outcomes,
-  By task, By agent (credits), By project and Top sessions.
+  By task (credits), By agent (credits), By project and Top sessions. The General By task card shows Portkey
+  spend in USD.
 - "Copy summary" is off. Share sends only the image.
 
 ### Task categories
@@ -228,6 +233,7 @@ The app puts each turn of each local session in one category: Debugging, Impleme
 Review, Investigation, Planning or Uncategorized. Fixed rules on the tool calls of the turn
 decide the category, checked in this order: Debugging, Implementation, Review, Planning by agent,
 Investigation, Planning by output tokens, Uncategorized. No model call is made.
+Portkey requests in a turn get the category of that turn, for the General By task card.
 See [Category rules](#category-rules).
 
 ### Credits per PR authored

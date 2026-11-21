@@ -23,11 +23,13 @@ public enum PiSessionParser {
   }
 
   // seenResponseIds is shared across calls, so a response in more than one root counts once, for the first root read.
-  // Copilot and Portkey records share it. Portkey messages in the cycle go to portkeyRecords, never into a turn.
+  // Copilot and Portkey records share it. Portkey messages in the cycle go to portkeyRecords, never into a turn, each
+  // with the category of its turn. A turn with only Portkey messages is categorized, then dropped.
   public static func turns(
     inDirectory directory: URL,
     source: SessionSource,
     since cycleStart: Date,
+    splitAt: Date? = nil,
     seenResponseIds: inout Set<String>,
     portkeyRecords: inout [PortkeyRecord]
   ) -> (turns: [Turn], hasUndecodableFile: Bool) {
@@ -43,7 +45,8 @@ public enum PiSessionParser {
       if let modificationDate, modificationDate < cycleStart { continue }
       guard let fileData = try? Data(contentsOf: fileURL) else { continue }
       guard let fileTurns = turns(
-        fromJSONL: fileData, source: source, since: cycleStart, seenResponseIds: &seenResponseIds, portkeyRecords: &portkeyRecords
+        fromJSONL: fileData, source: source, since: cycleStart, splitAt: splitAt, seenResponseIds: &seenResponseIds,
+        portkeyRecords: &portkeyRecords
       ) else {
         hasUndecodableFile = true
         continue
@@ -59,6 +62,7 @@ public enum PiSessionParser {
     fromJSONL fileData: Data,
     source: SessionSource,
     since cycleStart: Date,
+    splitAt: Date? = nil,
     seenResponseIds: inout Set<String>,
     portkeyRecords: inout [PortkeyRecord]
   ) -> [Turn]? {
@@ -67,6 +71,7 @@ public enum PiSessionParser {
     var decodedLineCount = 0
     var turns: [Turn] = []
     var currentTurn: Turn?
+    var currentTurnPortkeyRecords: [PortkeyRecord] = []
     var header: SessionHeader?
     for line in lines {
       guard let entry = try? decoder.decode(Entry.self, from: Data(line)) else { continue }
@@ -78,7 +83,11 @@ public enum PiSessionParser {
       guard entry.type == "message", let message = entry.message else { continue }
       switch message.role {
       case "user":
-        if let currentTurn { turns.append(currentTurn) }
+        if let currentTurn {
+          turns.append(currentTurn)
+          portkeyRecords += PortkeyRecord.categorized(currentTurnPortkeyRecords, turn: currentTurn, splitAt: splitAt)
+        }
+        currentTurnPortkeyRecords = []
         currentTurn = Turn(timestamp: date(milliseconds: message.timestamp ?? 0), source: source)
       case "assistant":
         var turn = currentTurn ?? Turn(timestamp: date(milliseconds: message.timestamp ?? 0), source: source)
@@ -87,7 +96,7 @@ public enum PiSessionParser {
           turn.records.append(record)
         }
         if let portkeyRecord = portkeyRecord(from: message, source: source, since: cycleStart, seenResponseIds: &seenResponseIds) {
-          portkeyRecords.append(portkeyRecord)
+          currentTurnPortkeyRecords.append(portkeyRecord)
         }
         currentTurn = turn
       default:
@@ -95,7 +104,10 @@ public enum PiSessionParser {
       }
     }
     if !lines.isEmpty && decodedLineCount == 0 { return nil }
-    if let currentTurn { turns.append(currentTurn) }
+    if let currentTurn {
+      turns.append(currentTurn)
+      portkeyRecords += PortkeyRecord.categorized(currentTurnPortkeyRecords, turn: currentTurn, splitAt: splitAt)
+    }
     return turns.filter { !$0.records.isEmpty }.map { turn in
       var sessionTurn = turn
       sessionTurn.sessionId = header?.id

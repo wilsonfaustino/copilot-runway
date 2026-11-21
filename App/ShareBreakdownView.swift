@@ -34,7 +34,7 @@ struct ShareBreakdownView: View {
       VStack(alignment: .leading, spacing: 7) {
         ForEach(breakdown.items) { item in
           legendRow(id: item.id, name: item.name, italic: item.kind == .notInLocalSessions, swatch: itemFill(item)) {
-            Text(Credits.formatted(item.credits))
+            Text(breakdown.formattedAmount(item.credits))
               .foregroundStyle(.secondary)
             Text(marksSmallShares ? Credits.shareLabel(percent: item.share, of: item.credits) : "\(item.share)%")
               .foregroundStyle(.secondary)
@@ -88,7 +88,8 @@ struct ShareBreakdownView: View {
 
   private func partSummary(_ item: ShareItem) -> String {
     let share = marksSmallShares ? Credits.shareLabel(percent: item.share, of: item.credits) : "\(item.share)%"
-    return "\(item.name), \(share), \(Credits.formatted(item.credits)) credits"
+    let amount = breakdown.formattedAmount(item.credits)
+    return "\(item.name), \(share), \(breakdown.isUSD ? amount : "\(amount) credits")"
   }
 
   @ViewBuilder

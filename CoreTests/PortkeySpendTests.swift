@@ -56,7 +56,8 @@ private func expectUSD(_ actual: Double, _ expected: Double, sourceLocation: Sou
 // Fixture spend in the cycle. Pi: DeepSeek 0.012, GLM 0.002 (provider "PortKey"), DeepSeek with no cost, and DeepSeek
 // 0.004 also copied into omp. omp: the copy, then DeepSeek 0.006. OpenCode: DeepSeek 0.01, GLM 0.001, DeepSeek with
 // no cost.
-// Pi also has DeepSeek 0.5 on 2026-09-30, before the cycle.
+// Pi also has DeepSeek 0.5 on 2026-09-30, before the cycle. The Pi and OpenCode turns in the cycle have an edit, the
+// omp turn has no tools.
 @Test func portkeySpendTotalsComeFromStoredCosts() throws {
   let portkey = try loadFixtureSessionCredits(withPortkey: true).portkey
   expectUSD(portkey.totalUSD, 0.035)
@@ -147,6 +148,22 @@ private func expectUSD(_ actual: Double, _ expected: Double, sourceLocation: Sou
   #expect(withPortkey.modelEfficiencyNote == withoutPortkey.modelEfficiencyNote)
   #expect(withPortkey.cycleComparisonSentence == withoutPortkey.cycleComparisonSentence)
   #expect(withPortkey.warning == withoutPortkey.warning)
+}
+
+@Test func portkeyRecordsTakeTheCategoryOfTheirTurn() throws {
+  let records = try loadFixtureSessionCredits(withPortkey: true).portkey.records
+  #expect(records.filter { $0.source != .omp }.count == 7)
+  #expect(records.filter { $0.source != .omp }.allSatisfy { $0.category == .implementation })
+  #expect(records.filter { $0.source == .omp }.map(\.category) == [.uncategorized])
+}
+
+// The issue's acceptance check: the General By task total equals the combined local spend.
+@Test func combinedByTaskTotalEqualsCombinedLocalSpend() throws {
+  let sessionCredits = try loadFixtureSessionCredits(withPortkey: true)
+  let breakdown = CombinedTaskSpend.breakdown(copilot: sessionCredits.byCategory, portkeyRecords: sessionCredits.portkey.records)
+  let pricedCopilotCredits = sessionCredits.byModel.compactMap(\.credits).reduce(0, +)
+  #expect(pricedCopilotCredits > 0)
+  expectUSD(breakdown.shareTotal, pricedCopilotCredits * 0.01 + sessionCredits.portkey.totalUSD)
 }
 
 @Test func portkeyAmountsShowCentsOrTenthsOfACent() {

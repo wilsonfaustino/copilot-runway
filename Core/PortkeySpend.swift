@@ -1,18 +1,43 @@
 import Foundation
 
-// One assistant message sent through Portkey. Never a UsageRecord, never part of a turn, never priced with PriceTable.
+// One assistant message sent through Portkey. Never a UsageRecord, never in Turn.records, never priced with PriceTable.
 public struct PortkeyRecord: Equatable, Sendable {
   public let model: String
   public let timestamp: Date
   public let source: SessionSource
   // The cost the agent stored, in USD. nil when the message has none: the record is unpriced.
   public let costUSD: Double?
+  // The TaskCategorizer category of the turn that holds the message, set by the parser when the turn ends.
+  public internal(set) var category: TaskCategory
 
-  public init(model: String, timestamp: Date, source: SessionSource, costUSD: Double?) {
+  public init(model: String, timestamp: Date, source: SessionSource, costUSD: Double?, category: TaskCategory = .uncategorized) {
     self.model = model
     self.timestamp = timestamp
     self.source = source
     self.costUSD = costUSD
+    self.category = category
+  }
+
+  // The records of one turn, each with the category of that turn. A turn with Copilot records gets the same category
+  // in Credits.byCategory. With splitAt, a record counts only the Copilot records on its side of splitAt, as
+  // SessionCredits.aggregate does for a Pi turn that crosses the cycle start.
+  static func categorized(_ records: [PortkeyRecord], turn: Turn, splitAt: Date? = nil) -> [PortkeyRecord] {
+    var categoryBySide: [Bool: TaskCategory] = [:]
+    return records.map { record in
+      let isRecordAfterSplit = splitAt.map { record.timestamp >= $0 } ?? true
+      let category = categoryBySide[isRecordAfterSplit] ?? {
+        var cycleTurn = turn
+        if let splitAt {
+          cycleTurn.records = turn.records.filter { ($0.timestamp >= splitAt) == isRecordAfterSplit }
+        }
+        let sideCategory = TaskCategorizer.category(of: cycleTurn)
+        categoryBySide[isRecordAfterSplit] = sideCategory
+        return sideCategory
+      }()
+      var categorizedRecord = record
+      categorizedRecord.category = category
+      return categorizedRecord
+    }
   }
 
   // Provider ids seen: "portkey" (Pi, omp) and "portkey-openai-compatible" (OpenCode). Users can rename them.

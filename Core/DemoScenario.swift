@@ -107,6 +107,7 @@ public struct DemoScenario: Sendable {
     let models = ["gpt-6.1-sol", "gemini-3.8-flash", "gpt-6-luna"]
     let costUSDByModel = [0.30, 0.12, 0.06]
     let sources: [SessionSource] = [.opencode, .pi, .omp]
+    let categories: [TaskCategory] = [.implementation, .investigation, .implementation, .debugging, .review, .planning]
     var records: [PortkeyRecord] = []
     var day = calendar.date(byAdding: .month, value: -1, to: cycleStart)!
     while day <= now {
@@ -119,7 +120,7 @@ public struct DemoScenario: Sendable {
         records.append(
           PortkeyRecord(
             model: models[modelIndex], timestamp: timestamp, source: sources[recordIndex % sources.count],
-            costUSD: recordIndex % 7 == 6 ? nil : costUSDByModel[modelIndex]
+            costUSD: recordIndex % 7 == 6 ? nil : costUSDByModel[modelIndex], category: categories[recordIndex % categories.count]
           )
         )
       }

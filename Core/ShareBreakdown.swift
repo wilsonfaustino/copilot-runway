@@ -45,6 +45,8 @@ public struct ShareItem: Equatable, Sendable, Identifiable {
 public struct ShareBreakdown: Equatable, Sendable {
   public static let localCreditsUnit = "local credits"
   public static let githubCreditsUnit = "GitHub credits"
+  // The amount already shows the "$" sign.
+  public static let localUSDUnit = "local"
   public static let otherModelsName = "Other models"
   public static let notInLocalSessionsName = "Not in local sessions"
   // The popover has 3 model colors. More models fold into one "Other models" item.
@@ -56,11 +58,19 @@ public struct ShareBreakdown: Equatable, Sendable {
   public let items: [ShareItem]
   // What shareTotal counts, for the card header.
   public let unit: String
+  // True when shareTotal and the item credits are USD, not credits.
+  public let isUSD: Bool
 
-  public init(shareTotal: Double, items: [ShareItem], unit: String = ShareBreakdown.localCreditsUnit) {
+  public init(shareTotal: Double, items: [ShareItem], unit: String = ShareBreakdown.localCreditsUnit, isUSD: Bool = false) {
     self.shareTotal = shareTotal
     self.items = items
     self.unit = unit
+    self.isUSD = isUSD
+  }
+
+  // An amount of this breakdown for display: whole credits, or USD with cents.
+  public func formattedAmount(_ amount: Double, locale: Locale = .current) -> String {
+    isUSD ? PortkeySpend.formatted(amount, locale: locale) : Credits.formatted(amount, locale: locale)
   }
 
   // True when there is nothing to draw as a bar.
