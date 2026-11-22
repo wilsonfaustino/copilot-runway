@@ -84,7 +84,8 @@ public enum ProjectName {
       usdByName[name, default: 0] += costUSD
     }
     return usdByName.filter { $0.value > 0 }.map { ProjectCredits(name: $0.key, credits: $0.value) }.sorted { left, right in
-      let leftKey = Credits.usdSortKey(left.credits), rightKey = Credits.usdSortKey(right.credits)
+      let leftKey = Credits.usdSortKey(left.credits)
+      let rightKey = Credits.usdSortKey(right.credits)
       if leftKey != rightKey { return leftKey > rightKey }
       return left.name < right.name
     }

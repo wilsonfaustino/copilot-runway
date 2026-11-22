@@ -21,7 +21,8 @@ public enum CombinedBreakdown {
       }
     )
     .sorted { left, right in
-      let leftKey = Credits.usdSortKey(left.usd), rightKey = Credits.usdSortKey(right.usd)
+      let leftKey = Credits.usdSortKey(left.usd)
+      let rightKey = Credits.usdSortKey(right.usd)
       if leftKey != rightKey { return leftKey > rightKey }
       if left.name != right.name { return left.name < right.name }
       return left.id < right.id
@@ -52,7 +53,8 @@ public enum CombinedBreakdown {
     }
     let entries = usdBySource.filter { $0.value > 0 }
       .sorted { left, right in
-        let leftKey = Credits.usdSortKey(left.value), rightKey = Credits.usdSortKey(right.value)
+        let leftKey = Credits.usdSortKey(left.value)
+        let rightKey = Credits.usdSortKey(right.value)
         if leftKey != rightKey { return leftKey > rightKey }
         return left.key.rawValue < right.key.rawValue
       }
