@@ -549,6 +549,9 @@ cover the mode without Copilot:
 - `portkey-only-no-budget`: no Copilot, with Portkey spend and no budget.
 - `no-copilot-empty`: no Copilot, no Portkey requests and no budget.
 
+The `typical-portkey` name has the typical Copilot data and Portkey requests with a budget. The Dashboard
+shows the General, Copilot and Portkey tabs.
+
 ### Repo layout
 
 ```

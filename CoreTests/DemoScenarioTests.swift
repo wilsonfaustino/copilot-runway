@@ -226,6 +226,17 @@ func portkeyOnlyScenariosHaveALeadingProject(name: DemoScenario.Name) throws {
   #expect(topProject.credits > 0)
 }
 
+@Test func typicalPortkeyScenarioHasCopilotCreditsPortkeyRecordsAndABudget() throws {
+  let scenario = DemoScenario(name: .typicalPortkey, now: portkeyDemoNow)
+  #expect(scenario.copilotError == nil)
+  #expect(scenario.usage.creditsUsed > 0)
+  #expect(pricedLocalCredits(scenario) > 0)
+  let sessionCredits = scenario.sessionCredits
+  #expect(!sessionCredits.portkey.records.isEmpty)
+  #expect(!sessionCredits.portkeyByProject.isEmpty)
+  #expect(try #require(scenario.portkeyBudgetUSD) > 0)
+}
+
 @Test func noCopilotEmptyScenario() {
   let scenario = DemoScenario(name: .noCopilotEmpty, now: portkeyDemoNow)
   #expect(scenario.copilotError == .notLoggedIn)

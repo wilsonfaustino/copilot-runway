@@ -8,6 +8,7 @@ import Foundation
 public struct DemoScenario: Sendable {
   public enum Name: String, CaseIterable, Sendable {
     case typical
+    case typicalPortkey = "typical-portkey"
     case manyModels = "many-models"
     case heavyPlanning = "heavy-planning"
     case edgeUnpriced = "edge-unpriced"
@@ -78,9 +79,9 @@ public struct DemoScenario: Sendable {
     outcomes = shape.outcomes
     copilotReviewCount = shape.copilotReviewCount
     self.copilotError = copilotError
-    let portkeyRecords = Self.portkeyRecords(name: name, now: now)
+    let portkeyRecords = Self.portkeyRecords(name: name, resetDate: resetDate, now: now)
     self.portkeyRecords = portkeyRecords
-    portkeyBudgetUSD = name == .portkeyOnly ? Self.portkeyBudgetUSD(records: portkeyRecords, resetDate: resetDate, now: now) : nil
+    portkeyBudgetUSD = name == .portkeyOnly || name == .typicalPortkey ? Self.portkeyBudgetUSD(records: portkeyRecords, resetDate: resetDate, now: now) : nil
   }
 
   // Bundled prices only, so a prices.json override does not change the demo.
@@ -99,11 +100,11 @@ public struct DemoScenario: Sendable {
     }
   }
 
-  // Three records a day at 10:00, 13:00 and 16:00 UTC, from the start of the previous month through now.
-  static func portkeyRecords(name: Name, now: Date) -> [PortkeyRecord] {
-    guard name == .portkeyOnly || name == .portkeyOnlyNoBudget else { return [] }
+  // Three records a day at 10:00, 13:00 and 16:00 UTC, from the start of the previous cycle through now.
+  static func portkeyRecords(name: Name, resetDate: Date, now: Date) -> [PortkeyRecord] {
+    guard name == .portkeyOnly || name == .portkeyOnlyNoBudget || name == .typicalPortkey else { return [] }
     let calendar = Runway.utcCalendar
-    let cycleStart = Runway.cycleStart(resetDate: PortkeyOnly.resetDate(now: now))
+    let cycleStart = Runway.cycleStart(resetDate: resetDate)
     let models = ["gpt-6.1-sol", "gemini-3.8-flash", "gpt-6-luna"]
     let costUSDByModel = [0.30, 0.12, 0.06]
     let sources: [SessionSource] = [.opencode, .pi, .omp]
@@ -178,7 +179,7 @@ public struct DemoScenario: Sendable {
 
     static func of(_ name: Name) -> Shape {
       switch name {
-      case .typical:
+      case .typical, .typicalPortkey:
         Shape(
           entitlement: 1_500, creditsUsed: 760, elapsedDays: 16, turnsPerDay: 6,
           models: typicalModels, categories: typicalCategories, tokenScale: 1,
