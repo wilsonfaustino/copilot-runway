@@ -32,6 +32,11 @@ public struct WhatsNew: Equatable, Sendable {
 
   // One entry per release with user-visible changes, keyed by version, at most maxLines lines. Add it in the release commit.
   public static let bundledNotes: [String: [String]] = [
+    "1.6.0": [
+      "The Dashboard has General, Copilot and Portkey tabs in a sidebar.",
+      "General shows USD spend by provider, model, agent, task and PR.",
+      "Prices for MAI Code 2, Claude Fable 5.2 and the new Gemini 4 models.",
+    ],
     "1.5.0": [
       "Without Copilot data, the app shows only your Portkey budget and spend.",
       "Prices for GPT-6.2 Astra and GPT-6.2 Sol.",
