@@ -479,7 +479,9 @@ struct DashboardView: View {
     if let unpricedNote = usageStore.portkeySpend.unpricedNote {
       footnotes.append("Portkey: " + unpricedNote)
     }
-    return shareCard(title: "By model", breakdown: breakdown, colors: Theme.modelColors(for: breakdown), footnotes: footnotes)
+    return shareCard(
+      title: "By model", breakdown: breakdown, colors: Theme.modelColors(for: breakdown), footnotes: footnotes, showsFullNameOnHover: true
+    )
   }
 
   // Portkey-only mode empties sourceCredits, so the colors also come from the Portkey sources.
@@ -730,7 +732,8 @@ struct DashboardView: View {
     taskSplit: ModelTaskSplit? = nil,
     footnotes: [String] = [],
     marksSmallShares: Bool = false,
-    notInLocalSessionsNote: String? = nil
+    notInLocalSessionsNote: String? = nil,
+    showsFullNameOnHover: Bool = false
   ) -> some View {
     VStack(alignment: .leading, spacing: Theme.Spacing.regular) {
       HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
@@ -757,7 +760,7 @@ struct DashboardView: View {
       } else if !breakdown.isEmpty {
         ShareBreakdownView(
           breakdown: breakdown, colors: colors, marksSmallShares: marksSmallShares, notInLocalSessionsNote: notInLocalSessionsNote,
-          highlightsOnHover: true
+          highlightsOnHover: true, showsFullNameOnHover: showsFullNameOnHover
         )
       } else {
         Text(breakdown.isUSD ? "No priced spend in this cycle." : "No local sessions in this cycle.")
