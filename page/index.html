@@ -38,102 +38,154 @@
 
     <nav class="nav" aria-label="Main">
       <a class="brand" href="#top">
-        <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true"><path class="brand-track" d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" fill="none" stroke="#64A8FF" stroke-opacity="0.28" stroke-width="3" stroke-linecap="round" pathLength="100"></path><path class="brand-fill" d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" fill="none" stroke="#64A8FF" stroke-width="3" stroke-linecap="round" stroke-dasharray="49 100" pathLength="100"></path></svg>
+        <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" fill="none" stroke="#64A8FF" stroke-opacity="0.28" stroke-width="3" stroke-linecap="round" pathLength="100"></path><path d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" fill="none" stroke="#64A8FF" stroke-width="3" stroke-linecap="round" stroke-dasharray="49 100" pathLength="100"></path></svg>
         Copilot Runway
       </a>
       <div class="nav-links">
+        <a class="nav-optional" href="#features">Features</a>
         <a href="#privacy">Privacy</a>
-        <a href="https://github.com/wilsonfaustino/copilot-runway">GitHub</a>
+        <a class="nav-optional" href="https://github.com/wilsonfaustino/copilot-runway">GitHub</a>
+        <a class="btn" href="#install">Install</a>
       </div>
     </nav>
 
-    <section class="hero" id="top">
-      <div class="hero-text">
-        <p class="eyebrow">macOS menu bar app for GitHub Copilot</p>
-        <h1>Know when your Copilot credits run out.</h1>
-        <p class="lead">The menu bar shows the percent of credits left and the days until they run out at your current pace.</p>
-        <div class="install-box">
-          <code>brew install --cask wilsonfaustino/tap/copilot-runway</code>
-          <button type="button">Copy</button>
+    <main>
+      <section class="hero" id="top">
+        <div class="hero-copy">
+          <h1>Copilot credit runway, in your Mac menu bar.</h1>
+          <p class="sub">See the percent of credits left and the day you run out at your current pace. Free and open source, with no account: it reads your <code>gh</code> login.</p>
+          <div class="hero-actions">
+            <div class="install-box">
+              <code>brew install --cask wilsonfaustino/tap/copilot-runway</code>
+              <button type="button" class="btn">Copy</button>
+            </div>
+            <a class="btn btn-ghost" href="https://github.com/wilsonfaustino/copilot-runway">View on GitHub</a>
+          </div>
         </div>
-      </div>
-      <div class="hero-shot">
-        <img src="assets/popover-typical.png" width="772" height="1050" alt="The Copilot Runway popover with a gauge at 49% and the text Lasts the cycle, three summary cards, credits per model, and buttons for Share, Open dashboard, Settings and Quit.">
-      </div>
-    </section>
+        <div class="desk">
+          <div class="menubar">
+            <div class="menubar-apps" aria-hidden="true"><span>Finder</span><span>File</span><span>Edit</span><span>View</span><span>Go</span></div>
+            <div class="menubar-extras">
+              <div class="mb-anchor">
+                <span class="mb-item" role="img" aria-label="The Copilot Runway menu bar item at 49%">
+                  <svg class="mb-ring" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" fill="none" stroke="#64A8FF" stroke-opacity="0.3" stroke-width="3.2" stroke-linecap="round" pathLength="100"></path><path d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" fill="none" stroke="#64A8FF" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="49 100" pathLength="100"></path></svg>
+                  49%
+                </span>
+                <div class="popover">
+                  <img src="assets/popover-typical.png" width="772" height="1050" alt="The Copilot Runway popover with a gauge at 49% and the text Lasts the cycle, cards for credits used, daily burn and credits per PR, credits per model, and buttons for Share, Open dashboard, Settings and Quit.">
+                </div>
+              </div>
+              <time class="clock" aria-hidden="true"><span class="clock-date"></span><span class="clock-time"></span></time>
+            </div>
+          </div>
+        </div>
+      </section>
 
-    <section class="runout reveal" aria-label="Run-out insight">
-      <p class="runout-quote">"At this pace your credits last past the reset on Nov 30,<br><span class="ok">with 9 credits a day of headroom</span>."</p>
-      <p class="runout-text">One sentence, updated every 5 minutes. Burn too fast and it gives the run-out date, while you can still change how you work.</p>
-      <a class="shot" href="assets/dashboard-typical.png"><img src="assets/dashboard-runout.png" width="1460" height="470" alt="The General tab: a warning that the combined budget runs out on Dec 2, 3 workdays before the reset, above cards for runway, remaining budget, average daily burn and cost per PR. Opens the full dashboard screenshot."></a>
-    </section>
+      <section class="screen app" id="app" style="--h: 2">
+        <h2>Every provider in one window.</h2>
+        <p class="sub">The General tab adds Copilot and Portkey spend in USD. The Copilot tab splits credits by project and lists the top sessions.</p>
+        <div class="tabs" role="group" aria-label="Dashboard tab shown">
+          <button type="button" class="tab" aria-pressed="true" aria-controls="app-window" data-shot="general">General</button>
+          <button type="button" class="tab" aria-pressed="false" aria-controls="app-window" data-shot="copilot">Copilot</button>
+        </div>
+        <a class="window" id="app-window" href="assets/dashboard-typical.png"><img src="assets/dashboard-typical.png" width="1960" height="1500" alt="The dashboard on the General tab: a warning that the combined budget runs out on Dec 2, cards for runway, remaining budget, daily burn and cost per PR, the daily burn chart and By provider."></a>
+      </section>
 
-    <section class="cards" aria-label="What it shows">
-      <div class="card card-wide reveal">
-        <h2>Dashboard</h2>
-        <p>A General tab, plus Copilot and Portkey tabs for the data you have, with spend by task, model, agent and project, and the top Copilot sessions.</p>
-        <img class="shot-sidebar" src="assets/dashboard-sidebar.png" width="1000" height="360" alt="The dashboard sidebar with the General, Copilot and Portkey tabs, each with its amount left and a small gauge.">
-      </div>
-      <div class="card reveal">
-        <h2>Menu bar</h2>
-        <p>Percent left and days of runway, like <code>48% · 12d</code>. Orange when you will run out before the reset.</p>
-        <img class="shot-menubar" src="assets/menubar-typical.png" width="154" height="52" alt="Menu bar item with a blue runway gauge and the text 49%.">
-      </div>
-      <div class="card reveal">
-        <h2>Popover</h2>
-        <p>Run-out date, daily burn, credits per PR and per model. Share it as an image. Homebrew installs can update from it.</p>
-      </div>
-      <div class="card reveal">
-        <h2>Portkey</h2>
-        <p>Pi, omp and OpenCode sessions through Portkey show in USD. Set a monthly budget to see their runway. Portkey also works without Copilot.</p>
-      </div>
-      <div class="card reveal">
-        <h2>Settings</h2>
-        <p>Show credits left or spent, count only weekdays, mark days off, and get notified when the runway gets short.</p>
-      </div>
-    </section>
+      <section class="screen runway" id="runway">
+        <div class="runway-pin">
+          <div class="rw-gauge" role="img" aria-label="The runway gauge drains as the month goes on">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path class="rw-track" d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" pathLength="100"></path><path class="rw-fill" d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" pathLength="100"></path></svg>
+            <div class="rw-label" aria-hidden="true"><span class="rw-pct"></span><span class="rw-left">credits left</span></div>
+          </div>
+          <div class="rw-copy">
+            <h2>Scroll a month.</h2>
+            <span class="rw-day" aria-hidden="true"></span>
+            <div class="rw-sentences">
+              <p class="rw-sentence rw-first">At this pace your credits <span class="ok">last past the reset on Nov 30.</span></p>
+              <p class="rw-sentence rw-second">The pace went up. At this pace you <span class="warn">run out on Nov 26, 4 days before the reset.</span></p>
+              <p class="rw-sentence rw-third"><span class="crit">Less than a day of credits left.</span> A runway notification told you first.</p>
+            </div>
+            <p class="sub">The app updates this sentence every 5 minutes, so you see the run-out date while you can still change how you work.</p>
+          </div>
+        </div>
+      </section>
 
-    <section class="projects reveal" aria-label="Credits by project">
-      <div class="projects-text">
+      <section class="screen" id="features">
         <h2>See where the credits went.</h2>
-        <p>The Copilot tab splits credits by project and lists the top sessions. Labels show a date, agent, model and task, never your prompts.</p>
+        <div class="bento">
+          <div class="cell cell-big">
+            <h3>By project</h3>
+            <p>Credits by repo, and the top sessions labeled by date, agent, model and task. Never your prompts.</p>
+            <img src="assets/dashboard-by-project.png" width="1460" height="565" alt="The By project card: runway-app took 33% of 661 local credits, then billing-api, Copilot app chats, docs-site and design-system.">
+          </div>
+          <div class="cell">
+            <h3>Menu bar</h3>
+            <p>Percent left, plus the days left when you will run out early.</p>
+            <div class="states" aria-hidden="true">
+              <span class="state"><svg width="14" height="14" viewBox="0 0 24 24"><path d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" fill="none" stroke="#64A8FF" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="71 100" pathLength="100"></path></svg>71%</span>
+              <span class="state"><svg width="14" height="14" viewBox="0 0 24 24"><path d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" fill="none" stroke="#FF9F0A" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="48 100" pathLength="100"></path></svg>48% · 12d</span>
+              <span class="state"><svg width="14" height="14" viewBox="0 0 24 24"><path d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" fill="none" stroke="#FF6961" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="6 100" pathLength="100"></path></svg>6% · 0d</span>
+            </div>
+          </div>
+          <div class="cell">
+            <h3>Portkey in USD</h3>
+            <p>Pi, omp and OpenCode sessions through Portkey. Set a monthly budget to see their runway.</p>
+            <div class="usd" aria-hidden="true">
+              <div class="usd-row"><span>Portkey</span><span>$2.92 of $10.00 left</span></div>
+              <div class="usd-bar"><span></span></div>
+            </div>
+          </div>
+          <div class="cell">
+            <h3>Settings</h3>
+            <p>Count only weekdays, mark days off, and get a notification when the runway gets short.</p>
+            <div class="toggles" aria-hidden="true">
+              <div class="toggle"><span>Count only weekdays</span><span class="switch"></span></div>
+              <div class="toggle"><span>Runway notifications</span><span class="switch"></span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="sources">
+        <h2>Reads the tools you already use.</h2>
+        <p class="sub">No setup. It finds your <code>gh</code> login and the session files on your Mac.</p>
+        <div class="hub">
+          <svg viewBox="0 0 1072 440" preserveAspectRatio="none" aria-hidden="true">
+            <path class="spoke" d="M140 70 L536 220"></path><path class="spoke" d="M140 220 L536 220"></path><path class="spoke" d="M140 370 L536 220"></path>
+            <path class="spoke" d="M932 70 L536 220"></path><path class="spoke" d="M932 220 L536 220"></path><path class="spoke" d="M932 370 L536 220"></path><path class="spoke" d="M536 40 L536 220"></path>
+            <path class="pulse" d="M140 70 L536 220"></path><path class="pulse" d="M140 220 L536 220" style="animation-delay: -0.6s"></path><path class="pulse" d="M140 370 L536 220" style="animation-delay: -1.2s"></path>
+            <path class="pulse" d="M932 70 L536 220" style="animation-delay: -1.8s"></path><path class="pulse" d="M932 220 L536 220" style="animation-delay: -2.4s"></path><path class="pulse" d="M932 370 L536 220" style="animation-delay: -0.3s"></path><path class="pulse" d="M536 40 L536 220" style="animation-delay: -1.5s"></path>
+          </svg>
+          <div class="node node-center" style="left: 50%; top: 50%"><svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.99 18.01 A8.5 8.5 0 1 1 18.01 18.01" fill="none" stroke="#64A8FF" stroke-width="3" stroke-linecap="round" stroke-dasharray="49 100" pathLength="100"></path></svg>Copilot Runway</div>
+          <div class="node" style="left: 50%; top: 9%"><span class="icon-tile"><img src="assets/icons/github-icon.svg" alt="" width="20" height="20"></span><code>gh</code> login</div>
+          <div class="node" style="left: 14%; top: 16%"><span class="icon-tile"><img src="assets/icons/opencode-icon.svg" alt="" width="20" height="20"></span>OpenCode</div>
+          <div class="node" style="left: 14%; top: 50%"><span class="icon-tile"><img src="assets/icons/pi.svg" alt="" width="20" height="20"></span>Pi</div>
+          <div class="node" style="left: 14%; top: 84%"><span class="icon-tile icon-tile-full"><img src="assets/icons/omp.svg" alt="" width="30" height="30"></span>omp</div>
+          <div class="node" style="left: 86%; top: 16%"><span class="icon-tile"><img src="assets/icons/github-copilot.svg" alt="" width="20" height="20"></span>Copilot CLI</div>
+          <div class="node" style="left: 86%; top: 50%"><span class="icon-tile"><img src="assets/icons/github-copilot.svg" alt="" width="20" height="20"></span>Copilot app</div>
+          <div class="node" style="left: 86%; top: 84%"><span class="icon-tile"><img src="assets/icons/portkey-mark.svg" alt="" width="20" height="20"></span>Portkey <small>via Pi, omp, OpenCode</small></div>
+        </div>
+        <p class="requirements">macOS 26 or later. For Copilot credits: <code>gh</code> logged in and a usage-based Copilot plan. Portkey alone also works. Notarized from 1.0.0.</p>
+      </section>
+    </main>
+
+    <footer class="closing" id="privacy">
+      <h2 class="close-type">Local only.<br><span>No telemetry.</span></h2>
+      <div class="facts">
+        <p><b>No backend</b>The app's own network calls go only to api.github.com.</p>
+        <p><b>Token in memory</b>Your <code>gh</code> token stays in memory for one request.</p>
+        <p><b>Files stay on your Mac</b>The app does not decode or keep prompt or answer text.</p>
       </div>
-      <a class="shot" href="assets/dashboard-projects.png"><img src="assets/dashboard-by-project.png" width="1460" height="565" alt="The By project card: runway-app took 33% of 661 local credits, then billing-api, Copilot app chats, docs-site and design-system. Opens the full Copilot tab screenshot with the top sessions."></a>
-    </section>
-
-    <section class="setup reveal" aria-label="Setup">
-      <div class="setup-text">
-        <h2>No setup</h2>
-        <p>It reads your <code>gh</code> login and the local OpenCode, Pi, omp, Copilot CLI and Copilot app sessions. Open it and the numbers are there.</p>
-      </div>
-      <ul class="setup-list">
-        <li>macOS 26 (Tahoe) or later</li>
-        <li>For Copilot: <code>gh</code> logged in and a usage-based Copilot plan</li>
-        <li>Or Portkey alone: local Portkey requests or a Portkey budget</li>
-        <li>Notarized from 1.0.0. Older versions need "Open Anyway" in Privacy and Security.</li>
-      </ul>
-    </section>
-
-    <section class="privacy reveal" id="privacy">
-      <h2>Local only. No telemetry.</h2>
-      <p>No backend. The app's own network calls go only to api.github.com, and your <code>gh</code> token stays in memory for one request. Session files stay on your Mac, and the app does not decode or keep prompt or answer text.</p>
-    </section>
-
-    <section class="install reveal" aria-label="Install">
-      <h2>See your runway in a minute.</h2>
-      <div class="install-box">
+      <div class="install-box" id="install">
         <code>brew install --cask wilsonfaustino/tap/copilot-runway</code>
-        <button type="button">Copy</button>
+        <button type="button" class="btn">Copy</button>
       </div>
       <p class="note">Free and open source (MIT). <a href="https://github.com/wilsonfaustino/copilot-runway/releases/latest">Latest release</a>.</p>
-    </section>
-
-    <footer class="footer reveal">
-      <span>MIT license. Made by Wilson Faustino. Session formats from codeburn (MIT).</span>
-      <a href="https://github.com/wilsonfaustino/copilot-runway">github.com/wilsonfaustino/copilot-runway</a>
+      <div class="footer">
+        <span>MIT license. Made by Wilson Faustino. Session formats from codeburn (MIT). Product names and logos are trademarks of their owners.</span>
+        <a href="https://github.com/wilsonfaustino/copilot-runway">github.com/wilsonfaustino/copilot-runway</a>
+      </div>
     </footer>
-
-    <div class="landing" aria-hidden="true"></div>
 
   </div>
   <script>
@@ -157,6 +209,64 @@
         }, showCopyFallback);
       });
     });
+
+    /* The menu bar clock shows the visitor's own date and time, in their own locale, like the macOS clock. */
+    var clock = document.querySelector(".clock");
+    var clockDate = clock.querySelector(".clock-date");
+    var clockTime = clock.querySelector(".clock-time");
+    var dateFormat = new Intl.DateTimeFormat(undefined, { weekday: "short", day: "numeric", month: "short" });
+    var timeFormat = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
+    function renderClock() {
+      var now = new Date();
+      clock.dateTime = now.toISOString();
+      clockDate.textContent = dateFormat.format(now).replace(/,/g, "");
+      clockTime.textContent = timeFormat.format(now);
+    }
+    renderClock();
+    var CLOCK_TICK_MS = 15000;
+    setInterval(renderClock, CLOCK_TICK_MS);
+
+    /* The dashboard tabs swap the window screenshot on click. */
+    var dashboardShots = {
+      general: { src: "assets/dashboard-typical.png", height: 1500, alt: "The dashboard on the General tab: a warning that the combined budget runs out on Dec 2, cards for runway, remaining budget, daily burn and cost per PR, the daily burn chart and By provider." },
+      copilot: { src: "assets/dashboard-projects.png", height: 1486, alt: "The dashboard on the Copilot tab: credits by project and the five most expensive sessions of the cycle with their date, agent, model and task." }
+    };
+    var appWindow = document.getElementById("app-window");
+    var appImage = appWindow.querySelector("img");
+    var tabs = document.querySelectorAll(".tab");
+    tabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        var shot = dashboardShots[tab.dataset.shot];
+        tabs.forEach(function (other) { other.setAttribute("aria-pressed", String(other === tab)); });
+        appWindow.href = shot.src;
+        appImage.src = shot.src;
+        appImage.height = shot.height;
+        appImage.alt = shot.alt;
+      });
+    });
+
+    /* The hub pulses start the first time the hub comes on screen, so a visitor sees them run. */
+    var hub = document.querySelector(".hub");
+    if ("IntersectionObserver" in window) {
+      var hubObserver = new IntersectionObserver(function (entries) {
+        if (entries[0].intersectionRatio >= 0.4) { hub.classList.add("is-live"); hubObserver.disconnect(); }
+      }, { threshold: 0.4 });
+      hubObserver.observe(hub);
+    } else {
+      hub.classList.add("is-live");
+    }
+
+    /* The intro gauge lands on the menu bar item's ring. Its target is measured from the viewport center.
+       When the item is below the first screen (a phone), the intro is skipped and the popover opens at once. */
+    var ring = document.querySelector(".mb-ring");
+    var introGauge = document.querySelector(".sg");
+    var ringBox = ring.getBoundingClientRect();
+    if (ringBox.bottom > window.innerHeight) {
+      document.documentElement.classList.add("skip-intro");
+    } else {
+      introGauge.style.setProperty("--dock-x", (ringBox.left + ringBox.width / 2 - document.documentElement.clientWidth / 2) + "px");
+      introGauge.style.setProperty("--dock-y", (ringBox.top + ringBox.height / 2 - window.innerHeight / 2) + "px");
+    }
   </script>
 </body>
 </html>

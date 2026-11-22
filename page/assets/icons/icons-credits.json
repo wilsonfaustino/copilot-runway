@@ -1,0 +1,38 @@
+[
+  {
+    "file": "github-copilot.svg",
+    "icon": "logos:github-copilot",
+    "name": "Github Copilot",
+    "kind": "colour",
+    "source": "gilbarbara/logos@d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "author": "Gil Barbara",
+    "licence": "CC0-1.0",
+    "url": "https://github.com/gilbarbara/logos",
+    "trademark": true,
+    "markUrl": "https://copilot.github.com/"
+  },
+  {
+    "file": "github-icon.svg",
+    "icon": "logos:github-icon",
+    "name": "Github",
+    "kind": "colour",
+    "source": "gilbarbara/logos@d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "author": "Gil Barbara",
+    "licence": "CC0-1.0",
+    "url": "https://github.com/gilbarbara/logos",
+    "trademark": true,
+    "markUrl": "https://github.com/"
+  },
+  {
+    "file": "opencode-icon.svg",
+    "icon": "logos:opencode-icon",
+    "name": "Opencode",
+    "kind": "colour",
+    "source": "gilbarbara/logos@d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "author": "Gil Barbara",
+    "licence": "CC0-1.0",
+    "url": "https://github.com/gilbarbara/logos",
+    "trademark": true,
+    "markUrl": "https://opencode.ai/"
+  }
+]
