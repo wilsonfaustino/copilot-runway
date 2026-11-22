@@ -184,11 +184,11 @@ public enum PriceTable {
     "mai-code-1.1-flash": ModelPrice(
       standard: TokenRates(input: 0.20, cachedInput: 0.02, cacheWrite: 0, output: 1.20)
     ),
-    // Promotional rate until May 17, 2027.
+    // Promotional rate until May 17, 2027. Then 1.00 / 0.05 / 5.00.
     "mai-code-2": ModelPrice(
       standard: TokenRates(input: 0.50, cachedInput: 0.025, cacheWrite: 0, output: 2.50)
     ),
-    // Promotional rate until May 17, 2027.
+    // Promotional rate until May 17, 2027. Then 0.10 / 0.01 / 0.50.
     "mai-code-2-flash": ModelPrice(
       standard: TokenRates(input: 0.05, cachedInput: 0.005, cacheWrite: 0, output: 0.25)
     ),

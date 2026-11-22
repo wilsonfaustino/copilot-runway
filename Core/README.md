@@ -767,7 +767,8 @@ Bundled rates, in USD per 1 million tokens, from GitHub's
 - The Gemini 3.7 Flash and Gemini 3.8 Flash rates are promotional "through December 31, 2026"
   (footnote on the same page). The Gemini 4 Argon rate is promotional "until December 1, 2026".
   The Gemini 4 Carbon rate is promotional "until December 1, 2026", then 4.00 / 0.20 / 20.00.
-  The MAI Code 2 and MAI Code 2 Flash rates are promotional "until May 17, 2027".
+  The MAI Code 2 and MAI Code 2 Flash rates are promotional "until May 17, 2027", then 1.00 / 0.05 / 5.00
+  and 0.10 / 0.01 / 0.50.
   GitHub lists no cache write rate for Google models, so it is 0. Pi records 0 cache write tokens for Gemini 3.8 Flash.
 - Models without a price show as "no price". The parsers keep only `github-copilot` records, so models
   that you call with your own provider key never reach the price table.

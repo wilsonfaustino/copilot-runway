@@ -607,8 +607,8 @@ write access to `homebrew-tap` only.
 - Outcomes cover one organization.
 - The bundled price table has the models on GitHub's pricing page. Other models show "no price" until
   you add them to `prices.json`. The Gemini 3.7 Flash and 3.8 Flash rates are promotional rates through
-  December 31, 2026. The Gemini 4 Argon and Gemini 4 Carbon rates are promotional until December 1,
-  2026. The MAI Code 2 and MAI Code 2 Flash rates are promotional until May 17, 2027.
+  December 31, 2026. The Gemini 4 Argon and Gemini 4 Carbon rates are promotional until
+  December 1, 2026. The MAI Code 2 and MAI Code 2 Flash rates are promotional until May 17, 2027.
 - The app does not read the older OpenCode JSON file store under
   `~/.local/share/opencode/storage/`.
 
