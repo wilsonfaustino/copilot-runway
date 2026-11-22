@@ -85,6 +85,7 @@ struct DashboardView: View {
         dailyBurnChart(resetDate: usage.resetDate, health: gaugeHealth)
         providerCard(usage: usage)
         combinedTaskCard
+        combinedModelAndAgentCards
       } else {
         errorText
       }
@@ -100,6 +101,7 @@ struct DashboardView: View {
         portkeyOnlyKPIRow(resetDate: resetDate, health: gaugeHealth)
         dailyBurnChart(resetDate: resetDate, health: gaugeHealth)
         combinedTaskCard
+        combinedModelAndAgentCards
       }
     case .noPortkeyData:
       errorText
@@ -458,6 +460,40 @@ struct DashboardView: View {
     )
   }
 
+  // General: Copilot and Portkey in USD, priced spend only.
+  private var combinedModelAndAgentCards: some View {
+    HStack(alignment: .top, spacing: Theme.Spacing.regular) {
+      combinedModelCard
+      combinedAgentCard
+    }
+    .fixedSize(horizontal: false, vertical: true)
+  }
+
+  // The notes also show with no priced spend, because they explain the empty text.
+  private var combinedModelCard: some View {
+    let breakdown = CombinedBreakdown.models(copilot: usageStore.modelCredits, portkey: usageStore.portkeySpend)
+    var footnotes: [String] = []
+    if usageStore.modelCredits.contains(where: \.isMissingPrice) {
+      footnotes.append("Copilot: some messages have no price, so the total misses them.")
+    }
+    if let unpricedNote = usageStore.portkeySpend.unpricedNote {
+      footnotes.append("Portkey: " + unpricedNote)
+    }
+    return shareCard(
+      title: "By model", breakdown: breakdown, colors: Theme.modelColors(for: breakdown), footnotes: footnotes, showsFullNameOnHover: true
+    )
+  }
+
+  // Portkey-only mode empties sourceCredits, so the colors also come from the Portkey sources.
+  private var combinedAgentCard: some View {
+    let sources = Set(usageStore.sourceCredits.map(\.source) + usageStore.portkeySpend.bySource.map(\.source))
+    return shareCard(
+      title: "By agent",
+      breakdown: CombinedBreakdown.agents(copilot: usageStore.sourceCredits, portkey: usageStore.portkeySpend),
+      colors: Dictionary(uniqueKeysWithValues: sources.map { (.entry($0.displayName), Theme.agentColor($0)) })
+    )
+  }
+
   private func modelCard(usage: QuotaUsage) -> some View {
     let breakdown = ShareBreakdown.models(
       usageStore.modelCredits, githubCredits: usage.creditsUsed, namedModelLimit: ShareBreakdown.taskSplitModelLimit
@@ -526,9 +562,39 @@ struct DashboardView: View {
         dateRange: "\(day(Runway.cycleStart(resetDate: resetDate))) to \(day(.now))",
         isPortkeyOnly: usageStore.isPortkeyOnly,
         runwayCard: portkeyRunwayCard(resetDate: resetDate),
-        dailySpendChart: portkeyDailySpendChart(resetDate: resetDate)
+        dailySpendChart: portkeyDailySpendChart(resetDate: resetDate),
+        breakdownCards: portkeyBreakdownCards
       )
     }
+  }
+
+  // Portkey records only, in USD.
+  private var portkeyBreakdownCards: some View {
+    HStack(alignment: .top, spacing: Theme.Spacing.regular) {
+      shareCard(
+        title: "By task",
+        breakdown: CombinedTaskSpend.breakdown(copilot: [], portkeyRecords: usageStore.portkeySpend.records),
+        colors: taskColors,
+        marksSmallShares: true
+      )
+      portkeyProjectCard
+    }
+    .fixedSize(horizontal: false, vertical: true)
+  }
+
+  // No insight line, because ProjectName.insight speaks of local credits.
+  private var portkeyProjectCard: some View {
+    let projects = ProjectName.breakdown(usageStore.portkeyByProject)
+    let breakdown = ShareBreakdown(shareTotal: projects.shareTotal, items: projects.items, unit: ShareBreakdown.localUSDUnit, isUSD: true)
+    let projectCount = usageStore.portkeyByProject.count
+    return shareCard(
+      title: "By project",
+      breakdown: breakdown,
+      colors: Theme.projectColors(for: breakdown),
+      footnotes: breakdown.isEmpty
+        ? []
+        : ["\(projectCount == 1 ? "1 project" : "\(projectCount) projects"). Named from the repo root, so worktree sessions count with their repo."]
+    )
   }
 
   // The Portkey budget alone, never the combined or Copilot usage, so a Copilot error does not change its tone.
@@ -666,7 +732,8 @@ struct DashboardView: View {
     taskSplit: ModelTaskSplit? = nil,
     footnotes: [String] = [],
     marksSmallShares: Bool = false,
-    notInLocalSessionsNote: String? = nil
+    notInLocalSessionsNote: String? = nil,
+    showsFullNameOnHover: Bool = false
   ) -> some View {
     VStack(alignment: .leading, spacing: Theme.Spacing.regular) {
       HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
@@ -693,7 +760,7 @@ struct DashboardView: View {
       } else if !breakdown.isEmpty {
         ShareBreakdownView(
           breakdown: breakdown, colors: colors, marksSmallShares: marksSmallShares, notInLocalSessionsNote: notInLocalSessionsNote,
-          highlightsOnHover: true
+          highlightsOnHover: true, showsFullNameOnHover: showsFullNameOnHover
         )
       } else {
         Text(breakdown.isUSD ? "No priced spend in this cycle." : "No local sessions in this cycle.")

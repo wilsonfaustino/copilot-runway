@@ -16,6 +16,8 @@ struct ShareBreakdownView: View {
   var notInLocalSessionsNote: String?
   // Hovering a bar part dims the other parts, grows the matching legend swatch and name, and bolds its values.
   var highlightsOnHover = false
+  // The legend keeps one line, so a long name such as a "(Portkey)" gateway id shows in full on hover.
+  var showsFullNameOnHover = false
 
   @State private var hoveredItemID: ShareItem.ID?
 
@@ -114,6 +116,7 @@ struct ShareBreakdownView: View {
         Text(name)
           .italic(italic)
           .foregroundStyle(italic ? .secondary : .primary)
+          .help(showsFullNameOnHover ? name : "")
       }
       .scaleEffect(isHovered ? Self.legendHoverScale : 1, anchor: .leading)
       if let lowCachePercent = lowCachePercents[id] {

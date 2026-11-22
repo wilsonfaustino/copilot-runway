@@ -65,6 +65,32 @@ public enum ProjectName {
     return { [namesByFolder] turn in namesByFolder[Folder(turn)] ?? unknown }
   }
 
+  // Portkey USD per project, from records and not turns, so a turn with only Portkey messages counts. credits holds
+  // USD. Unpriced records add nothing and a project with no spend is left out. Highest spend first, then by name.
+  public static func portkeyProjects(
+    records: [PortkeyRecord],
+    homeDirectory: String = FileManager.default.homeDirectoryForCurrentUser.path,
+    gitEntry: (String) -> GitEntry? = gitEntryOnDisk(folder:)
+  ) -> [ProjectCredits] {
+    var namesByFolder: [Folder: String] = [:]
+    var usdByName: [String: Double] = [:]
+    for record in records {
+      guard let costUSD = record.costUSD else { continue }
+      let folder = Folder(record)
+      let name = namesByFolder[folder] ?? of(
+        directory: record.directory, projectRoot: record.projectRoot, homeDirectory: homeDirectory, gitEntry: gitEntry
+      )
+      namesByFolder[folder] = name
+      usdByName[name, default: 0] += costUSD
+    }
+    return usdByName.filter { $0.value > 0 }.map { ProjectCredits(name: $0.key, credits: $0.value) }.sorted { left, right in
+      let leftKey = Credits.usdSortKey(left.credits)
+      let rightKey = Credits.usdSortKey(right.credits)
+      if leftKey != rightKey { return leftKey > rightKey }
+      return left.name < right.name
+    }
+  }
+
   // The nearest folder with a .git entry, from folder up to but not including the home folder and "/".
   // Many users keep a dotfiles repo in the home folder, and it must not swallow every folder below it.
   // A linked worktree's .git file points to the main repo, so a worktree counts with its repo.
@@ -149,6 +175,11 @@ public enum ProjectName {
     init(_ turn: Turn) {
       directory = turn.directory
       projectRoot = turn.projectRoot
+    }
+
+    init(_ record: PortkeyRecord) {
+      directory = record.directory
+      projectRoot = record.projectRoot
     }
   }
 

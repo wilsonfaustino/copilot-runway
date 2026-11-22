@@ -1,5 +1,24 @@
 -- Turns at 01:00, 02:00, 03:00 and 04:00 UTC on 2026-10-10, as in pi.jsonl: a Portkey edit, a Copilot read with a
 -- Portkey grep, a Portkey answer with no tools, and an unpriced Portkey gh pr view.
+CREATE TABLE project (
+  id text PRIMARY KEY,
+  worktree text NOT NULL,
+  vcs text,
+  name text,
+  time_created integer NOT NULL
+);
+CREATE TABLE session_v2 (
+  id text PRIMARY KEY,
+  project_id text NOT NULL,
+  parent_id text,
+  slug text NOT NULL,
+  directory text NOT NULL,
+  title text NOT NULL,
+  agent text,
+  time_created integer NOT NULL
+);
+INSERT INTO project VALUES ('prj_new', '/Users/example/www/acme/runway-app', 'git', NULL, 1790812800000);
+INSERT INTO session_v2 VALUES ('ses_portkey_tasks', 'prj_new', NULL, 'portkey', '/Users/example/orca/workspaces/runway-app/fix-chart', 'Synthetic title', 'build', 1791594000000);
 CREATE TABLE session_message (
   id text PRIMARY KEY,
   session_id text NOT NULL,

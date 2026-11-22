@@ -88,9 +88,9 @@ public enum PiSessionParser {
           portkeyRecords += PortkeyRecord.categorized(currentTurnPortkeyRecords, turn: currentTurn, splitAt: splitAt)
         }
         currentTurnPortkeyRecords = []
-        currentTurn = Turn(timestamp: date(milliseconds: message.timestamp ?? 0), source: source)
+        currentTurn = Turn(timestamp: date(milliseconds: message.timestamp ?? 0), source: source, directory: header?.cwd)
       case "assistant":
-        var turn = currentTurn ?? Turn(timestamp: date(milliseconds: message.timestamp ?? 0), source: source)
+        var turn = currentTurn ?? Turn(timestamp: date(milliseconds: message.timestamp ?? 0), source: source, directory: header?.cwd)
         turn.toolCalls += message.toolCalls
         if let record = record(from: message, since: cycleStart, seenResponseIds: &seenResponseIds) {
           turn.records.append(record)

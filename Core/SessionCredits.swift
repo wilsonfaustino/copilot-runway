@@ -23,6 +23,8 @@ public struct SessionCredits: Sendable {
   public let portkey: PortkeySpend
   // Portkey messages before cycleStart, read with the last cycle. For the combined last cycle line.
   public let previousPortkey: PortkeySpend
+  // Portkey USD per project in the cycle, for the Portkey By project card. credits holds USD.
+  public let portkeyByProject: [ProjectCredits]
   public let warning: String?
 
   public static func load(
@@ -109,6 +111,7 @@ public struct SessionCredits: Sendable {
     let previousRecords = turns.flatMap(\.records).filter { $0.timestamp < cycleStart }
     let cacheHits = CacheHit.byModel(records: records, prices: prices)
     let projectName = ProjectName.names(of: currentTurns)
+    let currentPortkeyRecords = portkeyRecords.filter { $0.timestamp >= cycleStart }
     let byDay = Credits.byDay(records: records, prices: prices, cycleStart: cycleStart, now: now, calendar: Runway.utcCalendar)
     let previousByDay = Credits.byDay(
       records: previousRecords,
@@ -130,8 +133,9 @@ public struct SessionCredits: Sendable {
       lowCacheSentences: CacheHit.lowSentences(cacheHits: cacheHits, prices: prices),
       modelEfficiencyNote: ModelEfficiency.note(ModelEfficiency.byModel(turns: currentTurns, prices: prices)),
       cycleComparisonSentence: CycleComparison.compare(current: byDay, previous: previousByDay)?.sentence(locale: locale),
-      portkey: PortkeySpend(records: portkeyRecords.filter { $0.timestamp >= cycleStart }),
+      portkey: PortkeySpend(records: currentPortkeyRecords),
       previousPortkey: PortkeySpend(records: portkeyRecords.filter { $0.timestamp < cycleStart }),
+      portkeyByProject: ProjectName.portkeyProjects(records: currentPortkeyRecords),
       warning: warning
     )
   }
