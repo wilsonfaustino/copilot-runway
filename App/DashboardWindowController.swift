@@ -301,6 +301,6 @@ struct DashboardSidebarView: View {
     Image(assetName)
       .resizable()
       .scaledToFit()
-      .frame(height: 18)
+      .frame(width: 15, height: 15)
   }
 }
