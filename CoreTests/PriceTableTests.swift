@@ -100,14 +100,32 @@ import Testing
   #expect(PriceTable.bundled["claude-fable-5.1"] == ModelPrice(
     standard: TokenRates(input: 10.00, cachedInput: 0.25, cacheWrite: 12.50, output: 50.00)
   ))
+  #expect(PriceTable.bundled["claude-fable-5.2"] == ModelPrice(
+    standard: TokenRates(input: 8.00, cachedInput: 0.20, cacheWrite: 10.00, output: 40.00)
+  ))
 }
 
 @Test func bundledGoogleMicrosoftXAIAndMoonshotPricesMatchGitHubTable() {
   #expect(PriceTable.bundled["gemini-4-argon"] == ModelPrice(
     standard: TokenRates(input: 2.00, cachedInput: 0.10, cacheWrite: 0, output: 10.00)
   ))
+  #expect(PriceTable.bundled["gemini-4-carbon"] == ModelPrice(
+    standard: TokenRates(input: 2.00, cachedInput: 0.10, cacheWrite: 0, output: 10.00)
+  ))
+  #expect(PriceTable.bundled["gemini-4-hydrogen"] == ModelPrice(
+    standard: TokenRates(input: 1.50, cachedInput: 0.075, cacheWrite: 0, output: 7.50)
+  ))
+  #expect(PriceTable.bundled["gemini-4-neon"] == ModelPrice(
+    standard: TokenRates(input: 3.00, cachedInput: 0.15, cacheWrite: 0, output: 15.00)
+  ))
   #expect(PriceTable.bundled["mai-code-1.1-flash"] == ModelPrice(
     standard: TokenRates(input: 0.20, cachedInput: 0.02, cacheWrite: 0, output: 1.20)
+  ))
+  #expect(PriceTable.bundled["mai-code-2"] == ModelPrice(
+    standard: TokenRates(input: 0.50, cachedInput: 0.025, cacheWrite: 0, output: 2.50)
+  ))
+  #expect(PriceTable.bundled["mai-code-2-flash"] == ModelPrice(
+    standard: TokenRates(input: 0.05, cachedInput: 0.005, cacheWrite: 0, output: 0.25)
   ))
   #expect(PriceTable.bundled["grok-4.6"] == ModelPrice(
     standard: TokenRates(input: 2.00, cachedInput: 0.50, cacheWrite: 0, output: 6.00),

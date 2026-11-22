@@ -727,10 +727,16 @@ Bundled rates, in USD per 1 million tokens, from GitHub's
 | `claude-sonnet-5.5` | Default, no tier | 2.00 | 0.10 | 2.50 | 10.00 |
 | `claude-fable-5` | Default, no tier | 10.00 | 1.00 | 12.50 | 50.00 |
 | `claude-fable-5.1` | Default, no tier | 10.00 | 0.25 | 12.50 | 50.00 |
+| `claude-fable-5.2` | Default, no tier | 8.00 | 0.20 | 10.00 | 40.00 |
 | `gemini-3.7-flash` | Default, no tier | 0.75 | 0.075 | 0 | 3.75 |
 | `gemini-3.8-flash` | Default, no tier | 0.75 | 0.075 | 0 | 3.75 |
 | `gemini-4-argon` | Default, no tier | 2.00 | 0.10 | 0 | 10.00 |
+| `gemini-4-carbon` | Default, no tier | 2.00 | 0.10 | 0 | 10.00 |
+| `gemini-4-hydrogen` | Default, no tier | 1.50 | 0.075 | 0 | 7.50 |
+| `gemini-4-neon` | Default, no tier | 3.00 | 0.15 | 0 | 15.00 |
 | `mai-code-1.1-flash` | Default, no tier | 0.20 | 0.02 | 0 | 1.20 |
+| `mai-code-2` | Default, no tier | 0.50 | 0.025 | 0 | 2.50 |
+| `mai-code-2-flash` | Default, no tier | 0.05 | 0.005 | 0 | 0.25 |
 | `grok-4.5` | Default, prompt <= 200K | 2.00 | 0.50 | 0 | 6.00 |
 | `grok-4.5` | Long context, prompt > 200K | 4.00 | 1.00 | 0 | 12.00 |
 | `grok-4.6` | Default, prompt <= 200K | 2.00 | 0.50 | 0 | 6.00 |
@@ -760,6 +766,8 @@ Bundled rates, in USD per 1 million tokens, from GitHub's
 - Credits are computed per message and then summed per model, because the tier depends on each request.
 - The Gemini 3.7 Flash and Gemini 3.8 Flash rates are promotional "through December 31, 2026"
   (footnote on the same page). The Gemini 4 Argon rate is promotional "until December 1, 2026".
+  The Gemini 4 Carbon rate is promotional "until December 1, 2026", then 4.00 / 0.20 / 20.00.
+  The MAI Code 2 and MAI Code 2 Flash rates are promotional "until May 17, 2027".
   GitHub lists no cache write rate for Google models, so it is 0. Pi records 0 cache write tokens for Gemini 3.8 Flash.
 - Models without a price show as "no price". The parsers keep only `github-copilot` records, so models
   that you call with your own provider key never reach the price table.
