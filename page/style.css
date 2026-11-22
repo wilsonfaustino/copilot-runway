@@ -1,10 +1,12 @@
 /* One accent: #64A8FF, the blue of the app's own runway ring. Orange and red mark state only.
-   Corner radii: 14px for surfaces (cards, images, panels), 10px for controls, 6px for a control inside a control. */
+   Corner radii: 14px for surfaces (cards, images, panels), 10px for controls, 6px for a control inside a control.
+   Layout: every section is one or two screens tall, on one centered column with equal edges. */
 body {
   margin: 0;
   background: #0D0F14;
   color: #E8EAED;
   font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  overflow-x: clip;
 }
 
 a {
@@ -28,27 +30,59 @@ code {
 
 h1,
 h2,
+h3,
 p {
   margin: 0;
+}
+
+h2 {
+  font-size: 44px;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
 }
 
 .page {
   max-width: 1120px;
   margin: 0 auto;
   padding: 0 24px;
-  display: flex;
-  flex-direction: column;
-  --section-gap: 120px;
-  gap: var(--section-gap);
 }
 
-.nav {
+/* One or two screens per section (--h), the heading at the top of its screen. */
+.screen {
+  --h: 1;
+  min-height: calc(var(--h) * 100svh);
+  box-sizing: border-box;
+  padding-block: 120px 72px;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.sub {
+  font-size: 19px;
+  line-height: 1.5;
+  color: #B9C0C9;
+  max-width: 620px;
+}
+
+/* ---------- Nav: sticky, full viewport width, translucent with a blur ---------- */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  height: 72px;
+  box-sizing: border-box;
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding-top: 28px;
+  /* The margins pull the nav out of the 1120px column, and the padding puts its content back. */
+  margin-inline: calc(50% - 50vw);
+  padding-inline: calc(50vw - 50%);
+  background: rgba(13, 15, 20, 0.2);
+  backdrop-filter: blur(12px);
 }
 
 .brand {
@@ -67,47 +101,64 @@ p {
 
 .nav-links {
   display: flex;
-  gap: 24px;
+  align-items: center;
+  gap: 28px;
   font-size: 15px;
 }
 
-.hero {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 64px;
-  /* 64px from the nav, not the full section gap, so the hero does not float. */
-  margin-top: calc(64px - var(--section-gap));
-}
-
-.hero-text {
-  flex: 3 1 460px;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-}
-
-.eyebrow {
-  font-size: 14px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #9AA3AE;
-}
-
-h1 {
-  font-size: 60px;
-  line-height: 1.05;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  text-wrap: balance;
-}
-
-.lead {
-  font-size: 20px;
-  line-height: 1.5;
+.nav-links a:not(.btn) {
   color: #B9C0C9;
-  max-width: 520px;
+  text-decoration: none;
+  background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat;
+  transition: background-size 0.25s ease, color 0.15s ease;
+}
+
+.nav-links a:not(.btn):hover {
+  color: #E8EAED;
+  background-size: 100% 1px;
+}
+
+/* ---------- Buttons and the install box ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 10px;
+  background: #64A8FF;
+  color: #0D0F14;
+  font: inherit;
+  font-weight: 600;
+  font-size: 15px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.btn:hover {
+  background: #9CC6FF;
+  color: #0D0F14;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: #E8EAED;
+  box-shadow: inset 0 0 0 1px #2A303A;
+}
+
+.btn-ghost:hover {
+  background: #161A21;
+  color: #E8EAED;
+}
+
+.nav-links .btn {
+  min-height: 36px;
+  font-size: 14px;
 }
 
 .install-box {
@@ -129,26 +180,8 @@ h1 {
   overflow-wrap: anywhere;
 }
 
-.install-box button {
-  min-height: 44px;
-  padding: 0 18px;
-  border: 0;
+.install-box .btn {
   border-radius: 6px;
-  background: #64A8FF;
-  color: #0D0F14;
-  font: inherit;
-  font-weight: 600;
-  font-size: 15px;
-  cursor: pointer;
-  transition: background-color 0.15s ease, transform 0.1s ease;
-}
-
-.install-box button:hover {
-  background: #9CC6FF;
-}
-
-.install-box button:active {
-  transform: translateY(1px);
 }
 
 .note {
@@ -156,247 +189,561 @@ h1 {
   color: #9AA3AE;
 }
 
-.hero-shot {
-  flex: 1 1 280px;
-  min-width: 0;
-  display: flex;
-  justify-content: center;
+/* ---------- Hero: copy on the left, a Mac desktop with the menu bar and the open popover on the right ---------- */
+.hero {
+  min-height: calc(100svh - 72px);
+  box-sizing: border-box;
+  padding-block: 32px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  align-items: center;
+  gap: 56px;
 }
 
-/* The popover image is a 2x capture, so 386px wide is its natural size. */
-.hero-shot img {
-  display: block;
-  width: 386px;
-  max-width: 100%;
-  height: auto;
-}
-
-.runout {
+.hero-copy {
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 28px;
 }
 
-.runout-quote {
-  font-size: 34px;
-  line-height: 1.3;
+h1 {
+  font-size: 60px;
+  line-height: 1.04;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.hero-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.hero-actions .install-box {
+  align-self: stretch;
+}
+
+.desk {
+  position: relative;
+  height: 560px;
+  border-radius: 14px;
+  border: 1px solid #222832;
+  background:
+    radial-gradient(120% 90% at 15% 0%, #1D2C46 0%, transparent 60%),
+    radial-gradient(90% 80% at 100% 100%, #14243B 0%, transparent 65%),
+    #0F141C;
+}
+
+.menubar {
+  height: 30px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  border-radius: 14px 14px 0 0;
+  background: rgba(22, 27, 36, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 13px;
+  font-weight: 500;
+  color: #E8EAED;
+  white-space: nowrap;
+}
+
+.menubar-apps {
+  display: flex;
+  gap: 18px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.menubar-apps span:not(:first-child) {
+  font-weight: 400;
+}
+
+/* A reserved clock width keeps the item far enough from the panel edge for the centered popover, whatever the clock's format. */
+.clock {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 140px;
+}
+
+.menubar-extras {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* The app's menu bar title: the runway ring and the percent, the anchor of the popover. */
+.mb-anchor {
+  position: relative;
+}
+
+.mb-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-family: ui-rounded, -apple-system, sans-serif;
   font-weight: 600;
-  max-width: 860px;
-  text-wrap: pretty;
+  background: rgba(255, 255, 255, 0.18);
 }
 
-.warn {
-  color: #EA8300;
-  font-size: 1.2em;
-}
-
-.ok {
-  color: #64A8FF;
-  font-size: 1.2em;
-}
-
-.runout-text {
-  font-size: 18px;
-  line-height: 1.5;
-  color: #B9C0C9;
-  max-width: 640px;
-}
-
-/* A cropped dashboard detail on a lighter panel, so the dark app window does not sink into the page. */
-.shot {
+.mb-item svg {
   display: block;
-  padding: 20px;
+}
+
+/* The popover hangs from the center of the menu bar item, its arrow on the item. */
+.popover {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 50%;
+  translate: -50% 0;
+  width: 330px;
+  z-index: 1;
+}
+
+.popover img {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 22px 40px rgba(0, 0, 0, 0.55));
+  transform-origin: 50% 0;
+}
+
+/* ---------- App window ---------- */
+.tabs {
+  display: inline-flex;
+  gap: 4px;
+  width: fit-content;
+  padding: 4px;
+  background: #161A21;
+  border: 1px solid #2A303A;
+  border-radius: 10px;
+}
+
+.tab {
+  font: inherit;
+  font-size: 15px;
+  padding: 8px 18px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #B9C0C9;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.tab:hover {
+  color: #E8EAED;
+}
+
+.tab[aria-pressed="true"] {
+  background: #232A34;
+  color: #E8EAED;
+}
+
+.window {
+  display: block;
+  padding: 24px;
   border-radius: 14px;
   border: 1px solid #2A303A;
   background: #181D25;
+  overflow: hidden;
 }
 
-.shot img {
+.window img {
   display: block;
   width: 100%;
   height: auto;
   border-radius: 10px;
+  transition: transform 0.4s ease;
 }
 
-/* Five cells, none empty: the wide Dashboard cell and Menu bar on the first row, three cells on the second. */
-.cards {
+.window:hover img {
+  transform: scale(1.02);
+}
+
+/* ---------- The moment: scroll a month ---------- */
+.runway-pin {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 64px;
+}
+
+.rw-gauge {
+  position: relative;
+  width: min(100%, 480px);
+  justify-self: center;
+}
+
+.rw-gauge svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.rw-track {
+  fill: none;
+  stroke: #64A8FF;
+  stroke-opacity: 0.18;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+.rw-fill {
+  fill: none;
+  stroke: #64A8FF;
+  stroke-width: 2.3;
+  stroke-linecap: round;
+  stroke-dasharray: 49 200;
+}
+
+.rw-label {
+  position: absolute;
+  inset: 0;
+  padding-top: 6%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: ui-rounded, -apple-system, sans-serif;
+}
+
+.rw-pct {
+  font-size: 96px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.rw-pct::after {
+  content: "49%";
+}
+
+.rw-left {
+  font-size: 20px;
+  color: #B9C0C9;
+}
+
+.rw-copy {
+  display: flex;
+  flex-direction: column;
   gap: 24px;
 }
 
-.card {
-  grid-column: span 2;
+.rw-day {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 15px;
+  color: #9AA3AE;
 }
 
-.card-wide {
-  grid-column: span 4;
+.rw-day::after {
+  content: "Nov 6";
 }
 
-.card {
+.rw-sentences {
+  display: grid;
+}
+
+.rw-sentence {
+  grid-area: 1 / 1;
+  font-size: 34px;
+  line-height: 1.25;
+  font-weight: 600;
+  text-wrap: pretty;
+}
+
+.rw-sentence + .rw-sentence {
+  display: none;
+}
+
+.ok {
+  color: #64A8FF;
+}
+
+.warn {
+  color: #FF9F0A;
+}
+
+.crit {
+  color: #FF6961;
+}
+
+/* ---------- Features bento ---------- */
+.bento {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  grid-template-rows: repeat(3, auto);
+  gap: 20px;
+}
+
+.cell {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 28px;
+  gap: 12px;
+  padding: 26px;
   border-radius: 14px;
   background: #13171D;
   border: 1px solid #222832;
 }
 
-.card h2 {
+.cell-big {
+  grid-row: span 3;
+}
+
+.cell h3 {
   font-size: 20px;
 }
 
-.card p {
+.cell p {
   color: #B9C0C9;
   line-height: 1.5;
 }
 
-.card code {
-  color: #E8EAED;
-}
-
-.card img {
+.cell-big img {
   display: block;
-  max-width: 100%;
+  width: 100%;
   height: auto;
-}
-
-.shot-menubar {
-  width: 77px;
-  margin-top: auto;
-}
-
-.shot-sidebar {
-  width: 500px;
   margin-top: auto;
   border-radius: 10px;
 }
 
-.projects {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
-  align-items: center;
-  gap: 48px;
-}
-
-.projects-text {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.projects h2 {
-  font-size: 32px;
-  text-wrap: balance;
-}
-
-.projects-text p {
-  font-size: 18px;
-  line-height: 1.5;
-  color: #B9C0C9;
-}
-
-.setup {
+.states {
   display: flex;
   flex-wrap: wrap;
-  gap: 48px;
+  gap: 10px;
+  margin-top: auto;
 }
 
-.setup-text {
-  flex: 1 1 380px;
-  min-width: 0;
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: #0A0C10;
+  font-family: ui-rounded, -apple-system, sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.usd {
+  margin-top: auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
+  font-size: 14px;
 }
 
-.setup h2 {
-  font-size: 32px;
+.usd-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.setup-text p {
-  font-size: 18px;
+.usd-bar {
+  height: 6px;
+  border-radius: 99px;
+  background: #2A303A;
+  overflow: hidden;
+}
+
+.usd-bar span {
+  display: block;
+  width: 29%;
+  height: 100%;
+  background: #C97B1E;
+}
+
+.toggles {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.switch {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  flex: none;
+  border-radius: 99px;
+  background: #64A8FF;
+}
+
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #E8EAED;
+}
+
+/* ---------- Sources hub ---------- */
+.hub {
+  position: relative;
+  height: 440px;
+}
+
+.hub > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.spoke {
+  fill: none;
+  stroke: #2A303A;
+  stroke-width: 2;
+}
+
+.pulse {
+  fill: none;
+  stroke: #64A8FF;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 12 600;
+  stroke-dashoffset: 12;
+}
+
+.node {
+  position: absolute;
+  translate: -50% -50%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: #13171D;
+  border: 1px solid #2A303A;
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.node small {
+  color: #9AA3AE;
+  font-size: 13px;
+}
+
+.node-center {
+  padding: 16px 24px;
+  font-size: 19px;
+  font-weight: 700;
+  border-color: #64A8FF;
+}
+
+/* Real logos on a light tile, so the black GitHub marks and the dark OpenCode mark stay visible. */
+.icon-tile {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: #F2F4F7;
+}
+
+.icon-tile img {
+  display: block;
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+/* A logo that is already a full app-icon tile (omp) fills the slot without the light ground. */
+.icon-tile-full {
+  background: none;
+}
+
+.icon-tile-full img {
+  width: 30px;
+  height: 30px;
+}
+
+.requirements {
+  font-size: 15px;
+  color: #9AA3AE;
+  line-height: 1.6;
+}
+
+/* ---------- Close and footer ---------- */
+.closing {
+  min-height: 100svh;
+  box-sizing: border-box;
+  padding-block: 120px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.close-type {
+  font-size: 128px;
+  line-height: 0.95;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.close-type span {
+  color: #64A8FF;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 32px;
+  padding-top: 28px;
+  border-top: 1px solid #222832;
+  font-size: 17px;
   line-height: 1.5;
   color: #B9C0C9;
 }
 
-.setup code {
+.facts b {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 19px;
   color: #E8EAED;
 }
 
-.setup-list {
-  flex: 1 1 380px;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  font-size: 16px;
-  color: #B9C0C9;
-}
-
-.setup-list li {
-  padding: 14px 18px;
-  border-radius: 10px;
-  background: #13171D;
-}
-
-.privacy {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  padding: 48px;
-  border-radius: 14px;
-  border: 1px solid #2A3E52;
-  background: #101820;
-}
-
-.privacy h2 {
-  font-size: 32px;
-  color: #64A8FF;
-}
-
-.privacy p {
-  font-size: 18px;
-  line-height: 1.5;
-  color: #C9D1DA;
-  max-width: 720px;
-}
-
-.install {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  text-align: center;
-}
-
-.install h2 {
-  font-size: 40px;
-}
-
-.install .note a {
-  color: #64A8FF;
-}
-
-.install .install-box {
-  width: min(640px, 100%);
-  box-sizing: border-box;
-  text-align: left;
+.closing .install-box {
+  max-width: 640px;
 }
 
 .footer {
+  margin-top: auto;
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 16px;
-  padding: 32px 0 48px;
+  padding: 24px 0 40px;
   border-top: 1px solid #222832;
   font-size: 14px;
   color: #9AA3AE;
+}
+
+/* The intro gauge exists only with time and scroll animations allowed. */
+.sg-rail,
+.sg {
+  display: none;
 }
 
 @property --p {
@@ -405,13 +752,25 @@ h1 {
   initial-value: 100;
 }
 
+@property --rp {
+  syntax: "<integer>";
+  inherits: true;
+  initial-value: 100;
+}
+
+@property --day {
+  syntax: "<integer>";
+  inherits: true;
+  initial-value: 1;
+}
+
 @property --sg-size {
   syntax: "<length>";
   inherits: true;
   initial-value: 600px;
 }
 
-@property --disc {
+@property --progress {
   syntax: "<number>";
   inherits: true;
   initial-value: 0;
@@ -423,37 +782,39 @@ h1 {
   initial-value: 0px;
 }
 
-@property --intro {
-  syntax: "<number>";
-  inherits: true;
-  initial-value: 1;
-}
-
-@property --reveal {
-  syntax: "<number>";
-  inherits: false;
-  initial-value: 1;
-}
-
-@property --rise {
-  syntax: "<length>";
-  inherits: false;
-  initial-value: 0px;
-}
-
 @property --dy {
   syntax: "<length>";
   inherits: true;
   initial-value: 0px;
 }
 
-.sg-rail,
-.sg,
-.landing {
-  display: none;
+@property --intro {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
 }
 
-/* Scroll gauge: needs scroll timelines and allowed motion. Otherwise the page keeps the static hero gauge. */
+/* The popover opens like a macOS menu bar popover: it fades in and grows from its arrow, with a small overshoot. */
+@media (prefers-reduced-motion: no-preference) {
+  .popover img {
+    animation: d-pop 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.15) var(--pop-delay, 0.4s) both;
+  }
+
+  .mb-item {
+    animation: d-press 0.12s ease-out var(--pop-delay, 0.4s) both;
+  }
+
+  /* The pulses run three times once the hub is on screen, then rest. Hovering the hub runs them again. */
+  .hub.is-live .pulse {
+    animation: d-pulse 3s linear 3;
+  }
+
+  .hub.is-live:hover .pulse {
+    animation-name: d-pulse-again;
+  }
+}
+
+/* Intro and scroll moment: need scroll timelines and allowed motion. Otherwise the page is static. */
 @supports (animation-timeline: scroll()) {
   @media (prefers-reduced-motion: no-preference) {
     html {
@@ -461,130 +822,53 @@ h1 {
       --move-delay: 700ms;
       --move-duration: 600ms;
       --move-easing: cubic-bezier(0.22, 1, 0.36, 1);
+      --pop-delay: calc(var(--move-delay) + var(--move-duration) - 80ms);
     }
 
-    /* Zero delay and duration with fill both: the gauge starts docked and the nav and hero start visible. */
+    /* Zero delay and duration with fill both: the page starts in its end state. */
     html.skip-intro {
       --move-delay: 0ms;
       --move-duration: 0ms;
     }
 
-    .landing {
-      display: block;
-      height: 200px;
-    }
-
-    .nav {
-      position: sticky;
-      top: 0;
-      z-index: 3;
-      padding-bottom: 16px;
-      /* Full viewport width: the margins pull the nav out of the 1120px column, and the padding puts its content back. */
-      margin-inline: calc(50% - 50vw);
-      padding-inline: calc(50vw - 50%);
-      background: rgba(13, 15, 20, 0.2);
-      backdrop-filter: blur(12px);
-    }
-
-    /* Keep text out from under the docked gauge: 122px = 24px margin + 72px gauge + 10px disc overhang + 16px gap.
-       The sections give up only what the right gutter does not already have: (1364px - viewport) / 2, where 1364px = 1120px column + 2 x 122px. The extra 15px covers a classic scrollbar in 100vw.
-       98px = 122px - the 24px page padding, the most needed when the column fills the window.
-       Margins on the sections, not padding on .page, so the nav full width math keeps a centered column. */
-    @media (min-width: 601px) {
-      .page > :not(.nav, .landing) {
-        margin-right: max(0px, min(98px, (1379px - 100vw) / 2));
-      }
-    }
-
-    /* 50vw includes a classic scrollbar. clip hides that overflow and, unlike hidden, keeps the nav sticky. */
-    body {
-      overflow-x: clip;
-    }
-
-    /* During the intro only the gauge shows. The page fades in on time while the gauge moves to the corner, with the same delay and duration as d-move.
+    /* During the intro only the gauge shows. The page fades in while the gauge flies into the menu bar item.
        .page animates --intro and each child reads it. Opacity on .page itself would cut the nav backdrop blur. */
     .page {
       animation: d-intro var(--move-duration) var(--move-easing) var(--move-delay) both;
     }
 
-    .page > :not(.reveal) {
+    .page > * {
       opacity: var(--intro);
     }
 
-    /* Each section and card fades in and rises while it enters the screen: from its top at the bottom edge until it is fully on screen.
-       A section that is partly on screen at load starts partly faded and finishes as you scroll. */
-    .reveal {
-      opacity: calc(var(--intro) * var(--reveal));
-      translate: 0 var(--rise);
-      animation: d-rise linear both;
-      animation-timeline: view();
-      animation-range: entry 0% entry 100%;
-    }
-
-    /* A card is inside .cards, which already applies --intro. */
-    .card.reveal {
-      opacity: var(--reveal);
-    }
-
-    /* Without the animation, --reveal falls back to 1 and --rise to 0px. The one-time intro is left alone: cancelling it on focus would replay it on blur. */
-    .reveal:focus-within {
-      animation: none;
-    }
-
-    /* Full viewport box, so cqw in the gauge keyframes is the viewport width without a classic scrollbar. */
+    /* Full viewport box, so the gauge centers on the viewport without a classic scrollbar. */
     .sg-rail {
       display: block;
       position: fixed;
       inset: 0;
-      z-index: 2;
-      container-type: size;
+      z-index: 4;
       pointer-events: none;
     }
 
+    /* --dock-x and --dock-y are the menu bar item's ring center, measured from the viewport center by the page script. */
     .sg {
       display: block;
       position: absolute;
       inset: 0;
       margin: auto;
-      --dock-size: 72px;
-      --dock-x: calc(50cqw - 34px - var(--dock-size) / 2);
+      --dock-size: 16px;
       width: var(--sg-size);
       height: var(--sg-size);
       translate: var(--dx) var(--dy);
-      /* d-move runs on time: the gauge shows big at 100% for the delay, then moves to the corner and stays there.
-         d-land comes after d-move, so at the end of the page it overrides --dx. */
-      animation: d-move var(--move-duration) var(--move-easing) var(--move-delay) both, d-land linear forwards, d-count linear both;
-      animation-timeline: auto, scroll(root), scroll(root);
-      animation-range: normal, 90% 100%, normal;
-    }
-
-    .sg::before {
-      content: "";
-      position: absolute;
-      inset: -14%;
-      border-radius: 50%;
-      background: rgba(13, 15, 20, 0.85);
-      filter: blur(16px);
-      opacity: var(--disc);
+      animation:
+        d-move var(--move-duration) var(--move-easing) var(--move-delay) both,
+        d-vanish var(--move-duration) linear var(--move-delay) both;
     }
 
     .sg svg {
-      position: relative;
       display: block;
       width: 100%;
       height: 100%;
-    }
-
-    .sg-track,
-    .brand-track {
-      animation: d-health steps(1, end) both;
-      animation-timeline: scroll(root);
-    }
-
-    .sg-fill,
-    .brand-fill {
-      animation: d-drain linear both, d-health steps(1, end) both;
-      animation-timeline: scroll(root), scroll(root);
     }
 
     .sg-track {
@@ -595,12 +879,14 @@ h1 {
       stroke-linecap: round;
     }
 
+    /* The arc falls from 100 to 49, so it lands on the menu bar item's own value. */
     .sg-fill {
       fill: none;
       stroke: #64A8FF;
       stroke-width: 2.5;
       stroke-linecap: round;
       stroke-dasharray: 100 200;
+      animation: d-to-49 var(--move-duration) var(--move-easing) var(--move-delay) both;
     }
 
     .sg-label {
@@ -612,6 +898,7 @@ h1 {
       justify-content: center;
       gap: 0.4em;
       padding-top: 4%;
+      opacity: calc(1 - var(--progress) * 1.6);
     }
 
     .sg-pct {
@@ -619,7 +906,6 @@ h1 {
       font-weight: 700;
       font-size: calc(var(--sg-size) * 0.19);
       line-height: 1;
-      color: #E8EAED;
     }
 
     .sg-pct::after {
@@ -627,62 +913,141 @@ h1 {
       content: counter(pct) "%";
     }
 
-    /* round() needs its own support test: an unsupported round() after var() substitution leaves the counter at 0. */
+    .sg-sub {
+      font-size: calc(var(--sg-size) * 0.066);
+      color: #B9C0C9;
+    }
+
+    /* The moment is two screens: the pin holds the gauge for one screen of scroll while it drains. */
+    .screen.runway {
+      --h: 2;
+      padding-block: 0;
+      view-timeline: --runway block;
+      view-timeline-inset: 0;
+    }
+
+    .runway-pin {
+      position: sticky;
+      top: 0;
+      height: 100svh;
+      box-sizing: border-box;
+      padding-block: 120px 72px;
+    }
+
+    .rw-fill {
+      animation: d-drain linear both, d-health steps(1, end) both;
+      animation-timeline: --runway, --runway;
+      animation-range: contain 0% contain 100%, contain 0% contain 100%;
+    }
+
+    .rw-track {
+      animation: d-health steps(1, end) both;
+      animation-timeline: --runway;
+      animation-range: contain 0% contain 100%;
+    }
+
+    .rw-pct {
+      animation: d-rw-count linear both;
+      animation-timeline: --runway;
+      animation-range: contain 0% contain 100%;
+    }
+
+    .rw-pct::after {
+      counter-reset: rp var(--rp);
+      content: counter(rp) "%";
+    }
+
+    .rw-day {
+      animation: d-rw-day linear both;
+      animation-timeline: --runway;
+      animation-range: contain 0% contain 100%;
+    }
+
+    .rw-day::after {
+      counter-reset: day var(--day);
+      content: "Nov " counter(day);
+    }
+
+    .rw-sentence + .rw-sentence {
+      display: block;
+    }
+
+    .rw-sentence {
+      animation-timeline: --runway;
+      animation-fill-mode: both;
+      animation-timing-function: linear;
+    }
+
+    /* The three sentences follow the gauge colors: blue to 51%, orange to 11%, red after. */
+    .rw-first {
+      animation-name: d-say-first;
+      animation-range: contain 0% contain 49.5%;
+    }
+
+    .rw-second {
+      animation-name: d-say-mid;
+      animation-range: contain 49.5% contain 89.5%;
+    }
+
+    .rw-third {
+      animation-name: d-say-last;
+      animation-range: contain 89.5% contain 100%;
+    }
+
     @supports (counter-reset: pct round(1, 1)) {
       .sg-pct::after {
         counter-reset: pct round(var(--p), 1);
       }
-    }
 
-    .sg-sub {
-      font-size: calc(var(--sg-size) * 0.066);
-      color: #B9C0C9;
-      opacity: calc(1 - var(--disc));
+      .rw-pct::after {
+        counter-reset: rp round(var(--rp), 1);
+      }
+
+      .rw-day::after {
+        counter-reset: day round(var(--day), 1);
+      }
     }
   }
 }
 
-/* On load the gauge holds at the center for 700 ms, then moves to the bottom right corner and shrinks in 600 ms, while the nav and the hero fade in.
-   The corner is set with cqw (the width of .sg-rail, the viewport without the scrollbar), not vw, so a classic scrollbar does not push the disc off screen.
-   The corner offset is 24px margin + half the dock size + 10px disc overhang (inset -14% of 72px). --dock-size and --dock-x are read on the element, so the phone breakpoint can set them.
-   The keyframes animate --dx and --dy, not translate: Safari 27 did not paint a scroll-driven translate here, but it paints animated custom properties. */
+/* The keyframes animate custom properties, not translate: Safari 27 did not paint an animated translate here, but it paints animated custom properties. */
 @keyframes d-move {
   from {
     --sg-size: min(64vmin, 600px);
     --dx: 0px;
     --dy: 0px;
-    --disc: 0;
+    --progress: 0;
+    --p: 100;
   }
 
   to {
     --sg-size: var(--dock-size);
-    --dx: var(--dock-x);
-    --dy: calc(50vh - var(--dock-size) / 2 - 34px);
-    --disc: 1;
+    --dx: var(--dock-x, 0px);
+    --dy: var(--dock-y, 0px);
+    --progress: 1;
+    --p: 49;
   }
 }
 
-/* At the end of the page the gauge slides from the corner to the bottom center, over the landing pad. */
-@keyframes d-land {
-  from {
-    --dx: var(--dock-x);
+/* The intro gauge disappears as it lands, so the real menu bar item takes its place. */
+@keyframes d-vanish {
+  0%,
+  80% {
+    opacity: 1;
   }
 
-  to {
-    --dx: 0px;
+  100% {
+    opacity: 0;
   }
 }
 
-/* The rise animates --rise, not translate, for the same Safari 27 reason as the gauge keyframes. */
-@keyframes d-rise {
+@keyframes d-to-49 {
   from {
-    --reveal: 0;
-    --rise: 48px;
+    stroke-dasharray: 100 200;
   }
 
   to {
-    --reveal: 1;
-    --rise: 0px;
+    stroke-dasharray: 49 200;
   }
 }
 
@@ -696,14 +1061,111 @@ h1 {
   }
 }
 
-/* The number and the arc fall from 100 to 0 over the whole page, so 0% is the very end of the scroll. */
-@keyframes d-count {
+@keyframes d-pop {
   from {
-    --p: 100;
+    opacity: 0;
+    transform: translateY(-6px) scale(0.92);
   }
 
   to {
-    --p: 0;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes d-press {
+  from {
+    background: rgba(255, 255, 255, 0);
+  }
+
+  to {
+    background: rgba(255, 255, 255, 0.18);
+  }
+}
+
+@keyframes d-pulse {
+  from {
+    stroke-dashoffset: 12;
+  }
+
+  to {
+    stroke-dashoffset: -600;
+  }
+}
+
+/* The same motion under a second name, so a hover starts it from the beginning. */
+@keyframes d-pulse-again {
+  from {
+    stroke-dashoffset: 12;
+  }
+
+  to {
+    stroke-dashoffset: -600;
+  }
+}
+
+@keyframes d-rw-count {
+  from {
+    --rp: 100;
+  }
+
+  to {
+    --rp: 0;
+  }
+}
+
+@keyframes d-rw-day {
+  from {
+    --day: 1;
+  }
+
+  to {
+    --day: 26;
+  }
+}
+
+/* visibility switches with opacity, so a hidden sentence also leaves the accessibility tree. */
+@keyframes d-say-first {
+  0%,
+  85% {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@keyframes d-say-mid {
+  0% {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  15%,
+  85% {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@keyframes d-say-last {
+  0% {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  30%,
+  100% {
+    opacity: 1;
+    visibility: visible;
   }
 }
 
@@ -741,70 +1203,174 @@ h1 {
   }
 }
 
-@media (min-width: 601px) and (max-width: 900px) {
-  .cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+/* Between the list layout and full width, the hub is too narrow for the Portkey note beside its name. */
+@media (min-width: 901px) and (max-width: 1100px) {
+  .node small {
+    display: none;
   }
+}
 
-  .card {
-    grid-column: auto;
-  }
-
-  .card-wide {
-    grid-column: span 2;
-  }
-
-  .projects {
+@media (max-width: 900px) {
+  .hero,
+  .runway-pin {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hero {
+    padding-block: 48px;
+  }
+
+  /* Stacked, the pinned moment must fit one screen: the gauge takes about a third of the height and the extra paragraph goes. */
+  .runway-pin {
+    gap: 24px;
+    align-content: center;
+    padding-block: 88px 24px;
+  }
+
+  .rw-gauge {
+    width: min(70%, 34svh);
+  }
+
+  .rw-copy {
+    gap: 16px;
+  }
+
+  .rw-copy .sub {
+    display: none;
+  }
+
+  .bento {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+
+  .cell-big {
+    grid-row: auto;
+  }
+
+  .facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  /* Without room for the spokes, the hub becomes a two-column list of the same nodes. */
+  .hub {
+    height: auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .hub > svg {
+    display: none;
+  }
+
+  .node {
+    position: static;
+    translate: none;
+    white-space: normal;
+  }
+
+  .node-center {
+    grid-column: 1 / -1;
   }
 }
 
 @media (max-width: 600px) {
-  /* On phones the gauge stays centered and docks at the bottom center. */
-  .sg {
-    --dock-size: 76px;
-    --dock-x: 0px;
-  }
-
-  .page {
-    --section-gap: 80px;
-  }
-
-  .cards,
-  .projects {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .card,
-  .card-wide {
-    grid-column: auto;
-  }
-
-  .shot {
-    padding: 10px;
-  }
-
-  .hero {
-    gap: 40px;
+  .screen {
+    padding-block: 96px 48px;
   }
 
   h1 {
     font-size: 40px;
   }
 
-  .runout-quote {
+  h2 {
+    font-size: 32px;
+  }
+
+  .nav-links {
+    gap: 18px;
+  }
+
+  .nav-links .nav-optional {
+    display: none;
+  }
+
+  .menubar-apps span:not(:first-child) {
+    display: none;
+  }
+
+  .desk {
+    height: 480px;
+  }
+
+  .clock-date {
+    display: none;
+  }
+
+  .clock {
+    min-width: 64px;
+  }
+
+  /* With the time only and its reserved 64px, the item's center sits at least 124px from the panel's right edge, so a 212px popover keeps 18px of margin. */
+  .popover {
+    width: 212px;
+  }
+
+  .rw-pct {
+    font-size: 48px;
+  }
+
+  .rw-left {
+    font-size: 15px;
+  }
+
+  .rw-sentence {
     font-size: 24px;
   }
 
-  .setup {
-    gap: 32px;
+  .close-type {
+    font-size: 64px;
   }
 
-  .privacy {
-    padding: 28px 24px;
+  .hub {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Too short to pin the moment (a phone held sideways): the section scrolls like the others, and its animations still follow the scroll. */
+@media (max-height: 560px) {
+  .screen.runway {
+    --h: 1;
   }
 
-  .install h2 {
-    font-size: 30px;
+  .runway-pin {
+    position: static;
+    height: auto;
+  }
+
+  /* An unpinned section can be exactly one screen tall, where a contain range has no length. A cover range always has length.
+     The sentence stops sit at 49.5% and 89.5% of the 20% to 80% span, the same stops as the gauge colors. */
+  .rw-fill {
+    animation-range: cover 20% cover 80%, cover 20% cover 80%;
+  }
+
+  .rw-track,
+  .rw-pct,
+  .rw-day {
+    animation-range: cover 20% cover 80%;
+  }
+
+  .rw-first {
+    animation-range: cover 20% cover 49.7%;
+  }
+
+  .rw-second {
+    animation-range: cover 49.7% cover 73.7%;
+  }
+
+  .rw-third {
+    animation-range: cover 73.7% cover 80%;
   }
 }
