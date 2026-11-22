@@ -114,6 +114,8 @@ struct ShareBreakdownView: View {
         Text(name)
           .italic(italic)
           .foregroundStyle(italic ? .secondary : .primary)
+          // The row keeps one line, so a long name such as a "(Portkey)" gateway id shows in full on hover.
+          .help(name)
       }
       .scaleEffect(isHovered ? Self.legendHoverScale : 1, anchor: .leading)
       if let lowCachePercent = lowCachePercents[id] {
