@@ -272,3 +272,61 @@ func realPath(_ url: URL) -> String {
 @Test func copilotChatsFolderItselfIsNotACopilotAppChat() {
   #expect(projectName(directory: "/Users/example/.copilot/chats") == "chats")
 }
+
+private func portkeyRecord(
+  costUSD: Double?, directory: String?, projectRoot: String? = nil, timestamp: Date = fixtureCycleStart
+) -> PortkeyRecord {
+  PortkeyRecord(
+    model: "deepseek-v4p1-flash", timestamp: timestamp, source: .pi, costUSD: costUSD, directory: directory, projectRoot: projectRoot
+  )
+}
+
+@Test func portkeyWorktreeAndRepoFoldersAddIntoOneProject() {
+  let repo = "/Users/example/www/acme/runway-app"
+  let worktree = "/Users/example/src/runway-fix"
+  let gitEntries: [String: ProjectName.GitEntry] = [
+    repo: .directory, worktree: .file(contents: "gitdir: \(repo)/.git/worktrees/runway-fix\n"),
+  ]
+  let projects = ProjectName.portkeyProjects(
+    records: [portkeyRecord(costUSD: 0.25, directory: worktree), portkeyRecord(costUSD: 0.5, directory: repo + "/App")],
+    homeDirectory: exampleHome
+  ) { gitEntries[$0] }
+  #expect(projects == [ProjectCredits(name: "runway-app", credits: 0.75)])
+}
+
+@Test func portkeyRecordWithoutAFolderIsUnknownFolder() {
+  let projects = ProjectName.portkeyProjects(
+    records: [portkeyRecord(costUSD: 0.5, directory: "/Users/example/www/acme/scratch"), portkeyRecord(costUSD: 1, directory: nil)],
+    homeDirectory: exampleHome
+  ) { _ in nil }
+  #expect(projects == [ProjectCredits(name: "Unknown folder", credits: 1), ProjectCredits(name: "scratch", credits: 0.5)])
+}
+
+@Test func unpricedPortkeyRecordAddsNothingToItsProject() {
+  let projects = ProjectName.portkeyProjects(
+    records: [
+      portkeyRecord(costUSD: 0.5, directory: "/Users/example/www/acme/scratch"),
+      portkeyRecord(costUSD: nil, directory: "/Users/example/www/acme/scratch"),
+      portkeyRecord(costUSD: nil, directory: "/Users/example/www/acme/notes"),
+    ],
+    homeDirectory: exampleHome
+  ) { _ in nil }
+  #expect(projects == [ProjectCredits(name: "scratch", credits: 0.5)])
+}
+
+// A project root needs no git lookup, so the test reads no disk.
+@Test func aggregatePortkeyByProjectHoldsOnlyThisCycle() {
+  let cycleStart = utcDate("2026-11-01T00:00:00Z")
+  let repo = "/Users/example/www/acme/runway-app"
+  let sessionCredits = SessionCredits.aggregate(
+    turns: [],
+    prices: PriceTable.bundled,
+    portkeyRecords: [
+      portkeyRecord(costUSD: 0.25, directory: nil, projectRoot: repo, timestamp: utcDate("2026-10-31T10:00:00Z")),
+      portkeyRecord(costUSD: 0.5, directory: nil, projectRoot: repo, timestamp: utcDate("2026-11-02T10:00:00Z")),
+    ],
+    cycleStart: cycleStart,
+    now: utcDate("2026-11-03T00:00:00Z")
+  )
+  #expect(sessionCredits.portkeyByProject == [ProjectCredits(name: "runway-app", credits: 0.5)])
+}
