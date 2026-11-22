@@ -120,7 +120,9 @@ public struct DemoScenario: Sendable {
         records.append(
           PortkeyRecord(
             model: models[modelIndex], timestamp: timestamp, source: sources[recordIndex % sources.count],
-            costUSD: recordIndex % 7 == 6 ? nil : costUSDByModel[modelIndex], category: categories[recordIndex % categories.count]
+            costUSD: recordIndex % 7 == 6 ? nil : costUSDByModel[modelIndex], category: categories[recordIndex % categories.count],
+            // A project root needs no git lookup, so naming the projects reads no disk.
+            projectRoot: Shape.projectFolders[Shape.projectPattern[recordIndex % Shape.projectPattern.count]]
           )
         )
       }

@@ -218,6 +218,14 @@ func copilotScenariosHaveNoPortkeyOnlyData(name: DemoScenario.Name) {
   #expect(scenario.sessionCredits.portkey.requestCount > 0)
 }
 
+@Test(arguments: [DemoScenario.Name.portkeyOnly, .portkeyOnlyNoBudget])
+func portkeyOnlyScenariosHaveALeadingProject(name: DemoScenario.Name) throws {
+  let portkeyByProject = DemoScenario(name: name, now: portkeyDemoNow).sessionCredits.portkeyByProject
+  let topProject = try #require(portkeyByProject.first)
+  #expect(topProject.name == "runway-app")
+  #expect(topProject.credits > 0)
+}
+
 @Test func noCopilotEmptyScenario() {
   let scenario = DemoScenario(name: .noCopilotEmpty, now: portkeyDemoNow)
   #expect(scenario.copilotError == .notLoggedIn)
