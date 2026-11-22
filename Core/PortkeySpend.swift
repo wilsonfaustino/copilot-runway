@@ -9,16 +9,29 @@ public struct PortkeyRecord: Equatable, Sendable {
   public let costUSD: Double?
   // The TaskCategorizer category of the turn that holds the message, set by the parser when the turn ends.
   public internal(set) var category: TaskCategory
+  // The folder and OpenCode project root of the turn that holds the message, as in Turn. Set with the category.
+  public internal(set) var directory: String?
+  public internal(set) var projectRoot: String?
 
-  public init(model: String, timestamp: Date, source: SessionSource, costUSD: Double?, category: TaskCategory = .uncategorized) {
+  public init(
+    model: String,
+    timestamp: Date,
+    source: SessionSource,
+    costUSD: Double?,
+    category: TaskCategory = .uncategorized,
+    directory: String? = nil,
+    projectRoot: String? = nil
+  ) {
     self.model = model
     self.timestamp = timestamp
     self.source = source
     self.costUSD = costUSD
     self.category = category
+    self.directory = directory
+    self.projectRoot = projectRoot
   }
 
-  // The records of one turn, each with the category of that turn. A turn with Copilot records gets the same category
+  // The records of one turn, each with the category and folders of that turn. A turn with Copilot records gets the same category
   // in Credits.byCategory. With splitAt, a record counts only the Copilot records on its side of splitAt, as
   // SessionCredits.aggregate does for a Pi turn that crosses the cycle start.
   static func categorized(_ records: [PortkeyRecord], turn: Turn, splitAt: Date? = nil) -> [PortkeyRecord] {
@@ -36,6 +49,8 @@ public struct PortkeyRecord: Equatable, Sendable {
       }()
       var categorizedRecord = record
       categorizedRecord.category = category
+      categorizedRecord.directory = turn.directory
+      categorizedRecord.projectRoot = turn.projectRoot
       return categorizedRecord
     }
   }

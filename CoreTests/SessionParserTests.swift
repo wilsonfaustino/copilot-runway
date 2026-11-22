@@ -166,3 +166,28 @@ func makeOpenCodeDataDirectory(fixture: String = "opencode/opencode.sql") throws
   try #require(sqlite3_exec(database, fixtureSQL, nil, nil, nil) == SQLITE_OK)
   return dataDirectory
 }
+
+// The first Portkey message comes before any user message, so it is in the assistant fallback turn. Both Portkey
+// records get the folder of the session header, also when their turn has no Copilot record.
+@Test func piPortkeyRecordsGetTheSessionFolder() throws {
+  let piDirectory = FileManager.default.temporaryDirectory.appending(path: "pi-portkey-folder-\(UUID().uuidString)")
+  try FileManager.default.createDirectory(at: piDirectory, withIntermediateDirectories: true)
+  defer { try? FileManager.default.removeItem(at: piDirectory) }
+  let milliseconds = Int(utcDate("2026-10-05T10:00:00Z").timeIntervalSince1970 * 1000)
+  let lines = [
+    #"{"type":"session","version":3,"id":"session-folder","timestamp":"2026-10-05T10:00:00.000Z","cwd":"/Users/example/www/acme/runway-app"}"#,
+    #"{"type":"message","message":{"role":"assistant","content":[],"provider":"portkey","model":"deepseek-v4p1-flash","responseId":"resp_folder_1","usage":{"input":10,"output":20,"cost":{"total":0.01}},"timestamp":\#(milliseconds)}}"#,
+    #"{"type":"message","message":{"role":"user","content":[],"timestamp":\#(milliseconds + 1000)}}"#,
+    #"{"type":"message","message":{"role":"assistant","content":[],"provider":"portkey","model":"deepseek-v4p1-flash","responseId":"resp_folder_2","usage":{"input":10,"output":20,"cost":{"total":0.02}},"timestamp":\#(milliseconds + 2000)}}"#,
+  ]
+  try lines.joined(separator: "\n").write(to: piDirectory.appending(path: "session.jsonl"), atomically: true, encoding: .utf8)
+  var seenResponseIds = Set<String>()
+  var portkeyRecords: [PortkeyRecord] = []
+  _ = PiSessionParser.turns(
+    inDirectory: piDirectory, source: .pi, since: fixtureCycleStart, seenResponseIds: &seenResponseIds,
+    portkeyRecords: &portkeyRecords
+  )
+  #expect(portkeyRecords.map(\.costUSD) == [0.01, 0.02])
+  #expect(portkeyRecords.map(\.directory) == ["/Users/example/www/acme/runway-app", "/Users/example/www/acme/runway-app"])
+  #expect(portkeyRecords.allSatisfy { $0.projectRoot == nil })
+}

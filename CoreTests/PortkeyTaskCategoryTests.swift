@@ -33,6 +33,15 @@ private func categoriesByHour(_ records: [PortkeyRecord]) -> [Int: TaskCategory]
   #expect(openCodeRead.turns.flatMap(\.records).map(\.model) == ["gpt-6-luna"])
 }
 
+@Test func openCodePortkeyRecordsGetTheSessionFolderAndProjectRoot() throws {
+  let dataDirectory = try makeOpenCodeDataDirectory(fixture: "portkey-tasks/opencode.sql")
+  defer { try? FileManager.default.removeItem(at: dataDirectory) }
+  let portkeyRecords = try OpenCodeSessionParser.read(inDirectory: dataDirectory, since: fixtureCycleStart).portkeyRecords
+  #expect(portkeyRecords.count == 4)
+  #expect(portkeyRecords.allSatisfy { $0.directory == "/Users/example/orca/workspaces/runway-app/fix-chart" })
+  #expect(portkeyRecords.allSatisfy { $0.projectRoot == "/Users/example/www/acme/runway-app" })
+}
+
 // Planning counts 1,000 Copilot output tokens or more. The first turn crosses the cycle start with 900 tokens before
 // it and 200 after it, so only the records after it count, as for the Copilot turn. In the second turn a Portkey
 // answer comes before a Portkey edit, and both get Implementation, the category of the whole turn. The third turn has
