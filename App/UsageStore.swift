@@ -38,6 +38,8 @@ final class UsageStore {
   private(set) var sessionsWarning: String?
   private(set) var portkeySpend = PortkeySpend(records: [])
   private(set) var previousPortkeySpend = PortkeySpend(records: [])
+  // USD per project. Kept in Portkey-only mode, which clears the Copilot data.
+  private(set) var portkeyByProject: [ProjectCredits] = []
   private(set) var copilotState = CopilotState.copilot
   // 0 or less counts as no budget.
   private(set) var portkeyBudgetUSD: Double?
@@ -263,6 +265,7 @@ final class UsageStore {
     sessionsWarning = sessionCredits.warning
     portkeySpend = sessionCredits.portkey
     previousPortkeySpend = sessionCredits.previousPortkey
+    portkeyByProject = sessionCredits.portkeyByProject
     updateGauge()
   }
 

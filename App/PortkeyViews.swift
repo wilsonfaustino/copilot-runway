@@ -183,13 +183,15 @@ private struct PortkeyModelShareBar: View {
 }
 
 // The Dashboard passes in the Runway card and the Daily spend chart, because their views are private to DashboardView.
-struct PortkeyDashboardSection<RunwayCard: View, DailySpendChart: View>: View {
+struct PortkeyDashboardSection<RunwayCard: View, DailySpendChart: View, BreakdownCards: View>: View {
   let spend: PortkeySpend
   let budgetStatus: PortkeyBudget.Status?
   let dateRange: String
   var isPortkeyOnly = false
   let runwayCard: RunwayCard
   let dailySpendChart: DailySpendChart
+  // By task and By project, shown only when the cycle has requests.
+  let breakdownCards: BreakdownCards
 
   var body: some View {
     VStack(alignment: .leading, spacing: Theme.Spacing.regular) {
@@ -229,6 +231,7 @@ struct PortkeyDashboardSection<RunwayCard: View, DailySpendChart: View>: View {
       } else {
         modelSourceTable
         agentBars
+        breakdownCards
       }
       Text("\(PortkeyText.costSourceNote) A message without a cost counts as a request and adds \(PortkeySpend.formatted(0)).")
         .captionStyle()
