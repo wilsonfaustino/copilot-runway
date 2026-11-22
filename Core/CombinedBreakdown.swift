@@ -21,7 +21,8 @@ public enum CombinedBreakdown {
       }
     )
     .sorted { left, right in
-      if sortKey(left.usd) != sortKey(right.usd) { return sortKey(left.usd) > sortKey(right.usd) }
+      let leftKey = Credits.usdSortKey(left.usd), rightKey = Credits.usdSortKey(right.usd)
+      if leftKey != rightKey { return leftKey > rightKey }
       if left.name != right.name { return left.name < right.name }
       return left.id < right.id
     }
@@ -51,18 +52,13 @@ public enum CombinedBreakdown {
     }
     let entries = usdBySource.filter { $0.value > 0 }
       .sorted { left, right in
-        if sortKey(left.value) != sortKey(right.value) { return sortKey(left.value) > sortKey(right.value) }
+        let leftKey = Credits.usdSortKey(left.value), rightKey = Credits.usdSortKey(right.value)
+        if leftKey != rightKey { return leftKey > rightKey }
         return left.key.rawValue < right.key.rawValue
       }
       .map { (name: $0.key.displayName, credits: $0.value) }
     // ShareBreakdown.local takes credits, so credits holds USD here.
     let agents = ShareBreakdown.local(entries: entries)
     return ShareBreakdown(shareTotal: agents.shareTotal, items: agents.items, unit: ShareBreakdown.localUSDUnit, isUSD: true)
-  }
-
-  // Sums of the same spend in a different order can differ in the last bits, for example 0.1 + 0.2 and 0.3. The sort
-  // rounds to a billionth of a dollar so that such rows tie and the name or source decides.
-  private static func sortKey(_ usd: Double) -> Double {
-    (usd * 1e9).rounded()
   }
 }

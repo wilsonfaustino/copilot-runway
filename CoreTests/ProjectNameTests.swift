@@ -302,6 +302,19 @@ private func portkeyRecord(
   #expect(projects == [ProjectCredits(name: "Unknown folder", credits: 1), ProjectCredits(name: "scratch", credits: 0.5)])
 }
 
+// $0.10 + $0.20 sums to 0.30000000000000004, so a raw sort puts "beta" before "alpha".
+@Test func floatingPointPortkeyProjectSumsTieAndSortByName() {
+  let projects = ProjectName.portkeyProjects(
+    records: [
+      portkeyRecord(costUSD: 0.1, directory: nil, projectRoot: "/Users/example/www/beta"),
+      portkeyRecord(costUSD: 0.2, directory: nil, projectRoot: "/Users/example/www/beta"),
+      portkeyRecord(costUSD: 0.3, directory: nil, projectRoot: "/Users/example/www/alpha"),
+    ],
+    homeDirectory: exampleHome
+  ) { _ in nil }
+  #expect(projects.map(\.name) == ["alpha", "beta"])
+}
+
 @Test func unpricedPortkeyRecordAddsNothingToItsProject() {
   let projects = ProjectName.portkeyProjects(
     records: [

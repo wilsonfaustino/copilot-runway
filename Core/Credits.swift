@@ -77,6 +77,12 @@ public enum Credits {
   static let usdPerCredit = 0.01
   static let tokensPerPriceUnit = 1_000_000.0
 
+  // Sums of the same spend in a different order can differ in the last bits, for example 0.1 + 0.2 and 0.3. A sort
+  // rounds to a billionth of a dollar so that such rows tie and the name decides.
+  static func usdSortKey(_ usd: Double) -> Double {
+    (usd * 1e9).rounded()
+  }
+
   public static func credits(for tokens: TokenUsage, price: ModelPrice) -> Double {
     let rates = price.rates(promptTokens: tokens.promptTokens)
     let usd = (
