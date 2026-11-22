@@ -460,7 +460,7 @@ struct DashboardView: View {
     )
   }
 
-  // General: Copilot and Portkey in USD, priced spend only. No task split, because Portkey records have no model by task.
+  // General: Copilot and Portkey in USD, priced spend only.
   private var combinedModelAndAgentCards: some View {
     HStack(alignment: .top, spacing: Theme.Spacing.regular) {
       combinedModelCard

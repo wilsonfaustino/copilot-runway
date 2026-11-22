@@ -135,14 +135,14 @@ private func expectUSDBreakdown(_ breakdown: ShareBreakdown, sourceLocation: Sou
   expectUSD(breakdown.items[0].credits, 0.75)
 }
 
-// The three Portkey rows tie at $0.50, so the final names decide, also the renamed one. "z/beta" sorts after
-// "custom" by id, but before "custom (Portkey)" by name.
+// The three Portkey rows tie at $0.50, so the final names decide: "omega", "z/custom (Portkey)", "zeta". By id
+// "0/zeta" comes first, and by the name before the rename "custom" comes first.
 @Test func tieAtTheCutoffSortsByFinalName() {
   let breakdown = CombinedBreakdown.models(
     copilot: [ModelCredits(model: "gpt-6.1-sol", credits: 400), ModelCredits(model: "custom", credits: 100)],
-    portkey: portkeySpend([("custom", .pi, 0.5), ("z/beta", .pi, 0.5), ("a/omega", .pi, 0.5)])
+    portkey: portkeySpend([("z/custom", .pi, 0.5), ("0/zeta", .pi, 0.5), ("a/omega", .pi, 0.5)])
   )
-  #expect(breakdown.items.map(\.name) == ["GPT-6.1 Sol", "custom", "beta", ShareBreakdown.otherModelsName])
+  #expect(breakdown.items.map(\.name) == ["GPT-6.1 Sol", "custom", "omega", ShareBreakdown.otherModelsName])
   expectUSD(breakdown.items[3].credits, 1)
   #expect(breakdown.items.map(\.share) == [62, 15, 8, 15])
   #expect(breakdown.items.map(\.share).reduce(0, +) == 100)
