@@ -308,9 +308,15 @@ struct DashboardSidebarView: View {
 
 private struct SidebarIconTint<Content: View>: View {
   @Environment(\.backgroundProminence) private var backgroundProminence
+  @Environment(\.isEnabled) private var isEnabled
   @ViewBuilder let content: Content
 
   var body: some View {
-    content.foregroundStyle(backgroundProminence == .increased ? AnyShapeStyle(.primary) : AnyShapeStyle(.tint))
+    content.foregroundStyle(iconStyle)
+  }
+
+  private var iconStyle: AnyShapeStyle {
+    if !isEnabled { return AnyShapeStyle(.secondary) }
+    return backgroundProminence == .increased ? AnyShapeStyle(.primary) : AnyShapeStyle(.tint)
   }
 }
