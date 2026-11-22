@@ -154,6 +154,9 @@ public enum PriceTable {
     "claude-fable-5.1": ModelPrice(
       standard: TokenRates(input: 10.00, cachedInput: 0.25, cacheWrite: 12.50, output: 50.00)
     ),
+    "claude-fable-5.2": ModelPrice(
+      standard: TokenRates(input: 8.00, cachedInput: 0.20, cacheWrite: 10.00, output: 40.00)
+    ),
     // Google. GitHub lists no cache write rate for Google models, so it is 0.
     // Promotional rate through December 31, 2026.
     "gemini-3.7-flash": ModelPrice(
@@ -167,9 +170,27 @@ public enum PriceTable {
     "gemini-4-argon": ModelPrice(
       standard: TokenRates(input: 2.00, cachedInput: 0.10, cacheWrite: 0, output: 10.00)
     ),
+    // Promotional rate until December 1, 2026. Then 4.00 / 0.20 / 20.00.
+    "gemini-4-carbon": ModelPrice(
+      standard: TokenRates(input: 2.00, cachedInput: 0.10, cacheWrite: 0, output: 10.00)
+    ),
+    "gemini-4-hydrogen": ModelPrice(
+      standard: TokenRates(input: 1.50, cachedInput: 0.075, cacheWrite: 0, output: 7.50)
+    ),
+    "gemini-4-neon": ModelPrice(
+      standard: TokenRates(input: 3.00, cachedInput: 0.15, cacheWrite: 0, output: 15.00)
+    ),
     // Microsoft. GitHub lists no cache write rate, so it is 0.
     "mai-code-1.1-flash": ModelPrice(
       standard: TokenRates(input: 0.20, cachedInput: 0.02, cacheWrite: 0, output: 1.20)
+    ),
+    // Promotional rate until May 17, 2027. Then 1.00 / 0.05 / 5.00.
+    "mai-code-2": ModelPrice(
+      standard: TokenRates(input: 0.50, cachedInput: 0.025, cacheWrite: 0, output: 2.50)
+    ),
+    // Promotional rate until May 17, 2027. Then 0.10 / 0.01 / 0.50.
+    "mai-code-2-flash": ModelPrice(
+      standard: TokenRates(input: 0.05, cachedInput: 0.005, cacheWrite: 0, output: 0.25)
     ),
     // xAI. GitHub lists no cache write rate, so it is 0.
     "grok-4.5": ModelPrice(
