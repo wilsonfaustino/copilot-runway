@@ -271,7 +271,7 @@ struct DashboardSidebarView: View {
 
   private func rowView(_ row: DashboardSidebarRow) -> some View {
     HStack(spacing: 8) {
-      rowIcon(row.tab)
+      SidebarIconTint { rowIcon(row.tab) }
         .frame(width: 18)
       VStack(alignment: .leading, spacing: 1) {
         Text(row.tab.title)
@@ -301,6 +301,16 @@ struct DashboardSidebarView: View {
     Image(assetName)
       .resizable()
       .scaledToFit()
+      // 15 pt matches the optical size of the chart.pie symbol inside the 18 pt icon column.
       .frame(width: 15, height: 15)
+  }
+}
+
+private struct SidebarIconTint<Content: View>: View {
+  @Environment(\.backgroundProminence) private var backgroundProminence
+  @ViewBuilder let content: Content
+
+  var body: some View {
+    content.foregroundStyle(backgroundProminence == .increased ? AnyShapeStyle(.primary) : AnyShapeStyle(.tint))
   }
 }
