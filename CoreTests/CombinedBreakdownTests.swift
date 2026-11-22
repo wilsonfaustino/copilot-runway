@@ -148,6 +148,15 @@ private func expectUSDBreakdown(_ breakdown: ShareBreakdown, sourceLocation: Sou
   #expect(breakdown.items.map(\.share).reduce(0, +) == 100)
 }
 
+// $0.10 + $0.20 sums to 0.30000000000000004, so a raw sort puts "beta" before "alpha" at the cutoff.
+@Test func floatingPointSumsTieAtTheCutoffAndSortByName() {
+  let breakdown = CombinedBreakdown.models(
+    copilot: [ModelCredits(model: "gpt-6.1-sol", credits: 400), ModelCredits(model: "gpt-6-luna", credits: 200)],
+    portkey: portkeySpend([("b/beta", .pi, 0.1), ("b/beta", .pi, 0.2), ("a/alpha", .pi, 0.3)])
+  )
+  #expect(breakdown.items.map(\.name) == ["GPT-6.1 Sol", "GPT-6 Luna", "alpha", ShareBreakdown.otherModelsName])
+}
+
 // MARK: By agent
 
 @Test func combinedAgentsBothProviders() {
@@ -169,6 +178,13 @@ private func expectUSDBreakdown(_ breakdown: ShareBreakdown, sourceLocation: Sou
   // A tie sorts by SessionSource.rawValue.
   #expect(breakdown.items.map(\.name) == ["OpenCode", "Pi"])
   expectUSD(breakdown.shareTotal, 2)
+}
+
+@Test func floatingPointAgentSumsTieAndSortBySource() {
+  let breakdown = CombinedBreakdown.agents(
+    copilot: [], portkey: portkeySpend([(deepSeekGatewayID, .pi, 0.1), (deepSeekGatewayID, .pi, 0.2), (deepSeekGatewayID, .omp, 0.3)])
+  )
+  #expect(breakdown.items.map(\.name) == ["omp", "Pi"])
 }
 
 @Test func combinedAgentsPortkeyOnly() {
