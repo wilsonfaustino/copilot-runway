@@ -271,7 +271,7 @@ struct DashboardSidebarView: View {
 
   private func rowView(_ row: DashboardSidebarRow) -> some View {
     HStack(spacing: 8) {
-      Image(systemName: iconName(row.tab))
+      SidebarIconTint { rowIcon(row.tab) }
         .frame(width: 18)
       VStack(alignment: .leading, spacing: 1) {
         Text(row.tab.title)
@@ -288,11 +288,35 @@ struct DashboardSidebarView: View {
     .padding(.vertical, 2)
   }
 
-  private func iconName(_ tab: DashboardTab) -> String {
+  @ViewBuilder
+  private func rowIcon(_ tab: DashboardTab) -> some View {
     switch tab {
-    case .general: "square.grid.2x2"
-    case .copilot: "chart.line.uptrend.xyaxis"
-    case .portkey: "clock"
+    case .general: Image(systemName: "chart.pie")
+    case .copilot: markIcon("CopilotMark")
+    case .portkey: markIcon("PortkeyMark")
     }
+  }
+
+  private func markIcon(_ assetName: String) -> some View {
+    Image(assetName)
+      .resizable()
+      .scaledToFit()
+      // 15 pt matches the optical size of the chart.pie symbol inside the 18 pt icon column.
+      .frame(width: 15, height: 15)
+  }
+}
+
+private struct SidebarIconTint<Content: View>: View {
+  @Environment(\.backgroundProminence) private var backgroundProminence
+  @Environment(\.isEnabled) private var isEnabled
+  @ViewBuilder let content: Content
+
+  var body: some View {
+    content.foregroundStyle(iconStyle)
+  }
+
+  private var iconStyle: AnyShapeStyle {
+    if !isEnabled { return AnyShapeStyle(.secondary) }
+    return backgroundProminence == .increased ? AnyShapeStyle(.primary) : AnyShapeStyle(.tint)
   }
 }
